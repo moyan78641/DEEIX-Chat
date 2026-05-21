@@ -294,6 +294,19 @@ docker build -t deeix-chat-rapidocr ./docker/rapidocr
 - 安全策略：[SECURITY.md](./SECURITY.md)
 - Swagger UI：`http://localhost:8080/swagger/index.html`
 
+## 鸣谢
+
+DEEIX Chat 基于开源生态构建，感谢所有 AI 工具生态中的维护者和社区。
+
+- [Next.js](https://nextjs.org)
+- [Go](https://go.dev)
+- [LINUX DO](https://linux.do)
+
+## 联系&交流
+
+- 邮箱：[support@deeix.com](mailto:support@deeix.com)
+- Telegram：[t.me/deeix_chat](https://t.me/deeix_chat)
+
 ## 开源协议
 
 DEEIX Chat 使用 [Apache License 2.0](./LICENSE) 授权。

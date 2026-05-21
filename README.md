@@ -294,6 +294,19 @@ These services are optional. The admin file settings decide which extraction or 
 - Security policy: [SECURITY.md](./SECURITY.md)
 - Swagger UI: `http://localhost:8080/swagger/index.html`
 
+## Acknowledgements
+
+DEEIX Chat is built on the open-source ecosystem. Thanks to all maintainers and communities in the AI tooling ecosystem.
+
+- [Next.js](https://nextjs.org)
+- [Go](https://go.dev)
+- [LINUX DO](https://linux.do)
+
+## Contact & Community
+
+- Email: [support@deeix.com](mailto:support@deeix.com)
+- Telegram: [t.me/deeix_chat](https://t.me/deeix_chat)
+
 ## License
 
 DEEIX Chat is licensed under the [Apache License 2.0](./LICENSE).
