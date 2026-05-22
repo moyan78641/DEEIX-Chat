@@ -32,7 +32,7 @@ export const ADAPTER_LABELS: Record<string, string> = {
   openai_video_generations: resolveProtocolLabel("openai_video_generations"),
   anthropic_messages:       resolveProtocolLabel("anthropic_messages"),
   google_generate_content:  resolveProtocolLabel("google_generate_content"),
-  google_imagen:            resolveProtocolLabel("google_imagen"),
+  google_image_generation:  resolveProtocolLabel("google_image_generation"),
   xai_responses:            resolveProtocolLabel("xai_responses"),
 };
 

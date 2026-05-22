@@ -45,8 +45,8 @@ const VENDOR_CATALOG: readonly VendorCatalogItem[] = [
     label: "Google",
     vendorIcon: "google",
     modelIcon: "gemini",
-    aliases: ["google", "gemini", "gemma"],
-    patterns: [/\bgemini\b/i, /\bgemma\b/i, /\bimagen\b/i, /\bveo\b/i, /\blearnlm\b/i],
+    aliases: ["google", "gemini", "gemma", "nano-banana"],
+    patterns: [/\bnano-banana\b/i, /\bgemini\b/i, /\bgemma\b/i, /\bimagen\b/i, /\bveo\b/i, /\blearnlm\b/i],
   },
   {
     key: "meta",
@@ -229,6 +229,7 @@ function detectModelFamilyIcon(value: string): string {
   }
 
   if (/\bclaude\b/i.test(value)) return "claude";
+  if (/\bnano-banana\b/i.test(value) || /\bgemini-(?:2\.5-flash|3\.1-flash|3-pro)-image\b/i.test(value)) return "nanobanana";
   if (/\bgemma\b/i.test(value)) return "gemma";
   if (/\bgemini\b/i.test(value) || /\bimagen\b/i.test(value) || /\bveo\b/i.test(value)) return "gemini";
   if (/\bllama\b/i.test(value)) return "meta";

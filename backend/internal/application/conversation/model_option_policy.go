@@ -125,6 +125,8 @@ func modelOptionPolicyProtocolKey(protocol string) string {
 	switch llm.NormalizeAdapter(protocol) {
 	case llm.AdapterGoogleGenerateContent:
 		return "gemini_generate_content"
+	case llm.AdapterGoogleImageGeneration:
+		return "google_image_generation"
 	case llm.AdapterOpenAIChatCompletions:
 		return "openai_chat_completions"
 	case llm.AdapterOpenAIImageGenerations:

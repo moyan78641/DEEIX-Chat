@@ -646,6 +646,7 @@ func NewClientWithEnv(env string, ssrfProtectionEnabled bool) *Client {
 		AdapterXAIResponses:           &xAIResponsesAdapter{client: client},
 		AdapterAnthropicMessages:      &anthropicMessagesAdapter{client: client},
 		AdapterGoogleGenerateContent:  &geminiGenerateContentAdapter{client: client},
+		AdapterGoogleImageGeneration:  &geminiImageGenerationAdapter{client: client},
 	}
 	return client
 }

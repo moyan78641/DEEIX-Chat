@@ -66,6 +66,20 @@ func DefaultModelOptionAllowedPathsJSON() string {
     "style",
     "user"
   ],
+  "google_image_generation": [
+    "aspect_ratio",
+    "aspectRatio",
+    "image_size",
+    "imageSize",
+    "imageConfig.aspectRatio",
+    "imageConfig.imageSize",
+    "responseFormat.image.aspectRatio",
+    "responseFormat.image.imageSize",
+    "generationConfig.imageConfig.aspectRatio",
+    "generationConfig.imageConfig.imageSize",
+    "generationConfig.responseFormat.image.aspectRatio",
+    "generationConfig.responseFormat.image.imageSize"
+  ],
   "anthropic_messages": [
     "speed",
     "top_k",

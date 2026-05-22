@@ -106,7 +106,7 @@ func (s *Service) StreamMediaImage(ctx context.Context, input MediaImageInput) (
 	if err != nil {
 		return nil, ErrModelRouteNotConfigured
 	}
-	if !strings.EqualFold(route.Protocol, llm.AdapterOpenAIImageGenerations) {
+	if !llm.IsImageGenerationAdapter(route.Protocol) {
 		return nil, ErrInvalidMediaGenerationTask
 	}
 	// 图片任务会把会话当前模型更新为实际执行的图片模型；标题、标签等内部文本任务会单独回退到聊天模型。

@@ -10,6 +10,7 @@ import { AudioLines } from "@/components/animate-ui/icons/audio-lines";
 import { Cog } from "@/components/animate-ui/icons/cog";
 import { Pause } from "@/components/animate-ui/icons/pause";
 import { Plus } from "@/components/animate-ui/icons/plus";
+import { Send } from "@/components/animate-ui/icons/send";
 import { Link as LinkIcon } from "@/components/animate-ui/icons/link";
 import { Crop } from "@/components/animate-ui/icons/crop";
 import { Unplug } from "@/components/animate-ui/icons/unplug";
@@ -69,7 +70,7 @@ import type { MCPToolDTO } from "@/shared/api/mcp.types";
 import type { ModelOptionPolicy } from "@/shared/lib/model-option-policy";
 import { isModelOptionPathFiltered } from "@/shared/lib/model-option-policy";
 import type { SendShortcut } from "@/features/settings/types/settings";
-import { isSendShortcutEvent } from "@/shared/lib/platform-shortcuts";
+import { isSendShortcutEvent, shouldUseMultilineEnterForTouchInput } from "@/shared/lib/platform-shortcuts";
 
 const FilePreviewDialog = dynamic(
   () => import("@/features/files/components/preview/file-preview-dialog").then((module) => module.FilePreviewDialog),
@@ -142,6 +143,8 @@ const OPTION_LABEL_KEYS = new Set<string>([
   "frequency_penalty",
   "generationConfig.candidateCount",
   "generationConfig.frequencyPenalty",
+  "generationConfig.imageConfig.aspectRatio",
+  "generationConfig.imageConfig.imageSize",
   "generationConfig.logprobs",
   "generationConfig.maxOutputTokens",
   "generationConfig.mediaResolution",
@@ -159,6 +162,8 @@ const OPTION_LABEL_KEYS = new Set<string>([
   "max_tokens",
   "output_config.effort",
   "output_config.format.type",
+  "responseFormat.image.aspectRatio",
+  "responseFormat.image.imageSize",
   "presence_penalty",
   "reasoning.summary",
   "reasoning.effort",
@@ -193,6 +198,12 @@ const OPTION_LABEL_KEYS = new Set<string>([
   "top_p",
   "verbosity",
   "web_search",
+  "aspect_ratio",
+  "aspectRatio",
+  "image_size",
+  "imageSize",
+  "imageConfig.aspectRatio",
+  "imageConfig.imageSize",
 ] as const);
 
 const XAI_NATIVE_TOOL_OPTIONS: NativeToolOption[] = [
@@ -303,6 +314,8 @@ const OPTION_ORDER = [
   "generationConfig.presencePenalty",
   "frequency_penalty",
   "generationConfig.frequencyPenalty",
+  "generationConfig.imageConfig.aspectRatio",
+  "generationConfig.imageConfig.imageSize",
   "response_logprobs",
   "generationConfig.responseLogprobs",
   "logprobs",
@@ -327,6 +340,8 @@ const OPTION_ORDER = [
   "output_config.effort",
   "output_config.format.type",
   "response_format.type",
+  "responseFormat.image.aspectRatio",
+  "responseFormat.image.imageSize",
   "budget_tokens",
   "thinking.budget_tokens",
   "thinking.thinking_budget",
@@ -351,6 +366,12 @@ const OPTION_ORDER = [
   "thinking",
   "think",
   "web_search",
+  "aspect_ratio",
+  "aspectRatio",
+  "image_size",
+  "imageSize",
+  "imageConfig.aspectRatio",
+  "imageConfig.imageSize",
 ];
 
 const NUMBER_OPTION_KEYS = new Set([
@@ -387,7 +408,11 @@ const OPTION_SELECT_VALUES: Record<string, string[]> = {
   speed: ["fast"],
   "generationConfig.mediaResolution": ["MEDIA_RESOLUTION_UNSPECIFIED", "MEDIA_RESOLUTION_LOW", "MEDIA_RESOLUTION_MEDIUM", "MEDIA_RESOLUTION_HIGH"],
   "generationConfig.responseMimeType": ["text/plain", "application/json", "text/x.enum"],
+  "generationConfig.imageConfig.aspectRatio": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
+  "generationConfig.imageConfig.imageSize": ["1K", "2K", "4K"],
   "generationConfig.thinkingConfig.thinkingLevel": ["low", "medium", "high"],
+  "imageConfig.aspectRatio": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
+  "imageConfig.imageSize": ["1K", "2K", "4K"],
   "output_config.effort": ["low", "medium", "high"],
   "output_config.format.type": ["json_object", "json_schema", "text"],
   "reasoning.effort": ["low", "medium", "high"],
@@ -395,6 +420,12 @@ const OPTION_SELECT_VALUES: Record<string, string[]> = {
   reasoning_effort: ["minimal", "low", "medium", "high", "xhigh"],
   reasoning_summary: ["auto", "concise", "detailed"],
   "response_format.type": ["json_object", "json_schema", "text"],
+  "responseFormat.image.aspectRatio": ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
+  "responseFormat.image.imageSize": ["1K", "2K", "4K"],
+  aspect_ratio: ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
+  aspectRatio: ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"],
+  image_size: ["1K", "2K", "4K"],
+  imageSize: ["1K", "2K", "4K"],
   "thinking.display": ["summarized", "omitted"],
   "thinking.thinking_level": ["low", "medium", "high"],
   "thinking.thinkingLevel": ["low", "medium", "high"],
@@ -437,6 +468,12 @@ const NESTED_VISUAL_OPTION_PATHS = [
   ["generationConfig", "logprobs"],
   ["generationConfig", "responseMimeType"],
   ["generationConfig", "mediaResolution"],
+  ["generationConfig", "imageConfig", "aspectRatio"],
+  ["generationConfig", "imageConfig", "imageSize"],
+  ["imageConfig", "aspectRatio"],
+  ["imageConfig", "imageSize"],
+  ["responseFormat", "image", "aspectRatio"],
+  ["responseFormat", "image", "imageSize"],
   ["generationConfig", "thinkingConfig", "includeThoughts"],
   ["generationConfig", "thinkingConfig", "thinkingBudget"],
   ["generationConfig", "thinkingConfig", "thinkingLevel"],
@@ -448,7 +485,7 @@ const PROTOCOL_LABELS: Record<string, string> = {
   anthropic_messages: "Messages",
   fal_queue: "Queue",
   google_generate_content: "Generate Content",
-  google_imagen: "Imagen",
+  google_image_generation: "Image Generation",
   openai_chat_completions: "Chat Completions",
   openai_image_edits: "Image Edits",
   openai_image_generations: "Image Generations",
@@ -760,6 +797,7 @@ function ChatInputComponent({
   onStopMessage,
 }: ChatInputProps) {
   const tCommon = useTranslations("common.actions");
+  const tChat = useTranslations("chat");
   const tComposer = useTranslations("chat.composer");
   const tFileStatus = useTranslations("files.status");
   const tOptionLabels = useTranslations("chat.optionLabels");
@@ -783,6 +821,7 @@ function ChatInputComponent({
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
   const optionsObjectRef = React.useRef<ConversationOptions>({});
   const composingRef = React.useRef(false);
+  const hasDraftText = draft.trim().length > 0;
   const canSend = (draft.trim().length > 0 || attachments.length > 0) && !sending && !loading && !uploading;
   const inputHeightClassName =
     inputHeight === "compact" ? "max-h-32" : inputHeight === "loose" ? "max-h-64" : "max-h-44";
@@ -1322,7 +1361,7 @@ function ChatInputComponent({
           rows={1}
           style={{ fontFamily: "var(--font-chat)", fontWeight: "var(--font-chat-weight)" }}
           className={cn(
-            "rounded-3xl min-h-12 overflow-y-auto px-5 pt-4 text-[15px] placeholder:text-base placeholder:font-medium",
+            "rounded-3xl min-h-12 overflow-y-auto px-5 pt-4 text-[15px] leading-6 placeholder:text-[15px] placeholder:font-[inherit] placeholder:leading-6",
             inputHeightClassName,
             speechInput.active ? "placeholder:font-normal placeholder:text-muted-foreground" : "",
           )}
@@ -1347,7 +1386,9 @@ function ChatInputComponent({
             if (event.nativeEvent.isComposing || composingRef.current || event.key === "Process" || event.keyCode === 229) {
               return;
             }
-            const shouldSend = isSendShortcutEvent(sendShortcut, event);
+            const shouldSend =
+              !(sendShortcut === "enter" && shouldUseMultilineEnterForTouchInput()) &&
+              isSendShortcutEvent(sendShortcut, event);
 
             if (shouldSend) {
               event.preventDefault();
@@ -1572,12 +1613,12 @@ function ChatInputComponent({
               variant="ghost"
               size="icon-sm"
               className="rounded-md text-muted-foreground hover:text-foreground"
-              disabled={loading || uploading || (!sending && !speechInput.supported)}
-              onClick={sending ? onStopMessage : speechInput.toggle}
+              disabled={loading || uploading || (!sending && !hasDraftText && !speechInput.supported)}
+              onClick={sending ? onStopMessage : hasDraftText ? onSendMessage : speechInput.toggle}
               onMouseEnter={() => setIsVoiceHovered(true)}
               onMouseLeave={() => setIsVoiceHovered(false)}
-              aria-label={sending ? tComposer("pauseGeneration") : speechInput.active ? tComposer("cancelVoiceInput") : tComposer("voiceInput")}
-              title={sending ? tComposer("pauseGeneration") : speechInput.supported ? (speechInput.active ? tComposer("cancelVoiceInput") : tComposer("voiceInput")) : tComposer("voiceUnsupported")}
+              aria-label={sending ? tComposer("pauseGeneration") : hasDraftText ? tChat("send") : speechInput.active ? tComposer("cancelVoiceInput") : tComposer("voiceInput")}
+              title={sending ? tComposer("pauseGeneration") : hasDraftText ? tChat("send") : speechInput.supported ? (speechInput.active ? tComposer("cancelVoiceInput") : tComposer("voiceInput")) : tComposer("voiceUnsupported")}
             >
               {sending ? (
                 <Pause
@@ -1590,6 +1631,12 @@ function ChatInputComponent({
                   size={20}
                   strokeWidth={1.4}
                   animate="default"
+                />
+              ) : hasDraftText ? (
+                <Send
+                  size={20}
+                  strokeWidth={1.4}
+                  animate={isVoiceHovered ? "default" : undefined}
                 />
               ) : (
                 <AudioLines

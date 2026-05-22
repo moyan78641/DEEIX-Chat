@@ -4,6 +4,7 @@ export const MODEL_OPTION_POLICY_PROTOCOLS = [
   "openai_responses",
   "anthropic_messages",
   "gemini_generate_content",
+  "google_image_generation",
   "xai_responses",
 ] as const;
 
@@ -24,6 +25,7 @@ export const MODEL_OPTION_POLICY_PROTOCOL_LABELS: Record<ModelOptionPolicyProtoc
   openai_responses: "OpenAI（Responses）",
   anthropic_messages: "Anthropic（Messages）",
   gemini_generate_content: "Google（Generate Content）",
+  google_image_generation: "Google（Image Generation）",
   xai_responses: "xAI（Responses）",
 };
 
@@ -79,6 +81,8 @@ export function resolveModelOptionPolicyProtocol(protocol: string): ModelOptionP
     case "google_generate_content":
     case "gemini_generate_content":
       return "gemini_generate_content";
+    case "google_image_generation":
+      return "google_image_generation";
     case "openai_responses":
     default:
       return "openai_responses";

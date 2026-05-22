@@ -368,7 +368,7 @@ func detectModelVendor(candidates ...string) string {
 			switch {
 			case strings.HasPrefix(value, "claude"), strings.Contains(value, "anthropic/"):
 				return "anthropic"
-			case strings.HasPrefix(value, "gemini"), strings.HasPrefix(value, "gemma"), strings.HasPrefix(value, "imagen"),
+			case strings.HasPrefix(value, "nano-banana"), strings.HasPrefix(value, "gemini"), strings.HasPrefix(value, "gemma"), strings.HasPrefix(value, "imagen"),
 				strings.HasPrefix(value, "veo"), strings.Contains(value, "google/"):
 				return "google"
 			case strings.HasPrefix(value, "llama"), strings.Contains(value, "meta/"):
@@ -492,6 +492,8 @@ func detectModelIcon(candidates ...string) string {
 			switch {
 			case strings.HasPrefix(value, "claude"):
 				return "claude"
+			case strings.HasPrefix(value, "nano-banana"), isGeminiImageGenerationModel(value):
+				return "nanobanana"
 			case strings.HasPrefix(value, "gemma"):
 				return "gemma"
 			case strings.HasPrefix(value, "gemini"), strings.HasPrefix(value, "imagen"), strings.HasPrefix(value, "veo"):

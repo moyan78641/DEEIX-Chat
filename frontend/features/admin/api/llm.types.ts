@@ -9,7 +9,7 @@ export type AdminLLMAdapter =
   | "openai_video_generations"
   | "anthropic_messages"
   | "google_generate_content"
-  | "google_imagen"
+  | "google_image_generation"
   | "xai_responses";
 export type AdminLLMModelVendor = string;
 export type AdminLLMCompatible =

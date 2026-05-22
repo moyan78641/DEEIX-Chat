@@ -14,6 +14,7 @@ var validModelOptionProtocolKeys = map[string]struct{}{
 	"anthropic_messages":       {},
 	"xai_responses":            {},
 	"gemini_generate_content":  {},
+	"google_image_generation":  {},
 }
 
 func validateModelOptionPathsJSON(value string, key string) error {

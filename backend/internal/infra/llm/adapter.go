@@ -15,6 +15,7 @@ const (
 	AdapterOpenAIImageEdits       = "openai_image_edits"       // POST /v1/images/edits
 	AdapterAnthropicMessages      = "anthropic_messages"       // POST /v1/messages
 	AdapterGoogleGenerateContent  = "google_generate_content"  // POST /v1beta/models/{model}:generateContent
+	AdapterGoogleImageGeneration  = "google_image_generation"  // POST /v1beta/models/{model}:generateContent
 	AdapterXAIResponses           = "xai_responses"            // POST /v1/responses（OpenAI 兼容）
 )
 
@@ -50,6 +51,7 @@ func IsKnownAdapter(raw string) bool {
 		AdapterOpenAIImageEdits,
 		AdapterAnthropicMessages,
 		AdapterGoogleGenerateContent,
+		AdapterGoogleImageGeneration,
 		AdapterXAIResponses:
 		return true
 	default:
@@ -61,7 +63,7 @@ func IsKnownAdapter(raw string) bool {
 func IsImplementedAdapter(raw string) bool {
 	switch NormalizeAdapter(raw) {
 	case AdapterOpenAIResponses, AdapterOpenAIChatCompletions, AdapterOpenAIImageGenerations, AdapterXAIResponses,
-		AdapterAnthropicMessages, AdapterGoogleGenerateContent:
+		AdapterAnthropicMessages, AdapterGoogleGenerateContent, AdapterGoogleImageGeneration:
 		return true
 	default:
 		return false
@@ -70,7 +72,17 @@ func IsImplementedAdapter(raw string) bool {
 
 // SupportsStreamingAdapter 返回协议是否有真实的上游流式传输。
 func SupportsStreamingAdapter(raw string) bool {
-	return IsImplementedAdapter(raw)
+	switch NormalizeAdapter(raw) {
+	case AdapterOpenAIResponses,
+		AdapterOpenAIChatCompletions,
+		AdapterOpenAIImageGenerations,
+		AdapterAnthropicMessages,
+		AdapterGoogleGenerateContent,
+		AdapterXAIResponses:
+		return true
+	default:
+		return false
+	}
 }
 
 // SupportsImageGenerationStream 返回图片生成协议和模型是否支持真实上游流式。
@@ -79,12 +91,22 @@ func SupportsImageGenerationStream(protocol string, model string) bool {
 		openAIImageGenerationModelSupportsStream(model)
 }
 
+// IsImageGenerationAdapter 返回协议是否属于独立图片生成链路。
+func IsImageGenerationAdapter(raw string) bool {
+	switch NormalizeAdapter(raw) {
+	case AdapterOpenAIImageGenerations, AdapterGoogleImageGeneration:
+		return true
+	default:
+		return false
+	}
+}
+
 // DefaultEndpointForAdapter 返回协议对应的固定端点标识。
 func DefaultEndpointForAdapter(adapter string) string {
 	switch NormalizeAdapter(adapter) {
 	case AdapterOpenAIChatCompletions:
 		return EndpointChatCompletions
-	case AdapterOpenAIImageGenerations:
+	case AdapterOpenAIImageGenerations, AdapterGoogleImageGeneration:
 		return EndpointImageGenerations
 	default:
 		// openai_responses、xai_responses 及所有未知值均使用 Responses 端点。

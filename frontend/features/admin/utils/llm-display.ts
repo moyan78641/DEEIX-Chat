@@ -33,6 +33,7 @@ export const PROTOCOL_OPTIONS = [
   { value: "openai_image_generations", label: "Image Generations (OpenAI)" },
   { value: "anthropic_messages", label: "Messages (Anthropic)" },
   { value: "google_generate_content", label: "Generate Content (Google)" },
+  { value: "google_image_generation", label: "Image Generation (Google)" },
   { value: "xai_responses", label: "Responses (xAI)" },
 ] as const;
 
@@ -40,7 +41,6 @@ const PROTOCOL_LABELS: Record<string, string> = {
   ...Object.fromEntries(PROTOCOL_OPTIONS.map((item) => [item.value, item.label])),
   openai_image_edits: "Image Edits (OpenAI)",
   openai_video_generations: "Video Generations (OpenAI)",
-  google_imagen: "Imagen (Google)",
 };
 
 const LLM_STATUS_LABELS: Record<string, string> = {

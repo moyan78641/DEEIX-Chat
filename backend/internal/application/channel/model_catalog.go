@@ -31,7 +31,7 @@ const (
 	protocolOpenAIImageGenerations = llm.AdapterOpenAIImageGenerations
 	protocolOpenAIImageEdits       = llm.AdapterOpenAIImageEdits
 	protocolOpenAIVideoGenerations = "openai_video_generations"
-	protocolGoogleImagen           = "google_imagen"
+	protocolGoogleImageGeneration  = llm.AdapterGoogleImageGeneration
 )
 
 var protocolDefaultKindOrder = []string{
@@ -122,7 +122,7 @@ func systemFallbackProtocols(compatible string) map[string]string {
 		return map[string]string{
 			modelKindChat:     llm.AdapterGoogleGenerateContent,
 			modelKindAudio:    llm.AdapterGoogleGenerateContent,
-			modelKindImageGen: protocolGoogleImagen,
+			modelKindImageGen: protocolGoogleImageGeneration,
 		}
 	case compatibleXAI:
 		return map[string]string{
@@ -152,7 +152,7 @@ func isKnownProtocol(raw string) bool {
 		protocolOpenAIImageGenerations,
 		protocolOpenAIImageEdits,
 		protocolOpenAIVideoGenerations,
-		protocolGoogleImagen:
+		protocolGoogleImageGeneration:
 		return true
 	default:
 		return false
@@ -218,7 +218,7 @@ func isProtocolAllowedForKind(kind string, protocol string) bool {
 	case modelKindImageGen:
 		switch protocol {
 		case protocolOpenAIImageGenerations,
-			protocolGoogleImagen:
+			protocolGoogleImageGeneration:
 			return true
 		default:
 			return false
@@ -263,7 +263,7 @@ func IsRouteAllowedForTask(taskType string, kindsJSON string, protocol string) b
 	if len(kinds) == 0 {
 		switch NormalizeTaskType(taskType) {
 		case TaskTypeImageGeneration:
-			return protocol == protocolOpenAIImageGenerations
+			return isProtocolAllowedForKind(modelKindImageGen, protocol)
 		case TaskTypeImageEdit:
 			return protocol == protocolOpenAIImageEdits
 		default:
@@ -272,7 +272,7 @@ func IsRouteAllowedForTask(taskType string, kindsJSON string, protocol string) b
 	}
 	switch NormalizeTaskType(taskType) {
 	case TaskTypeImageGeneration:
-		return hasModelKind(kinds, modelKindImageGen) && protocol == protocolOpenAIImageGenerations
+		return hasModelKind(kinds, modelKindImageGen) && isProtocolAllowedForKind(modelKindImageGen, protocol)
 	case TaskTypeImageEdit:
 		return hasModelKind(kinds, modelKindImageEdit) && protocol == protocolOpenAIImageEdits
 	default:
@@ -312,7 +312,7 @@ func inferKindsJSON(platformModelName string) string {
 	switch {
 	case strings.HasPrefix(code, "gpt-image-"), code == "chatgpt-image-latest", code == "dall-e-2":
 		return `["image_gen","image_edit"]`
-	case code == "dall-e-3", strings.HasPrefix(code, "imagen-"):
+	case code == "dall-e-3", strings.HasPrefix(code, "imagen-"), isGeminiImageGenerationModel(code):
 		return `["image_gen"]`
 	case code == "sora", code == "veo-2", strings.HasPrefix(code, "kling"):
 		return `["video_gen"]`
@@ -325,5 +325,17 @@ func inferKindsJSON(platformModelName string) string {
 		return `["chat"]`
 	default:
 		return `["chat"]`
+	}
+}
+
+func isGeminiImageGenerationModel(code string) bool {
+	switch strings.TrimSpace(strings.ToLower(code)) {
+	case "nano-banana", "nano-banana-2", "nano-banana-pro",
+		"gemini-2.5-flash-image",
+		"gemini-3.1-flash-image-preview",
+		"gemini-3-pro-image-preview":
+		return true
+	default:
+		return false
 	}
 }

@@ -77,6 +77,22 @@ func TestProtocolDefaultsForOpenRouterUsesOpenAIResponsesForConversationKinds(t 
 	}
 }
 
+func TestProtocolDefaultsForGoogleUsesGoogleImageGeneration(t *testing.T) {
+	raw := protocolDefaultsForCompatible(compatibleGoogle)
+
+	var defaults map[string]string
+	if err := json.Unmarshal([]byte(raw), &defaults); err != nil {
+		t.Fatalf("unmarshal defaults: %v", err)
+	}
+
+	if defaults[modelKindChat] != "google_generate_content" {
+		t.Fatalf("expected Google chat default, got %q in %s", defaults[modelKindChat], raw)
+	}
+	if defaults[modelKindImageGen] != "google_image_generation" {
+		t.Fatalf("expected Google image generation default, got %q in %s", defaults[modelKindImageGen], raw)
+	}
+}
+
 func TestNormalizeCompatibleOnlyAllowsSupportedUpstreamProviders(t *testing.T) {
 	for _, raw := range []string{"openai", "anthropic", "google", "xai", "openrouter", "custom"} {
 		if got := normalizeCompatible(raw); got != raw {
@@ -147,6 +163,8 @@ func TestDetectModelVendorRecognizesCompanyVendors(t *testing.T) {
 		"baichuan4-turbo":                      "baichuan",
 		"ernie-4.5-turbo":                      "baidu",
 		"wenxin-4":                             "baidu",
+		"nano-banana-pro":                      "google",
+		"gemini-3-pro-image-preview":           "google",
 		"openrouter/unknown/model":             "openrouter",
 	}
 
@@ -176,6 +194,8 @@ func TestNormalizeModelIconSeparatesVendorAndModelFamily(t *testing.T) {
 		"iflytek spark":     {vendor: "iflytek", model: "spark-max", expected: "spark"},
 		"stepfun step":      {vendor: "stepfun", model: "step-2-16k", expected: "stepfun"},
 		"baichuan baichuan": {vendor: "baichuan", model: "baichuan4-turbo", expected: "baichuan"},
+		"google nano":       {vendor: "google", model: "nano-banana-pro", expected: "nanobanana"},
+		"google image":      {vendor: "google", model: "gemini-3-pro-image-preview", expected: "nanobanana"},
 	}
 
 	for name, tc := range tests {
@@ -234,6 +254,21 @@ func TestInferKindsJSONRecognizesCurrentOpenAIImageModels(t *testing.T) {
 	for _, modelName := range []string{"gpt-image-1", "gpt-image-2", "chatgpt-image-latest"} {
 		if got := inferKindsJSON(modelName); got != `["image_gen","image_edit"]` {
 			t.Fatalf("expected %s to infer image generation and edit kinds, got %s", modelName, got)
+		}
+	}
+}
+
+func TestInferKindsJSONRecognizesGeminiImageModels(t *testing.T) {
+	for _, modelName := range []string{
+		"nano-banana",
+		"nano-banana-2",
+		"nano-banana-pro",
+		"gemini-2.5-flash-image",
+		"gemini-3.1-flash-image-preview",
+		"gemini-3-pro-image-preview",
+	} {
+		if got := inferKindsJSON(modelName); got != `["image_gen"]` {
+			t.Fatalf("expected %s to infer image generation kind, got %s", modelName, got)
 		}
 	}
 }
@@ -300,6 +335,9 @@ func TestIsRouteAllowedForTaskSeparatesChatAndImageProtocols(t *testing.T) {
 	}
 	if !IsRouteAllowedForTask(TaskTypeImageGeneration, `["image_gen","image_edit"]`, "openai_image_generations") {
 		t.Fatalf("expected image generation task to allow image generation protocol")
+	}
+	if !IsRouteAllowedForTask(TaskTypeImageGeneration, `["image_gen"]`, "google_image_generation") {
+		t.Fatalf("expected image generation task to allow Google image generation protocol")
 	}
 	if IsRouteAllowedForTask(TaskTypeImageGeneration, `["chat"]`, "openai_responses") {
 		t.Fatalf("expected image generation task to reject chat protocol")
