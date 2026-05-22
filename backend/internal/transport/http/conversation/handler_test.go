@@ -1,6 +1,12 @@
 package conversation
 
-import "testing"
+import (
+	"errors"
+	"testing"
+
+	appconversation "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/conversation"
+	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/llm"
+)
 
 func TestSafeFileContentTypeDowngradesActiveContent(t *testing.T) {
 	tests := []struct {
@@ -24,5 +30,40 @@ func TestBuildContentDispositionDefaultsToAttachment(t *testing.T) {
 	want := `attachment; filename="report.html"; filename*=UTF-8''report.html`
 	if got != want {
 		t.Fatalf("unexpected disposition: got %q want %q", got, want)
+	}
+}
+
+func TestStreamErrorPayloadIncludesUpstreamDebug(t *testing.T) {
+	err := errors.Join(appconversation.ErrUpstreamRequestFailed, &llm.UpstreamError{
+		StatusCode: 401,
+		Message:    "google authentication failed",
+		Debug: &llm.UpstreamDebugSnapshot{
+			Request: llm.UpstreamDebugRequest{
+				Method:  "POST",
+				Path:    "/v1beta/models/gemini-3-pro-image-preview:streamGenerateContent",
+				Headers: map[string]string{"x-goog-api-key": "[redacted]"},
+				Body:    `{"generationConfig":{"responseModalities":["TEXT","IMAGE"]}}`,
+			},
+			Response: llm.UpstreamDebugResponse{
+				StatusCode: 401,
+				Headers:    map[string]string{"Provider": "ExampleEdge"},
+				Body:       `{"error":{"message":"unauthorized"}}`,
+			},
+		},
+	})
+
+	payload := streamErrorPayload(err)
+	debug, ok := payload["debug"].(*llm.UpstreamDebugSnapshot)
+	if !ok || debug == nil {
+		t.Fatalf("expected upstream debug payload, got %#v", payload["debug"])
+	}
+	if debug.Request.Path != "/v1beta/models/gemini-3-pro-image-preview:streamGenerateContent" {
+		t.Fatalf("unexpected request debug: %#v", debug.Request)
+	}
+	if debug.Response.StatusCode != 401 {
+		t.Fatalf("unexpected response debug: %#v", debug.Response)
+	}
+	if debug.Request.Headers != nil || debug.Response.Headers != nil {
+		t.Fatalf("expected public error stream to omit upstream headers, got request=%#v response=%#v", debug.Request.Headers, debug.Response.Headers)
 	}
 }

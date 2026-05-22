@@ -39,9 +39,10 @@ type LoginPageSettingsResponse struct {
 }
 
 type ModelOptionPolicyResponse struct {
-	Mode             string `json:"mode"`
-	AllowedPathsJSON string `json:"allowedPathsJSON"`
-	DeniedPathsJSON  string `json:"deniedPathsJSON"`
+	Mode                       string `json:"mode"`
+	AllowedPathsJSON           string `json:"allowedPathsJSON"`
+	DeniedPathsJSON            string `json:"deniedPathsJSON"`
+	NativeToolAllowedTypesJSON string `json:"nativeToolAllowedTypesJSON"`
 }
 
 // ── mapping 函数 ─────────────────────────────────────────────────────────────

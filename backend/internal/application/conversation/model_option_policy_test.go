@@ -120,6 +120,110 @@ func TestFilterModelOptionsOpenAIChatCompletionsAllowsThinkingType(t *testing.T)
 	}
 }
 
+func TestFilterModelOptionsPreservesOfficialNativeToolsOutsidePathPolicy(t *testing.T) {
+	filtered := filterModelOptions(map[string]interface{}{
+		"temperature": 0.4,
+		"tools": []interface{}{
+			map[string]interface{}{"type": "web_search_20260209", "foo": "bar"},
+			map[string]interface{}{"type": "custom_tool", "name": "provider_lookup"},
+			map[string]interface{}{"type": "web_search_20260209"},
+			"invalid",
+		},
+	}, llm.AdapterAnthropicMessages, modelOptionPolicyConfig{
+		Mode:             modelOptionPolicyAllowlist,
+		AllowedPathsJSON: `{"default":["temperature"]}`,
+		DeniedPathsJSON:  config.DefaultModelOptionDeniedPathsJSON(),
+	})
+
+	if filtered["temperature"] != 0.4 {
+		t.Fatalf("expected allowed scalar option to pass, got %#v", filtered)
+	}
+	tools, ok := filtered["tools"].([]map[string]interface{})
+	if !ok || len(tools) != 1 {
+		t.Fatalf("expected one sanitized official native tool, got %#v", filtered["tools"])
+	}
+	if tools[0]["type"] != "web_search_20260209" || tools[0]["name"] != "web_search" {
+		t.Fatalf("expected sanitized web_search tool, got %#v", tools[0])
+	}
+	if _, ok := tools[0]["foo"]; ok {
+		t.Fatalf("expected arbitrary tool fields to be removed, got %#v", tools[0])
+	}
+}
+
+func TestFilterModelOptionsPreservesXAINativeToolsWhenToolsIsExplicitlyDenied(t *testing.T) {
+	filtered := filterModelOptions(map[string]interface{}{
+		"tools": []interface{}{
+			map[string]interface{}{"type": "x_search", "extra": true},
+			map[string]interface{}{"type": "not_official"},
+		},
+	}, llm.AdapterXAIResponses, modelOptionPolicyConfig{
+		Mode:                       modelOptionPolicyDenylist,
+		AllowedPathsJSON:           config.DefaultModelOptionAllowedPathsJSON(),
+		DeniedPathsJSON:            `{"default":["tools"]}`,
+		NativeToolAllowedTypesJSON: `{"xai_responses":["x_search"]}`,
+	})
+
+	tools, ok := filtered["tools"].([]map[string]interface{})
+	if !ok || len(tools) != 1 {
+		t.Fatalf("expected official xAI native tool to bypass option denylist, got %#v", filtered)
+	}
+	if tools[0]["type"] != "x_search" {
+		t.Fatalf("expected sanitized x_search tool, got %#v", tools[0])
+	}
+	if _, ok := tools[0]["extra"]; ok {
+		t.Fatalf("expected arbitrary xAI tool fields to be removed, got %#v", tools[0])
+	}
+}
+
+func TestFilterModelOptionsDropsProviderNativeToolsDisabledByPolicy(t *testing.T) {
+	filtered := filterModelOptions(map[string]interface{}{
+		"temperature": 0.4,
+		"tools": []interface{}{
+			map[string]interface{}{"type": "web_search_20260209"},
+		},
+	}, llm.AdapterAnthropicMessages, modelOptionPolicyConfig{
+		Mode:                       modelOptionPolicyAllowlist,
+		AllowedPathsJSON:           `{"default":["temperature"]}`,
+		DeniedPathsJSON:            config.DefaultModelOptionDeniedPathsJSON(),
+		NativeToolAllowedTypesJSON: `{"anthropic_messages":[]}`,
+	})
+
+	if filtered["temperature"] != 0.4 {
+		t.Fatalf("expected allowed scalar option to pass, got %#v", filtered)
+	}
+	if _, ok := filtered["tools"]; ok {
+		t.Fatalf("expected disabled native tools to be removed, got %#v", filtered)
+	}
+}
+
+func TestFilterModelOptionsPreservesOpenAIResponsesNativeTools(t *testing.T) {
+	filtered := filterModelOptions(map[string]interface{}{
+		"tools": []interface{}{
+			map[string]interface{}{"type": "web_search_preview", "extra": true},
+			map[string]interface{}{"type": "shell"},
+		},
+	}, llm.AdapterOpenAIResponses, modelOptionPolicyConfig{
+		Mode:             modelOptionPolicyAllowlist,
+		AllowedPathsJSON: `{"default":[]}`,
+		DeniedPathsJSON:  config.DefaultModelOptionDeniedPathsJSON(),
+	})
+
+	tools, ok := filtered["tools"].([]map[string]interface{})
+	if !ok || len(tools) != 2 {
+		t.Fatalf("expected sanitized OpenAI native tools, got %#v", filtered)
+	}
+	if tools[0]["type"] != "web_search_preview" {
+		t.Fatalf("expected web_search_preview to pass, got %#v", tools[0])
+	}
+	if _, ok := tools[0]["extra"]; ok {
+		t.Fatalf("expected arbitrary OpenAI tool fields to be removed, got %#v", tools[0])
+	}
+	environment, ok := tools[1]["environment"].(map[string]interface{})
+	if !ok || environment["type"] != "container_auto" {
+		t.Fatalf("expected shell environment to be normalized, got %#v", tools[1])
+	}
+}
+
 func TestFilterModelOptionsGeminiPolicyKeyMatchesGoogleAdapter(t *testing.T) {
 	filtered := filterModelOptions(map[string]interface{}{
 		"generationConfig": map[string]interface{}{

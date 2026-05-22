@@ -66,11 +66,20 @@ func TestMessageErrorDebugKeepsSnapshotButRemovesUpstreamNames(t *testing.T) {
 			Request: llm.UpstreamDebugRequest{
 				Method: "POST",
 				Path:   "/v1/responses",
-				Body:   `{"model":"grok-4","upstream_name":"Oi Hub","upstream":{"name":"Oi Hub","id":7},"messages":[{"role":"user","content":"hi"}]}`,
+				Headers: map[string]string{
+					"Authorization": "[redacted]",
+					"Content-Type":  "application/json",
+				},
+				Body: `{"model":"grok-4","upstream_name":"Oi Hub","upstream":{"name":"Oi Hub","id":7},"messages":[{"role":"user","content":"hi"}]}`,
 			},
 			Response: llm.UpstreamDebugResponse{
 				StatusCode: 502,
-				Body:       `{"error":{"message":"bad gateway"},"upstreamName":"Oi Hub","data":{"upstream":{"displayName":"Oi Hub","status":"failed"}}}`,
+				Headers: map[string]string{
+					"Provider":    "ExampleEdge",
+					"Server":      "ExampleCDN",
+					"X-Client-Ip": "127.0.0.1",
+				},
+				Body: `{"error":{"message":"bad gateway"},"upstreamName":"Oi Hub","data":{"upstream":{"displayName":"Oi Hub","status":"failed"}}}`,
 			},
 		},
 	})
@@ -78,6 +87,9 @@ func TestMessageErrorDebugKeepsSnapshotButRemovesUpstreamNames(t *testing.T) {
 	debug := MessageErrorDebug(err)
 	if debug == nil {
 		t.Fatal("expected debug snapshot")
+	}
+	if debug.Request.Headers != nil || debug.Response.Headers != nil {
+		t.Fatalf("expected public debug headers to be omitted, got request=%#v response=%#v", debug.Request.Headers, debug.Response.Headers)
 	}
 	for _, body := range []string{debug.Request.Body, debug.Response.Body} {
 		if strings.Contains(body, "Oi Hub") || strings.Contains(body, "upstream_name") || strings.Contains(body, "upstreamName") || strings.Contains(body, "displayName") {

@@ -1,5 +1,6 @@
 import type { SettingsGrouped } from "@/shared/api/settings.types";
 import { resolveLocalizedErrorMessage } from "@/i18n/resolve-error-message";
+import { DEFAULT_NATIVE_TOOL_ALLOWED_TYPES } from "@/shared/lib/model-option-policy";
 
 export type ConversationFieldType = "int" | "bool" | "string" | "password" | "textarea" | "select" | "tabs" | "button";
 
@@ -11,7 +12,8 @@ export type ConversationSettingsField = {
     | "conversation_labels_prompt"
     | "model_option_policy_mode"
     | "model_option_allowed_paths"
-    | "model_option_denied_paths";
+    | "model_option_denied_paths"
+    | "model_option_native_tool_types";
   label: string;
   description: string;
   type: ConversationFieldType;
@@ -92,7 +94,6 @@ export const DEFAULT_MODEL_OPTION_DENIED_PATHS = `{
     "prompt",
     "system",
     "systemInstruction",
-    "tools",
     "headers",
     "api_key",
     "apiKey",
@@ -145,6 +146,14 @@ export function buildConversationSettingsFields(t: ConversationSettingsTranslato
   },
   {
     namespace: "chat",
+    key: "model_option_native_tool_types",
+    label: t("fields.nativeToolTypes.label"),
+    description: t("fields.nativeToolTypes.description"),
+    type: "textarea",
+    placeholder: DEFAULT_NATIVE_TOOL_ALLOWED_TYPES,
+  },
+  {
+    namespace: "chat",
     key: "conversation_title_prompt",
     label: t("fields.titlePrompt.label"),
     description: t("fields.titlePrompt.description"),
@@ -187,6 +196,9 @@ export function applyConversationDefaults(settings: Record<string, string>): Rec
   }
   if (!(result["chat.model_option_denied_paths"] ?? "").trim()) {
     result["chat.model_option_denied_paths"] = DEFAULT_MODEL_OPTION_DENIED_PATHS;
+  }
+  if (!(result["chat.model_option_native_tool_types"] ?? "").trim()) {
+    result["chat.model_option_native_tool_types"] = DEFAULT_NATIVE_TOOL_ALLOWED_TYPES;
   }
   result["chat.conversation_title_prompt"] = normalizeConversationPromptValue(result["chat.conversation_title_prompt"] ?? "");
   result["chat.conversation_labels_prompt"] = normalizeConversationPromptValue(result["chat.conversation_labels_prompt"] ?? "");

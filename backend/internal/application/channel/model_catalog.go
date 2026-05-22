@@ -139,6 +139,13 @@ func systemFallbackProtocols(compatible string) map[string]string {
 			modelKindImageEdit: protocolOpenAIImageEdits,
 			modelKindVideoGen:  protocolOpenAIVideoGenerations,
 		}
+	case compatibleCustom:
+		return map[string]string{
+			modelKindChat:      llm.AdapterOpenAIChatCompletions,
+			modelKindAudio:     llm.AdapterOpenAIChatCompletions,
+			modelKindImageGen:  protocolOpenAIImageGenerations,
+			modelKindImageEdit: protocolOpenAIImageEdits,
+		}
 	default:
 		return map[string]string{}
 	}
@@ -345,10 +352,5 @@ func isGeminiImageGenerationModel(code string) bool {
 }
 
 func isXAIImageGenerationModel(code string) bool {
-	switch strings.TrimSpace(strings.ToLower(code)) {
-	case "grok-imagine-image", "grok-imagine-image-quality", "grok-imagine-image-pro":
-		return true
-	default:
-		return false
-	}
+	return strings.HasPrefix(strings.TrimSpace(strings.ToLower(code)), "grok-imagine-image")
 }

@@ -613,9 +613,10 @@ func (s *Service) sendMessageInternal(
 		AttributionTitle:    attributionTitle,
 	}
 	filteredOptions := filterModelOptions(input.Options, route.Protocol, modelOptionPolicyConfig{
-		Mode:             cfg.ModelOptionPolicyMode,
-		AllowedPathsJSON: cfg.ModelOptionAllowedPaths,
-		DeniedPathsJSON:  cfg.ModelOptionDeniedPaths,
+		Mode:                       cfg.ModelOptionPolicyMode,
+		AllowedPathsJSON:           cfg.ModelOptionAllowedPaths,
+		DeniedPathsJSON:            cfg.ModelOptionDeniedPaths,
+		NativeToolAllowedTypesJSON: cfg.NativeToolAllowedTypes,
 	})
 	generateInput := llm.GenerateInput{
 		RequestID:      strings.TrimSpace(input.RequestID),

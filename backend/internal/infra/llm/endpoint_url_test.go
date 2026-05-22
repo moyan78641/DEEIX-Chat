@@ -34,6 +34,36 @@ func TestBuildOpenAICompatibleURLsRespectVersionedBasePath(t *testing.T) {
 			want:     "https://api.x.ai/v1/responses",
 		},
 		{
+			name:     "xai image generations endpoint",
+			baseURL:  "https://api.x.ai/v1",
+			endpoint: EndpointImageGenerations,
+			want:     "https://api.x.ai/v1/images/generations",
+		},
+		{
+			name:     "xai proxy plain base gets v1 image endpoint",
+			baseURL:  "https://proxy.example.com",
+			endpoint: EndpointImageGenerations,
+			want:     "https://proxy.example.com/v1/images/generations",
+		},
+		{
+			name:     "xai proxy v1 base is not duplicated",
+			baseURL:  "https://proxy.example.com/v1",
+			endpoint: EndpointImageGenerations,
+			want:     "https://proxy.example.com/v1/images/generations",
+		},
+		{
+			name:     "xai proxy nested v1 base is not duplicated",
+			baseURL:  "https://proxy.example.com/xai/v1",
+			endpoint: EndpointImageGenerations,
+			want:     "https://proxy.example.com/xai/v1/images/generations",
+		},
+		{
+			name:     "xai proxy v4 base is respected",
+			baseURL:  "https://proxy.example.com/v4",
+			endpoint: EndpointImageGenerations,
+			want:     "https://proxy.example.com/v4/images/generations",
+		},
+		{
 			name:     "bigmodel v4 base is respected",
 			baseURL:  "https://open.bigmodel.cn/api/paas/v4",
 			endpoint: EndpointChatCompletions,
@@ -88,7 +118,7 @@ func TestBuildGeminiURLsRespectVersionedBasePath(t *testing.T) {
 	cases := map[string]string{
 		"https://generativelanguage.googleapis.com":        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
 		"https://generativelanguage.googleapis.com/v1beta": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-		"https://proxy.example.com/google/v1":              "https://proxy.example.com/google/v1/models/gemini-2.0-flash:generateContent",
+		"https://proxy.example.com/google/v1":              "https://proxy.example.com/google/v1beta/models/gemini-2.0-flash:generateContent",
 	}
 	for baseURL, want := range cases {
 		if got := buildGeminiGenerateURL(baseURL, "gemini-2.0-flash"); got != want {
@@ -97,6 +127,12 @@ func TestBuildGeminiURLsRespectVersionedBasePath(t *testing.T) {
 	}
 	if got, want := buildGeminiModelsURL("https://generativelanguage.googleapis.com/v1beta"), "https://generativelanguage.googleapis.com/v1beta/models"; got != want {
 		t.Fatalf("unexpected gemini models url: got %q, want %q", got, want)
+	}
+	if got, want := buildGeminiModelsURL("https://proxy.example.com/v1"), "https://proxy.example.com/v1beta/models"; got != want {
+		t.Fatalf("unexpected gemini models url for v1 base: got %q, want %q", got, want)
+	}
+	if got, want := buildGeminiStreamURL("https://proxy.example.com/v1", "gemini-3-pro-image-preview"), "https://proxy.example.com/v1beta/models/gemini-3-pro-image-preview:streamGenerateContent?alt=sse"; got != want {
+		t.Fatalf("unexpected gemini stream url for v1 base: got %q, want %q", got, want)
 	}
 }
 

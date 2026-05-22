@@ -127,6 +127,12 @@ func TestValidateModelOptionPolicySettings(t *testing.T) {
 	if err := validatePatchItem(PatchItem{Namespace: "chat", Key: "model_option_allowed_paths", Value: `{"default":["bad path"]}`}); err == nil {
 		t.Fatal("expected whitespace path to fail")
 	}
+	if err := validatePatchItem(PatchItem{Namespace: "chat", Key: "model_option_native_tool_types", Value: config.DefaultNativeToolAllowedTypesJSON()}); err != nil {
+		t.Fatalf("expected default native tools to pass, got %v", err)
+	}
+	if err := validatePatchItem(PatchItem{Namespace: "chat", Key: "model_option_native_tool_types", Value: `{"anthropic_messages":["unknown_tool"]}`}); err == nil {
+		t.Fatal("expected unsupported native tool type to fail")
+	}
 }
 
 func TestValidateFullContextMaxTokensAllowsLargeContextWindows(t *testing.T) {

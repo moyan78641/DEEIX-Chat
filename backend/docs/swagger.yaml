@@ -109,7 +109,8 @@ definitions:
         maxLength: 2048
         type: string
       displayName:
-        maxLength: 128
+        maxLength: 16
+        minLength: 3
         type: string
       email:
         maxLength: 128
@@ -133,7 +134,7 @@ definitions:
         maxLength: 64
         type: string
       username:
-        maxLength: 64
+        maxLength: 16
         minLength: 3
         type: string
     required:
@@ -176,7 +177,8 @@ definitions:
         maxLength: 2048
         type: string
       displayName:
-        maxLength: 128
+        maxLength: 16
+        minLength: 3
         type: string
       email:
         maxLength: 128
@@ -681,7 +683,8 @@ definitions:
         maxLength: 2048
         type: string
       displayName:
-        maxLength: 128
+        maxLength: 16
+        minLength: 3
         type: string
       locale:
         maxLength: 16
@@ -703,7 +706,7 @@ definitions:
   internal_transport_http_auth.PatchUsernameRequest:
     properties:
       username:
-        maxLength: 32
+        maxLength: 16
         minLength: 3
         type: string
     required:
@@ -1972,6 +1975,9 @@ definitions:
     properties:
       priority:
         type: integer
+      protocol:
+        maxLength: 64
+        type: string
       status:
         enum:
         - active
@@ -3573,6 +3579,14 @@ paths:
       - description: 状态：active/inactive
         in: query
         name: status
+        type: string
+      - description: 模型厂商
+        in: query
+        name: vendor
+        type: string
+      - description: 接口协议
+        in: query
+        name: protocol
         type: string
       - description: 排序：sortOrder_asc/updated_desc/id_desc/platformModelName_asc/sourceCount_desc
         in: query

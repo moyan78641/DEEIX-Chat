@@ -5,6 +5,7 @@ type ModelOptionPolicyResponse = {
   mode: string;
   allowedPathsJSON: string;
   deniedPathsJSON: string;
+  nativeToolAllowedTypesJSON: string;
 };
 
 export async function getModelOptionPolicy(accessToken: string): Promise<ModelOptionPolicy> {
@@ -17,5 +18,6 @@ export async function getModelOptionPolicy(accessToken: string): Promise<ModelOp
     mode: data.mode,
     allowedPathsJSON: data.allowedPathsJSON,
     deniedPathsJSON: data.deniedPathsJSON,
+    nativeToolAllowedTypesJSON: data.nativeToolAllowedTypesJSON,
   };
 }

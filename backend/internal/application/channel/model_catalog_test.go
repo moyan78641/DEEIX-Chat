@@ -112,10 +112,29 @@ func TestNormalizeCompatibleOnlyAllowsSupportedUpstreamProviders(t *testing.T) {
 	}
 }
 
-func TestProtocolDefaultsForCustomAreExplicitOnly(t *testing.T) {
+func TestProtocolDefaultsForCustomUsesOpenAICompatibleDefaults(t *testing.T) {
 	raw := protocolDefaultsForCompatible(compatibleCustom)
-	if raw != `{}` {
-		t.Fatalf("expected custom compatible to have no implicit defaults, got %s", raw)
+
+	var defaults map[string]string
+	if err := json.Unmarshal([]byte(raw), &defaults); err != nil {
+		t.Fatalf("unmarshal defaults: %v", err)
+	}
+	if defaults[modelKindChat] != "openai_chat_completions" {
+		t.Fatalf("expected custom chat default, got %q in %s", defaults[modelKindChat], raw)
+	}
+	if defaults[modelKindAudio] != "openai_chat_completions" {
+		t.Fatalf("expected custom audio default, got %q in %s", defaults[modelKindAudio], raw)
+	}
+	if defaults[modelKindImageGen] != "openai_image_generations" {
+		t.Fatalf("expected custom image generation default, got %q in %s", defaults[modelKindImageGen], raw)
+	}
+	if defaults[modelKindImageEdit] != "openai_image_edits" {
+		t.Fatalf("expected custom image edit default, got %q in %s", defaults[modelKindImageEdit], raw)
+	}
+	for _, kind := range []string{modelKindVideoGen} {
+		if _, ok := defaults[kind]; ok {
+			t.Fatalf("unexpected custom default protocol for %s in %s", kind, raw)
+		}
 	}
 }
 
@@ -281,6 +300,7 @@ func TestInferKindsJSONRecognizesXAIImageModels(t *testing.T) {
 		"grok-imagine-image",
 		"grok-imagine-image-quality",
 		"grok-imagine-image-pro",
+		"grok-imagine-image-preview",
 	} {
 		if got := inferKindsJSON(modelName); got != `["image_gen"]` {
 			t.Fatalf("expected %s to infer image generation kind, got %s", modelName, got)

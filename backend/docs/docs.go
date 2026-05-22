@@ -554,6 +554,18 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "模型厂商",
+                        "name": "vendor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "接口协议",
+                        "name": "protocol",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "description": "排序：sortOrder_asc/updated_desc/id_desc/platformModelName_asc/sourceCount_desc",
                         "name": "sort",
                         "in": "query"
@@ -6345,7 +6357,8 @@ const docTemplate = `{
                 },
                 "displayName": {
                     "type": "string",
-                    "maxLength": 128
+                    "maxLength": 16,
+                    "minLength": 3
                 },
                 "email": {
                     "type": "string",
@@ -6377,7 +6390,7 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string",
-                    "maxLength": 64,
+                    "maxLength": 16,
                     "minLength": 3
                 }
             }
@@ -6437,7 +6450,8 @@ const docTemplate = `{
                 },
                 "displayName": {
                     "type": "string",
-                    "maxLength": 128
+                    "maxLength": 16,
+                    "minLength": 3
                 },
                 "email": {
                     "type": "string",
@@ -7199,7 +7213,8 @@ const docTemplate = `{
                 },
                 "displayName": {
                     "type": "string",
-                    "maxLength": 128
+                    "maxLength": 16,
+                    "minLength": 3
                 },
                 "locale": {
                     "type": "string",
@@ -7234,7 +7249,7 @@ const docTemplate = `{
             "properties": {
                 "username": {
                     "type": "string",
-                    "maxLength": 32,
+                    "maxLength": 16,
                     "minLength": 3
                 }
             }
@@ -9125,6 +9140,10 @@ const docTemplate = `{
             "properties": {
                 "priority": {
                     "type": "integer"
+                },
+                "protocol": {
+                    "type": "string",
+                    "maxLength": 64
                 },
                 "status": {
                     "type": "string",

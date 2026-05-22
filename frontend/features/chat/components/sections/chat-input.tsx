@@ -68,7 +68,7 @@ import { cn } from "@/lib/utils";
 import type { ConversationOptions } from "@/shared/api/conversation.types";
 import type { MCPToolDTO } from "@/shared/api/mcp.types";
 import type { ModelOptionPolicy } from "@/shared/lib/model-option-policy";
-import { isModelOptionPathFiltered } from "@/shared/lib/model-option-policy";
+import { isModelOptionPathFiltered, isNativeToolTypeAllowed } from "@/shared/lib/model-option-policy";
 import type { SendShortcut } from "@/features/settings/types/settings";
 import { isSendShortcutEvent, shouldUseMultilineEnterForTouchInput } from "@/shared/lib/platform-shortcuts";
 
@@ -1078,30 +1078,31 @@ function ChatInputComponent({
                 <div className="space-y-1">
                   {nativeToolGroup.options.map((tool) => {
                     const checked = hasProviderTool(optionsObject, tool.type);
-                    const filterStatus = resolveModelOptionFilterStatus(modelOptionPolicy, selectedProtocol, "tools");
-                    const ignored = filterStatus === "filtered";
+                    const allowed = isNativeToolTypeAllowed(modelOptionPolicy, selectedProtocol, tool.type);
+                    const filterStatus: ModelOptionFilterStatus = allowed ? "passed" : "filtered";
                     return (
                       <label
                         key={tool.type}
                         className={cn(
-                          "flex min-w-0 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50",
-                          ignored && "text-muted-foreground",
+                          "flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5",
+                          allowed || checked ? "cursor-pointer hover:bg-muted/50" : "cursor-not-allowed text-muted-foreground",
                         )}
                       >
                         <Checkbox
                           checked={checked}
-                          onCheckedChange={(nextChecked) => updateProviderTool(tool, nextChecked === true)}
+                          disabled={!allowed && !checked}
+                          onCheckedChange={(nextChecked) => {
+                            if (!allowed && nextChecked === true) {
+                              return;
+                            }
+                            updateProviderTool(tool, nextChecked === true);
+                          }}
                         />
                         <span className="min-w-0 flex flex-1 items-center gap-2 text-xs">
-                          <span
-                            className={cn(
-                              "shrink-0 text-foreground/80",
-                              ignored && "text-muted-foreground line-through",
-                            )}
-                          >
+                          <span className={cn("shrink-0 text-foreground/80", !allowed && "text-muted-foreground line-through")}>
                             {tNativeToolLabels(tool.labelKey)}
                           </span>
-                          <span className={cn("min-w-0 truncate text-[11px] text-muted-foreground", ignored && "line-through")}>
+                          <span className={cn("min-w-0 truncate text-[11px] text-muted-foreground", !allowed && "line-through")}>
                             {tNativeToolDescriptions(tool.descriptionKey)}
                           </span>
                         </span>

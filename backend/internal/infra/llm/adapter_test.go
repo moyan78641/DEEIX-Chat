@@ -17,8 +17,11 @@ func TestSupportsImageGenerationStream(t *testing.T) {
 	if !SupportsImageGenerationStream(AdapterOpenAIImageGenerations, "gpt-image-1") {
 		t.Fatalf("expected gpt-image models to support image generation streaming")
 	}
-	if SupportsStreamingAdapter(AdapterGoogleImageGeneration) {
-		t.Fatalf("expected google image generation adapter to use non-streaming media flow")
+	if !SupportsStreamingAdapter(AdapterGoogleImageGeneration) {
+		t.Fatalf("expected google image generation adapter to support upstream streaming")
+	}
+	if !SupportsImageGenerationStream(AdapterGoogleImageGeneration, "gemini-3-pro-image-preview") {
+		t.Fatalf("expected google image generation adapter to support image generation streaming")
 	}
 	if SupportsStreamingAdapter(AdapterXAIImage) {
 		t.Fatalf("expected xAI image adapter to use non-streaming media flow")

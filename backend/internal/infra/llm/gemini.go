@@ -83,7 +83,7 @@ func buildGeminiGenerateURL(base, model string) string {
 	if !strings.HasPrefix(m, "models/") {
 		m = "models/" + m
 	}
-	return buildVersionedEndpointURL(base, "v1beta", "/"+m+":generateContent")
+	return buildGeminiEndpointURL(base, "/"+m+":generateContent")
 }
 
 // buildGeminiStreamURL 构造流式端点 URL。
@@ -95,7 +95,20 @@ func buildGeminiStreamURL(base, model string) string {
 
 // buildGeminiModelsURL 构造模型列表端点 URL。
 func buildGeminiModelsURL(base string) string {
-	return buildVersionedEndpointURL(base, "v1beta", "/models")
+	return buildGeminiEndpointURL(base, "/models")
+}
+
+func buildGeminiEndpointURL(baseURL string, endpointPath string) string {
+	return buildVersionedEndpointURL(normalizeGeminiEndpointBaseURL(baseURL), "v1beta", endpointPath)
+}
+
+// normalizeGeminiEndpointBaseURL 兼容 OpenAI 风格代理常见的 /v1 base，避免拼成 /v1/v1beta。
+func normalizeGeminiEndpointBaseURL(baseURL string) string {
+	base := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if strings.HasSuffix(strings.ToLower(base), "/v1") {
+		return strings.TrimRight(base[:len(base)-len("/v1")], "/")
+	}
+	return base
 }
 
 // ── 请求构造 ──────────────────────────────────────────────────────────────────
@@ -609,6 +622,14 @@ func parseGeminiError(statusCode int, body []byte, debug *UpstreamDebugSnapshot)
 			return &UpstreamError{StatusCode: statusCode, Message: msg, Body: string(body), Debug: debug}
 		}
 	}
+	if statusCode == http.StatusUnauthorized {
+		return &UpstreamError{
+			StatusCode: statusCode,
+			Message:    "google authentication failed; check API key, upstream base URL, and custom auth headers",
+			Body:       string(body),
+			Debug:      debug,
+		}
+	}
 	return &UpstreamError{
 		StatusCode: statusCode,
 		Message:    fmt.Sprintf("upstream_status_%d", statusCode),
@@ -856,7 +877,7 @@ func consumeGeminiStream(
 	onEvent func(GenerateStreamEvent) error,
 ) error {
 	scanner := bufio.NewScanner(reader)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxUpstreamBodyBytes)
 
 	var dataLines []string
 
@@ -950,6 +971,7 @@ func applyGeminiStreamChunk(
 			}
 		}
 	}
+	result.GeneratedImages = append(result.GeneratedImages, extractGeminiGeneratedImages(parsed, result.Text)...)
 
 	// 函数调用（流式最后一帧可能包含）
 	for _, raw := range asSlice(content["parts"]) {

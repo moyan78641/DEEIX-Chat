@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // geminiImageGenerationAdapter 实现 Google Gemini 图片生成协议。
@@ -21,14 +22,14 @@ func (a *geminiImageGenerationAdapter) Generate(ctx context.Context, route Route
 	return a.client.generateGeminiImageGeneration(ctx, route, input)
 }
 
-// GenerateStream 当前不伪造流式；上游没有接入图片增量前由媒体任务使用非流式调用。
+// GenerateStream 调用 Gemini streamGenerateContent；最终图片仍由媒体任务落库。
 func (a *geminiImageGenerationAdapter) GenerateStream(
 	ctx context.Context,
 	route RouteConfig,
 	input GenerateInput,
 	onEvent func(GenerateStreamEvent) error,
 ) (*GenerateOutput, error) {
-	return nil, fmt.Errorf("%w: %s", ErrUnsupportedStream, AdapterGoogleImageGeneration)
+	return a.client.generateGeminiImageGenerationStream(ctx, route, input, onEvent)
 }
 
 // ListModels 复用 Gemini models 目录，供渠道校验和展示使用。
@@ -75,6 +76,63 @@ func (c *Client) generateGeminiImageGeneration(ctx context.Context, route RouteC
 	return parseGeminiImageGenerationOutput(body)
 }
 
+// generateGeminiImageGenerationStream 调用 Gemini 图片 SSE 输出并复用 GenerateContentResponse 解析。
+func (c *Client) generateGeminiImageGenerationStream(
+	ctx context.Context,
+	route RouteConfig,
+	input GenerateInput,
+	onEvent func(GenerateStreamEvent) error,
+) (*GenerateOutput, error) {
+	base := geminiBaseURL(route)
+	requestURL := buildGeminiStreamURL(base, normalizeGeminiImageGenerationModel(route.UpstreamModel))
+
+	requestBody, err := buildGeminiImageGenerationRequestBody(input)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := json.Marshal(requestBody)
+	if err != nil {
+		return nil, err
+	}
+
+	firstByteCtx, firstByteCancel := context.WithCancel(ctx)
+	defer firstByteCancel()
+
+	firstByteTimer := time.AfterFunc(resolveReadTimeout(route.ReadTimeoutMS), firstByteCancel)
+	defer firstByteTimer.Stop()
+
+	req, err := c.newGeminiRequest(firstByteCtx, http.MethodPost, requestURL, bytes.NewReader(payload), route)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "text/event-stream")
+
+	resp, err := c.httpClientForRoute(route).Do(req)
+	firstByteTimer.Stop()
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := readUpstreamBody(resp.Body)
+		return nil, parseGeminiError(resp.StatusCode, body, upstreamDebugSnapshot(req, payload, resp, body))
+	}
+
+	result := &GenerateOutput{
+		ToolCalls: make([]ToolCall, 0),
+	}
+	idleReader := newIdleTimeoutReader(resp.Body, resolveStreamIdleTimeout(route.StreamIdleTimeoutMS))
+	streamBody := newUpstreamBodyRecorder(idleReader)
+	if err = consumeGeminiStream(streamBody, result, onEvent); err != nil {
+		return nil, attachUpstreamDebug(err, upstreamDebugSnapshot(req, payload, resp, streamErrorBody(streamBody, err)))
+	}
+	for i := range result.GeneratedImages {
+		result.GeneratedImages[i].RevisedPrompt = strings.TrimSpace(result.Text)
+	}
+	return result, nil
+}
+
 // normalizeGeminiImageGenerationModel 将产品别名收敛为 Google API 接受的真实模型 ID。
 func normalizeGeminiImageGenerationModel(model string) string {
 	switch strings.TrimSpace(strings.ToLower(model)) {
@@ -97,7 +155,7 @@ func buildGeminiImageGenerationRequestBody(input GenerateInput) (map[string]inte
 	}
 
 	generationConfig := map[string]interface{}{
-		"responseModalities": []string{"IMAGE"},
+		"responseModalities": []string{"TEXT", "IMAGE"},
 	}
 	applyGeminiImageGenerationParams(generationConfig, input.Options)
 
@@ -187,6 +245,9 @@ func extractGeminiGeneratedImages(parsed map[string]interface{}, revisedPrompt s
 		content := asMap(candidate["content"])
 		for _, rawPart := range asSlice(content["parts"]) {
 			part := asMap(rawPart)
+			if isGeminiThoughtPart(part) {
+				continue
+			}
 			inlineData := asMap(part["inlineData"])
 			if len(inlineData) == 0 {
 				// Google 文档的 REST 与 SDK 示例同时出现 camelCase / snake_case，适配器边界统一收敛。
@@ -214,4 +275,9 @@ func extractGeminiGeneratedImages(parsed map[string]interface{}, revisedPrompt s
 		}
 	}
 	return images
+}
+
+func isGeminiThoughtPart(part map[string]interface{}) bool {
+	thought, ok := part["thought"].(bool)
+	return ok && thought
 }

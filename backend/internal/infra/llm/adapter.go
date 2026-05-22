@@ -80,6 +80,7 @@ func SupportsStreamingAdapter(raw string) bool {
 		AdapterOpenAIImageGenerations,
 		AdapterAnthropicMessages,
 		AdapterGoogleGenerateContent,
+		AdapterGoogleImageGeneration,
 		AdapterXAIResponses:
 		return true
 	default:
@@ -89,8 +90,14 @@ func SupportsStreamingAdapter(raw string) bool {
 
 // SupportsImageGenerationStream 返回图片生成协议和模型是否支持真实上游流式。
 func SupportsImageGenerationStream(protocol string, model string) bool {
-	return NormalizeAdapter(protocol) == AdapterOpenAIImageGenerations &&
-		openAIImageGenerationModelSupportsStream(model)
+	switch NormalizeAdapter(protocol) {
+	case AdapterOpenAIImageGenerations:
+		return openAIImageGenerationModelSupportsStream(model)
+	case AdapterGoogleImageGeneration:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsImageGenerationAdapter 返回协议是否属于独立图片生成链路。

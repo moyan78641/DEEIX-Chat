@@ -143,10 +143,15 @@ func (h *Handler) GetModelOptionPolicy(c *gin.Context) {
 	if deniedPathsJSON == "" {
 		deniedPathsJSON = config.DefaultModelOptionDeniedPathsJSON()
 	}
+	nativeToolAllowedTypesJSON := strings.TrimSpace(items["model_option_native_tool_types"])
+	if nativeToolAllowedTypesJSON == "" {
+		nativeToolAllowedTypesJSON = config.DefaultNativeToolAllowedTypesJSON()
+	}
 	response.Success(c, ModelOptionPolicyResponse{
-		Mode:             mode,
-		AllowedPathsJSON: allowedPathsJSON,
-		DeniedPathsJSON:  deniedPathsJSON,
+		Mode:                       mode,
+		AllowedPathsJSON:           allowedPathsJSON,
+		DeniedPathsJSON:            deniedPathsJSON,
+		NativeToolAllowedTypesJSON: nativeToolAllowedTypesJSON,
 	})
 }
 

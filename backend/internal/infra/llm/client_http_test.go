@@ -108,27 +108,54 @@ func (r *repeatingReader) Read(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func TestListModelsFallbackOnlyAppliesToAnthropic(t *testing.T) {
-	called := 0
+func TestListModelsFallsBackToOpenAICompatibleModelsForGemini(t *testing.T) {
+	var paths []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called++
-		w.WriteHeader(http.StatusUnauthorized)
+		paths = append(paths, r.URL.Path)
+		if r.URL.Path == "/v1beta/models" {
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]interface{}{"message": "no gemini models endpoint"},
+			})
+			return
+		}
+		if r.URL.Path != "/v1/models" {
+			t.Fatalf("unexpected fallback path %s", r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer test-key" {
+			t.Fatalf("expected fallback bearer auth header, got %q", r.Header.Get("Authorization"))
+		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"error": map[string]interface{}{"message": "no gemini key"},
+			"object": "list",
+			"data": []map[string]interface{}{
+				{"id": "gemini-openai-compatible", "object": "model", "owned_by": "proxy"},
+			},
 		})
 	}))
 	defer server.Close()
 
-	_, err := NewClient().ListModels(context.Background(), RouteConfig{
+	items, err := NewClient().ListModels(context.Background(), RouteConfig{
 		Protocol: AdapterGoogleGenerateContent,
 		BaseURL:  server.URL,
 		APIKey:   "test-key",
 	})
-	if err == nil {
-		t.Fatal("expected gemini list models to fail")
+	if err != nil {
+		t.Fatalf("expected gemini fallback to succeed, got %v", err)
 	}
-	if called != 1 {
-		t.Fatalf("expected no openai-compatible fallback for gemini, got %d calls", called)
+	if len(items) != 1 || items[0].ID != "gemini-openai-compatible" {
+		t.Fatalf("unexpected fallback models: %#v", items)
+	}
+	if len(paths) != 2 || paths[0] != "/v1beta/models" || paths[1] != "/v1/models" {
+		t.Fatalf("expected primary gemini list then openai-compatible fallback, got %#v", paths)
+	}
+}
+
+func TestListModelsDoesNotFallbackForOpenRouterBaseURL(t *testing.T) {
+	if shouldFallbackToOpenAICompatibleModels(RouteConfig{
+		Protocol: AdapterGoogleGenerateContent,
+		BaseURL:  "https://openrouter.ai/api/v1",
+	}) {
+		t.Fatal("expected openrouter base URL to keep its own models directory")
 	}
 }
 

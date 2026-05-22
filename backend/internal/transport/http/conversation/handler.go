@@ -152,11 +152,15 @@ func mapStreamError(err error) streamError {
 
 func streamErrorPayload(err error) map[string]interface{} {
 	mapped := mapStreamError(err)
-	return map[string]interface{}{
+	payload := map[string]interface{}{
 		"type":      "error",
 		"message":   mapped.Message,
 		"errorCode": mapped.Code,
 	}
+	if debug := appconversation.MessageErrorDebug(err); debug != nil {
+		payload["debug"] = debug
+	}
+	return payload
 }
 
 func streamErrorPayloadWithCode(code string, message string) map[string]interface{} {

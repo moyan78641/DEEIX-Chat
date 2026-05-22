@@ -7,7 +7,10 @@ import { toast } from "sonner";
 
 import { TaskModelField, type ModelOption } from "./model-field";
 import { SettingsFieldEditor } from "./settings-runtime-panel";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +41,7 @@ import {
 import type { PatchSettingItem } from "@/shared/api/settings.types";
 import { isRoutableChatPlatformModel, resolveModelOptionIconUrl, resolveModelOptionLabel } from "@/shared/lib/model-option-display";
 import {
+  DEFAULT_NATIVE_TOOL_ALLOWED_TYPES,
   HARD_DENIED_MODEL_OPTION_PATHS,
   MODEL_OPTION_POLICY_PROTOCOL_LABELS,
   MODEL_OPTION_POLICY_PROTOCOLS,
@@ -45,6 +49,7 @@ import {
   uniqueModelOptionPaths,
   type ModelOptionRuleMap,
 } from "@/shared/lib/model-option-policy";
+import { cn } from "@/lib/utils";
 
 function isModelOptionPolicyField(field: ConversationSettingsField): boolean {
   return field.key.startsWith("model_option_");
@@ -55,6 +60,17 @@ type ModelOptionPreviewRow = {
   reason: string;
   scope: string;
 };
+
+const NATIVE_TOOL_PROTOCOLS = [
+  "openai_chat_completions",
+  "openai_responses",
+  "anthropic_messages",
+  "xai_responses",
+] as const;
+
+type NativeToolProtocol = (typeof NATIVE_TOOL_PROTOCOLS)[number];
+
+const DEFAULT_NATIVE_TOOL_RULES = parseModelOptionRuleMap(DEFAULT_NATIVE_TOOL_ALLOWED_TYPES).value;
 
 function buildRuleRows(rules: ModelOptionRuleMap, reason: string): ModelOptionPreviewRow[] {
   return MODEL_OPTION_POLICY_PROTOCOLS.flatMap((protocol) => uniqueModelOptionPaths(rules[protocol] ?? []).map((path) => ({
@@ -148,6 +164,158 @@ function PreviewPathGroup({
         </div>
       )}
     </div>
+  );
+}
+
+function normalizeNativeToolRules(raw: string): Record<NativeToolProtocol, string[]> {
+  const parsed = parseModelOptionRuleMap(raw.trim() ? raw : DEFAULT_NATIVE_TOOL_ALLOWED_TYPES).value;
+  return NATIVE_TOOL_PROTOCOLS.reduce((result, protocol) => {
+    result[protocol] = uniqueModelOptionPaths(parsed[protocol] ?? DEFAULT_NATIVE_TOOL_RULES[protocol] ?? []);
+    return result;
+  }, {} as Record<NativeToolProtocol, string[]>);
+}
+
+function serializeNativeToolRules(rules: Record<NativeToolProtocol, string[]>): string {
+  return JSON.stringify(
+    NATIVE_TOOL_PROTOCOLS.reduce((result, protocol) => {
+      result[protocol] = uniqueModelOptionPaths(rules[protocol] ?? []);
+      return result;
+    }, {} as Record<NativeToolProtocol, string[]>),
+    null,
+    2,
+  );
+}
+
+function NativeToolAllowlistField({
+  field,
+  value,
+  dirty,
+  disabled,
+  t,
+  commonT,
+  onChange,
+}: {
+  field: ConversationSettingsField;
+  value: string;
+  dirty: boolean;
+  disabled: boolean;
+  t: (key: string, values?: Record<string, string | number>) => string;
+  commonT: (key: string) => string;
+  onChange: (value: string) => void;
+}) {
+  const parsed = React.useMemo(() => parseModelOptionRuleMap(value.trim() ? value : DEFAULT_NATIVE_TOOL_ALLOWED_TYPES), [value]);
+  const rules = React.useMemo(() => normalizeNativeToolRules(value), [value]);
+  const dirtyBadge = dirty ? <Badge variant="ghost" className="relative -mt-1.5 text-[8px] font-medium text-amber-800">{commonT("states.unsaved")}</Badge> : null;
+
+  const updateRule = React.useCallback(
+    (protocol: NativeToolProtocol, toolType: string, checked: boolean) => {
+      const current = new Set(rules[protocol] ?? []);
+      if (checked) {
+        current.add(toolType);
+      } else {
+        current.delete(toolType);
+      }
+      onChange(serializeNativeToolRules({ ...rules, [protocol]: [...current] }));
+    },
+    [onChange, rules],
+  );
+
+  const setProtocolTools = React.useCallback(
+    (protocol: NativeToolProtocol, enabled: boolean) => {
+      onChange(serializeNativeToolRules({
+        ...rules,
+        [protocol]: enabled ? [...(DEFAULT_NATIVE_TOOL_RULES[protocol] ?? [])] : [],
+      }));
+    },
+    [onChange, rules],
+  );
+
+  return (
+    <Field>
+      <div className="space-y-2">
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex items-center gap-2">
+              <FieldLabel>{field.label}</FieldLabel>
+              {dirtyBadge}
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs font-normal text-muted-foreground hover:text-foreground"
+              disabled={disabled}
+              onClick={() => onChange(DEFAULT_NATIVE_TOOL_ALLOWED_TYPES)}
+            >
+              {commonT("actions.reset")}
+            </Button>
+          </div>
+          {field.description ? <FieldDescription className="text-[11px]">{field.description}</FieldDescription> : null}
+        </div>
+
+        {parsed.error ? <p className="text-xs text-destructive">{parsed.error}</p> : null}
+
+        <div className="grid gap-2 md:grid-cols-2">
+          {NATIVE_TOOL_PROTOCOLS.map((protocol) => {
+            const tools = DEFAULT_NATIVE_TOOL_RULES[protocol] ?? [];
+            const selected = new Set(rules[protocol] ?? []);
+            const enabledCount = tools.filter((tool) => selected.has(tool)).length;
+            return (
+              <div key={protocol} className="min-w-0 rounded-md border border-border/70 bg-muted/20 p-2.5">
+                <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium text-foreground/85">{MODEL_OPTION_POLICY_PROTOCOL_LABELS[protocol]}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {t("nativeTools.enabledCount", { enabled: enabledCount, total: tools.length })}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] font-normal text-muted-foreground hover:text-foreground"
+                      disabled={disabled || enabledCount === tools.length}
+                      onClick={() => setProtocolTools(protocol, true)}
+                    >
+                      {t("nativeTools.enableAll")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] font-normal text-muted-foreground hover:text-foreground"
+                      disabled={disabled || enabledCount === 0}
+                      onClick={() => setProtocolTools(protocol, false)}
+                    >
+                      {t("nativeTools.disableAll")}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  {tools.map((toolType) => (
+                    <label
+                      key={`${protocol}-${toolType}`}
+                      className={cn(
+                        "flex min-w-0 cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-xs text-foreground/80 hover:bg-accent/40",
+                        disabled && "cursor-not-allowed opacity-60 hover:bg-transparent",
+                      )}
+                    >
+                      <Checkbox
+                        checked={selected.has(toolType)}
+                        disabled={disabled}
+                        onCheckedChange={(checked) => updateRule(protocol, toolType, checked === true)}
+                      />
+                      <span className="min-w-0 truncate">{toolType}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </Field>
   );
 }
 
@@ -427,6 +595,8 @@ export function AdminConversationSettingsPage() {
           return modelOptionMode === "allowlist";
         case "model_option_denied_paths":
           return modelOptionMode === "denylist";
+        case "model_option_native_tool_types":
+          return true;
         default:
           return false;
       }
@@ -463,6 +633,21 @@ export function AdminConversationSettingsPage() {
             dirty={(settingsMap[id] ?? "") !== (savedMap[id] ?? "")}
             disabled={loading || saving}
             modelOptions={modelOptions}
+            onChange={(value) => setSettingsMap((prev) => ({ ...prev, [id]: value }))}
+          />
+        </SettingsFieldItem>
+      );
+    }
+    if (id === "chat.model_option_native_tool_types") {
+      return (
+        <SettingsFieldItem key={id} index={index}>
+          <NativeToolAllowlistField
+            field={field}
+            value={settingsMap[id] ?? ""}
+            dirty={(settingsMap[id] ?? "") !== (savedMap[id] ?? "")}
+            disabled={loading || saving}
+            t={t}
+            commonT={commonT}
             onChange={(value) => setSettingsMap((prev) => ({ ...prev, [id]: value }))}
           />
         </SettingsFieldItem>

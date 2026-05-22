@@ -206,6 +206,13 @@ func (s *Service) StreamMediaImage(ctx context.Context, input MediaImageInput) (
 		retErr = err
 		return nil, err
 	}
+	traceRecorder := newMessageTraceRecorder(s, ctx, assistantMessage, input.OnEvent)
+	defer func() {
+		if retErr != nil && traceRecorder != nil {
+			traceRecorder.fail(retErr)
+			traceRecorder.attachToMessage(assistantMessage)
+		}
+	}()
 	// 媒体任务同样产生用户消息和助手消息，计数语义与普通聊天保持一致。
 	if err = s.repo.IncrementMessageCount(ctx, input.ConversationID, 2); err != nil {
 		retErr = err
@@ -229,9 +236,10 @@ func (s *Service) StreamMediaImage(ctx context.Context, input MediaImageInput) (
 		AttributionTitle:    attributionTitle,
 	}
 	filteredOptions := filterModelOptions(input.Options, route.Protocol, modelOptionPolicyConfig{
-		Mode:             cfg.ModelOptionPolicyMode,
-		AllowedPathsJSON: cfg.ModelOptionAllowedPaths,
-		DeniedPathsJSON:  cfg.ModelOptionDeniedPaths,
+		Mode:                       cfg.ModelOptionPolicyMode,
+		AllowedPathsJSON:           cfg.ModelOptionAllowedPaths,
+		DeniedPathsJSON:            cfg.ModelOptionDeniedPaths,
+		NativeToolAllowedTypesJSON: cfg.NativeToolAllowedTypes,
 	})
 
 	emitMediaEvent(input.OnEvent, "running", "generating image")
