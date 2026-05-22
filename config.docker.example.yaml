@@ -57,8 +57,15 @@ storage:
     force_path_style: true
 
 geoip:
-  # Optional: use none to disable, or mmdb for a local GeoIP database.
+  # Optional: use none to disable, ipwhois for the built-in public lookup,
+  # or mmdb for a local GeoLite2/MMDB database.
   provider: ipwhois
+  # GeoLite2/MMDB example. Leave these commented unless provider is set to mmdb.
+  # database_url: "https://example.com/path/to/GeoLite2-City.mmdb"
+  # database_path: "/app/data/geoip/GeoLite2-City.mmdb"
+  # database_max_bytes: 104857600
+  # refresh_interval_hours: 168
+  # timeout_ms: 2500
 
 observability:
   tracing:
