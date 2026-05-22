@@ -36,6 +36,33 @@ Use the example configuration files for local development. Do not commit local s
 - Keep generated artifacts out of commits unless the project explicitly requires them.
 - Do not commit caches, build output, `.pyc` files, `.env` files, or local storage data.
 
+## Commit Messages
+
+Use the `type: subject` format for every commit message subject.
+Use only English letters, numbers, spaces, hyphens, and underscores in the subject.
+
+Allowed types:
+
+- `build`
+- `chore`
+- `ci`
+- `docs`
+- `feat`
+- `fix`
+- `perf`
+- `refactor`
+- `revert`
+- `style`
+- `test`
+
+Examples:
+
+- `feat: add model routing priority`
+- `fix: handle expired refresh tokens`
+- `refactor: simplify channel lookup`
+
+Commit message subjects that do not match this format will fail CI.
+
 ## Architecture Boundaries
 
 - `frontend/` owns the user interface, client-side state, message rendering, and admin/user workflows.
