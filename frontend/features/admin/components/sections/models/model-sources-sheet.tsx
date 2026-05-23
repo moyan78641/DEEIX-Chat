@@ -58,6 +58,7 @@ type UpstreamSourcesSheetProps = {
   model: AdminLLMModelDTO | null;
   onClose: () => void;
   onRefreshModel: () => void;
+  onSourceStatusChange?: (modelID: number, previous: AdminLLMStatus, next: AdminLLMStatus) => void;
 };
 
 type RouteDraft = {
@@ -69,6 +70,7 @@ export function UpstreamSourcesSheet({
   model,
   onClose,
   onRefreshModel,
+  onSourceStatusChange,
 }: UpstreamSourcesSheetProps) {
   const t = useTranslations("adminModels.sources");
   const toastT = useTranslations("adminModels.toast");
@@ -166,25 +168,36 @@ export function UpstreamSourcesSheet({
         return;
       }
 
+      const previousSource = source;
+      const nextSource = { ...source, [field]: value };
       setActionSourceID(source.id);
+      setSources((current) => current.map((item) => (item.id === source.id ? nextSource : item)));
+      setRouteDraft(source.id, field, String(value));
       try {
-        await updateAdminLLMModelUpstreamSource(
+        const data = await updateAdminLLMModelUpstreamSource(
           token,
           model.id,
           source.id,
           field === "priority" ? { priority: value } : { weight: value },
         );
+        setSources((current) => current.map((item) => (item.id === source.id ? data.source : item)));
+        setRouteDrafts((current) => ({
+          ...current,
+          [source.id]: {
+            priority: String(data.source.priority),
+            weight: String(data.source.weight),
+          },
+        }));
         toast.success(field === "priority" ? t("priorityUpdated") : t("weightUpdated"));
-        await loadSources(model.id, page);
-        onRefreshModel();
       } catch (error) {
+        setSources((current) => current.map((item) => (item.id === source.id ? previousSource : item)));
         setRouteDraft(source.id, field, String(source[field]));
         toast.error(toastT("routeUpdateFailed"), { description: resolveErrorMessage(error) });
       } finally {
         setActionSourceID(null);
       }
     },
-    [loadSources, model, onRefreshModel, page, routeDrafts, setRouteDraft, t, toastT],
+    [model, routeDrafts, setRouteDraft, t, toastT],
   );
 
   const handleRouteInputKeyDown = React.useCallback(
@@ -215,21 +228,27 @@ export function UpstreamSourcesSheet({
         return;
       }
 
+      const previousSource = source;
+      const nextSource = { ...source, status: nextStatus };
       setActionSourceID(source.id);
+      setSources((current) => current.map((item) => (item.id === source.id ? nextSource : item)));
+      onSourceStatusChange?.(model.id, source.status, nextStatus);
       try {
-        await updateAdminLLMModelUpstreamSource(token, model.id, source.id, {
+        const data = await updateAdminLLMModelUpstreamSource(token, model.id, source.id, {
           status: nextStatus,
         });
+        setSources((current) => current.map((item) => (item.id === source.id ? data.source : item)));
         toast.success(nextStatus === "active" ? toastT("sourceEnabled") : toastT("sourceDisabled"));
-        await loadSources(model.id, page);
         onRefreshModel();
       } catch (error) {
+        setSources((current) => current.map((item) => (item.id === source.id ? previousSource : item)));
+        onSourceStatusChange?.(model.id, nextStatus, source.status);
         toast.error(toastT("sourceStatusUpdateFailed"), { description: resolveErrorMessage(error) });
       } finally {
         setActionSourceID(null);
       }
     },
-    [loadSources, model, onRefreshModel, page, toastT],
+    [model, onRefreshModel, onSourceStatusChange, toastT],
   );
 
   const handleCircuitAction = React.useCallback(
@@ -242,7 +261,17 @@ export function UpstreamSourcesSheet({
         return;
       }
 
+      const previousSource = source;
+      const nextSource =
+        action === "open"
+          ? {
+              ...source,
+              circuitOpen: true,
+              circuitUntil: String(Math.floor(Date.now() / 1000) + 24 * 60 * 60),
+            }
+          : { ...source, circuitOpen: false, circuitUntil: "" };
       setActionSourceID(source.id);
+      setSources((current) => current.map((item) => (item.id === source.id ? nextSource : item)));
       try {
         if (action === "open") {
           await openAdminLLMUpstreamModelCircuit(token, source.upstreamID, source.id);
@@ -251,15 +280,14 @@ export function UpstreamSourcesSheet({
           await resetAdminLLMUpstreamModelCircuit(token, source.upstreamID, source.id);
           toast.success(toastT("circuitReset"));
         }
-        await loadSources(model.id, page);
-        onRefreshModel();
       } catch (error) {
+        setSources((current) => current.map((item) => (item.id === source.id ? previousSource : item)));
         toast.error(toastT("operationFailed"), { description: resolveErrorMessage(error) });
       } finally {
         setActionSourceID(null);
       }
     },
-    [loadSources, model, onRefreshModel, page, toastT],
+    [model, toastT],
   );
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
