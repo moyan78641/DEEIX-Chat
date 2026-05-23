@@ -145,10 +145,9 @@
     "creating": "创建中…",
     "saving": "保存中…"
   },
-  "modelsDialog": {
+    "modelsDialog": {
     "selectKind": "选择类别",
     "selectModel": "选择 {name}",
-    "unbound": "未绑定",
     "routeStatusFor": "{name} 状态",
     "platformModelName": "平台模型名",
     "platformModel": "平台模型",
@@ -156,7 +155,7 @@
     "autoProtocol": "自动匹配",
     "remoteStatus": {
       "bound": "已绑定",
-      "synced": "已同步",
+      "unbound": "未绑定",
       "unsynced": "未同步"
     },
     "remoteLoadFailed": "获取远端模型失败",
@@ -183,7 +182,7 @@
     "loadFailed": "加载失败",
     "batchDeletePartialFailed": "批量删除绑定部分失败",
     "batchDeleteDone": "批量删除绑定完成",
-    "batchDeleteSummary": "已删除绑定 {successCount} 条，未找到 {notFoundCount} 条，失败 {failedCount} 条；上游模型目录会保留。",
+    "batchDeleteSummary": "已删除绑定 {successCount} 条，未找到 {notFoundCount} 条，失败 {failedCount} 条；上游模型目录会保留，可通过同步重新创建绑定。",
     "noPendingChanges": "没有待保存的修改",
     "upstreamModelRequired": "上游真实模型名不能为空",
     "activeRouteRequiresPlatformModel": "启用路由必须填写平台模型名；如果要解除绑定，请先关闭路由后保存。",
@@ -191,10 +190,10 @@
     "noSavableChanges": "没有可保存的绑定变更",
     "savedAndDeleted": "已保存 {savedCount} 处修改，删除 {deletedCount} 条绑定",
     "deletedBindings": "已删除 {deletedCount} 条绑定",
-    "deleteBindingDescription": "仅删除平台路由关系，上游模型目录会保留为未绑定行。",
+    "deleteBindingDescription": "仅删除平台路由关系，上游模型目录会保留，可通过同步重新创建绑定。",
     "savedChanges": "已保存 {savedCount} 处修改",
     "manageTitle": "管理路由绑定",
-    "manageDescription": "管理上游模型到平台模型名的路由绑定。",
+    "manageDescription": "管理已配置的路由绑定；需要重新绑定的模型请通过同步添加。",
     "manageSearchPlaceholder": "搜索上游模型名、平台模型名、绑定编码或协议",
     "refreshBindings": "刷新绑定",
     "allRoutes": "全部",
@@ -215,7 +214,7 @@
     "noMatchedBindings": "没有匹配的路由绑定",
     "noBindings": "暂无任何路由绑定，请同步模型或手动新增绑定",
     "batchDeleteTitle": "批量删除绑定",
-    "batchDeleteDescription": "将删除当前上游下已选的 {count} 条绑定关系，但会保留模型目录。",
+    "batchDeleteDescription": "将删除当前上游下已选的 {count} 条绑定关系，但会保留模型目录。后续可通过同步重新创建绑定。",
     "bulkConfirmTitle": "确认批量修改",
     "bulkConfirmDescription": "将对已选的 {count} 条绑定应用此批量修改。",
     "bulkConfirmApply": "确认应用",

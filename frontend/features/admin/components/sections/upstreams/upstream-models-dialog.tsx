@@ -205,19 +205,11 @@ const ModelRow = React.memo(function ModelRow({ row, isSelected, onSelect, onUpd
   const t = useTranslations("adminChannels");
   const platformModelName = row.platformModelNameDraft.trim();
   const hasBindingDraft = platformModelName.length > 0;
-  const isUnboundCatalogRow = row.routeID === 0 && !hasBindingDraft;
-  const isPendingDelete = row.routeID > 0 && row.routeStatus === "inactive" && !hasBindingDraft;
-  const routeChecked = row.routeStatus === "active" || (!row.routeStatus && hasBindingDraft);
+  const routeChecked = row.routeStatus === "active";
   const protocolValue = hasBindingDraft ? row.protocol || row.suggestedProtocol || AUTO_PROTOCOL_VALUE : AUTO_PROTOCOL_VALUE;
 
   const handlePlatformModelChange = (value: string) => {
-    const patch: Partial<Omit<RowDraft, "draftKey" | "isDirty">> = {
-      platformModelNameDraft: value,
-    };
-    if (row.routeID === 0) {
-      patch.routeStatus = value.trim() ? row.routeStatus || "active" : "";
-    }
-    onUpdate(row.draftKey, patch);
+    onUpdate(row.draftKey, { platformModelNameDraft: value });
   };
 
   return (
@@ -238,16 +230,12 @@ const ModelRow = React.memo(function ModelRow({ row, isSelected, onSelect, onUpd
         </div>
       </TableCell>
       <TableCell className="w-[56px] whitespace-nowrap">
-        {isUnboundCatalogRow ? (
-          <span className="text-xs text-muted-foreground">{t("modelsDialog.unbound")}</span>
-        ) : (
-          <Switch
-            size="sm"
-            checked={routeChecked}
-            onCheckedChange={(checked) => onUpdate(row.draftKey, { routeStatus: checked ? "active" : "inactive" })}
-            aria-label={t("modelsDialog.routeStatusFor", { name: row.upstreamModelName })}
-          />
-        )}
+        <Switch
+          size="sm"
+          checked={routeChecked}
+          onCheckedChange={(checked) => onUpdate(row.draftKey, { routeStatus: checked ? "active" : "inactive" })}
+          aria-label={t("modelsDialog.routeStatusFor", { name: row.upstreamModelName })}
+        />
       </TableCell>
       <TableCell className="max-w-[220px] font-mono text-xs text-muted-foreground">
         <span className="block truncate" title={row.upstreamModelName}>
@@ -265,7 +253,7 @@ const ModelRow = React.memo(function ModelRow({ row, isSelected, onSelect, onUpd
       <TableCell className="w-[176px] whitespace-nowrap">
         {!hasBindingDraft ? (
           <span className="text-xs text-muted-foreground">
-            {isPendingDelete ? t("modelsDialog.deleteAfterSave") : t("modelsDialog.unbound")}
+            {t("modelsDialog.deleteAfterSave")}
           </span>
         ) : (
           <Select
@@ -307,9 +295,9 @@ type RemoteModelsDialogProps = {
   onImported: () => void;
 };
 
-function remoteModelStatusKey(item: AdminLLMRemoteModelItem): "bound" | "synced" | "unsynced" {
+function remoteModelStatusKey(item: AdminLLMRemoteModelItem): "bound" | "unbound" | "unsynced" {
   if (item.alreadyBound) return "bound";
-  return item.alreadySynced ? "synced" : "unsynced";
+  return item.alreadySynced ? "unbound" : "unsynced";
 }
 
 function dedupeRemoteModels(items: AdminLLMRemoteModelItem[]): AdminLLMRemoteModelItem[] {
@@ -386,10 +374,10 @@ function RemoteModelsDialog({
     try {
       const token = await resolveAccessToken();
       const data = await listAdminLLMRemoteModels(token, upstream.id);
-      const unbound = dedupeRemoteModels(data.items.filter((i) => !i.alreadyBound));
-      setRemoteItems(unbound);
-      setSelected(new Set(unbound.map((i) => i.upstreamModelName)));
-      setDraftPlatformModelNames(createDraftPlatformModelNameMap(unbound));
+      const syncableItems = dedupeRemoteModels(data.items.filter((i) => !i.alreadyBound));
+      setRemoteItems(syncableItems);
+      setSelected(new Set(syncableItems.map((i) => i.upstreamModelName)));
+      setDraftPlatformModelNames(createDraftPlatformModelNameMap(syncableItems));
     } catch (err) {
       toast.error(resolveErrorMessage(err, t("modelsDialog.remoteLoadFailed")));
       onOpenChange(false);
@@ -738,7 +726,7 @@ type UpstreamModelsDialogProps = {
   onRemoteOpenHandled?: () => void;
 };
 
-type RouteStatusFilter = "all" | "active" | "inactive" | "unbound";
+type RouteStatusFilter = "bound" | "active" | "inactive";
 type UpstreamStatusFilter = "all" | "active" | "inactive";
 type RouteSortValue = "upstream_asc" | "upstream_desc" | "platform_asc" | "platform_desc" | "status_asc" | "protocol_asc";
 
@@ -762,7 +750,7 @@ const DEFAULT_ROUTE_LIST_PARAMS: RouteListParams = {
   page: 1,
   pageSize: PAGE_SIZE_DEFAULT,
   query: "",
-  routeStatusFilter: "all",
+  routeStatusFilter: "bound",
   upstreamStatusFilter: "all",
   protocolFilter: "",
   sortValue: "upstream_asc",
@@ -809,7 +797,7 @@ export function UpstreamModelsDialog({
         page: params.page,
         pageSize: params.pageSize,
         query: params.query,
-        routeStatus: params.routeStatusFilter === "all" ? "" : params.routeStatusFilter,
+        routeStatus: params.routeStatusFilter,
         upstreamStatus: params.upstreamStatusFilter === "all" ? "" : params.upstreamStatusFilter,
         protocol: params.protocolFilter,
         sort: params.sortValue,
@@ -896,7 +884,7 @@ export function UpstreamModelsDialog({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const hasActiveListQuery =
     listParams.query !== "" ||
-    routeStatusFilter !== "all" ||
+    routeStatusFilter !== "bound" ||
     upstreamStatusFilter !== "all" ||
     protocolFilter !== "";
 
@@ -985,6 +973,7 @@ export function UpstreamModelsDialog({
         });
       }
       void loadBindings();
+      onUpstreamUpdated({ ...upstream });
     } catch (err) {
       toast.error(resolveErrorMessage(err, t("toast.deleteFailed")));
     } finally {
@@ -1064,6 +1053,7 @@ export function UpstreamModelsDialog({
         toast.success(t("modelsDialog.savedChanges", { savedCount }));
       }
       await loadBindings();
+      onUpstreamUpdated({ ...upstream });
     } catch (err) {
       toast.error(resolveErrorMessage(err, t("toast.updateFailed")));
     } finally {
@@ -1101,13 +1091,12 @@ export function UpstreamModelsDialog({
                 {
                   key: "route-status",
                   label: t("modelsDialog.routeStatus"),
-                  value: routeStatusFilter === "all" ? "" : routeStatusFilter,
-                  onValueChange: (value) => updateListParams({ routeStatusFilter: (value || "all") as RouteStatusFilter }),
+                  value: routeStatusFilter === "bound" ? "" : routeStatusFilter,
+                  onValueChange: (value) => updateListParams({ routeStatusFilter: (value || "bound") as RouteStatusFilter }),
                   options: [
                     { label: t("modelsDialog.allRoutes"), value: "" },
                     { label: t("status.active"), value: "active" },
                     { label: t("status.inactive"), value: "inactive" },
-                    { label: t("modelsDialog.unbound"), value: "unbound" },
                   ],
                 },
                 {
@@ -1308,7 +1297,10 @@ export function UpstreamModelsDialog({
           open={newBindingOpen}
           onOpenChange={setNewBindingOpen}
           upstreamId={upstream.id}
-          onCreated={loadBindings}
+          onCreated={() => {
+            void loadBindings();
+            onUpstreamUpdated({ ...upstream });
+          }}
         />
       )}
 

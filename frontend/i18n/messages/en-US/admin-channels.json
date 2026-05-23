@@ -145,10 +145,9 @@
     "creating": "Creating...",
     "saving": "Saving..."
   },
-  "modelsDialog": {
+    "modelsDialog": {
     "selectKind": "Select kind",
     "selectModel": "Select {name}",
-    "unbound": "Unbound",
     "routeStatusFor": "{name} status",
     "platformModelName": "Platform model name",
     "platformModel": "Platform model",
@@ -156,7 +155,7 @@
     "autoProtocol": "Auto match",
     "remoteStatus": {
       "bound": "Bound",
-      "synced": "Synced",
+      "unbound": "Unbound",
       "unsynced": "Not synced"
     },
     "remoteLoadFailed": "Failed to fetch remote models",
@@ -183,7 +182,7 @@
     "loadFailed": "Load failed",
     "batchDeletePartialFailed": "Some bindings failed to delete",
     "batchDeleteDone": "Bindings deleted",
-    "batchDeleteSummary": "Deleted {successCount}, not found {notFoundCount}, failed {failedCount}. The upstream model catalog is kept.",
+    "batchDeleteSummary": "Deleted {successCount}, not found {notFoundCount}, failed {failedCount}. The upstream model catalog is kept and can be rebound by syncing.",
     "noPendingChanges": "No pending changes",
     "upstreamModelRequired": "Upstream model name is required",
     "activeRouteRequiresPlatformModel": "Active routes require a platform model name. To unbind, disable the route before saving.",
@@ -191,10 +190,10 @@
     "noSavableChanges": "No savable binding changes",
     "savedAndDeleted": "Saved {savedCount} changes and deleted {deletedCount} bindings",
     "deletedBindings": "Deleted {deletedCount} bindings",
-    "deleteBindingDescription": "Only platform route bindings are deleted. The upstream model catalog remains as unbound rows.",
+    "deleteBindingDescription": "Only platform route bindings are deleted. The upstream model catalog is kept and can be rebound by syncing.",
     "savedChanges": "Saved {savedCount} changes",
     "manageTitle": "Manage route bindings",
-    "manageDescription": "Manage route bindings from upstream models to platform model names.",
+    "manageDescription": "Manage configured route bindings. Rebind models through sync when needed.",
     "manageSearchPlaceholder": "Search upstream model, platform model, binding code, or protocol",
     "refreshBindings": "Refresh bindings",
     "allRoutes": "All",
@@ -215,7 +214,7 @@
     "noMatchedBindings": "No matching route bindings",
     "noBindings": "No route bindings. Sync models or create a binding manually.",
     "batchDeleteTitle": "Delete bindings",
-    "batchDeleteDescription": "Delete {count} selected bindings from this upstream. The model catalog is kept.",
+    "batchDeleteDescription": "Delete {count} selected bindings from this upstream. The model catalog is kept and can be rebound by syncing.",
     "bulkConfirmTitle": "Confirm bulk update",
     "bulkConfirmDescription": "Apply this bulk update to {count} selected bindings.",
     "bulkConfirmApply": "Apply",

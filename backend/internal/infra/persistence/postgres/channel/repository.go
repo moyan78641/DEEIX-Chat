@@ -150,11 +150,12 @@ func (r *Repo) ListUpstreams(ctx context.Context, input repository.ListChannelUp
 		).
 		Joins(
 			`LEFT JOIN (
-				SELECT upstream_id,
-					COUNT(*) AS models_count,
-					COUNT(*) FILTER (WHERE status = 'active') AS active_models_count
-				FROM llm_upstream_models
-				GROUP BY upstream_id
+				SELECT um.upstream_id,
+					COUNT(r.id) AS models_count,
+					COUNT(r.id) FILTER (WHERE r.status = 'active' AND um.status = 'active') AS active_models_count
+				FROM llm_upstream_models um
+				LEFT JOIN llm_model_routes r ON r.upstream_model_id = um.id
+				GROUP BY um.upstream_id
 			) AS stats ON stats.upstream_id = u.id`,
 		)
 	listQuery = applyUpstreamListFilters(listQuery, input)
@@ -692,10 +693,10 @@ func applyUpstreamModelListFilters(query *gorm.DB, input repository.ListChannelU
 		)
 	}
 	switch strings.TrimSpace(input.RouteStatus) {
+	case "bound":
+		query = query.Where("r.id IS NOT NULL")
 	case "active", "inactive":
 		query = query.Where("r.id IS NOT NULL AND r.status = ?", input.RouteStatus)
-	case "unbound":
-		query = query.Where("r.id IS NULL")
 	}
 	if status := strings.TrimSpace(input.UpstreamStatus); status == "active" || status == "inactive" {
 		query = query.Where("um.status = ?", status)

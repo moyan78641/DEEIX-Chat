@@ -387,6 +387,7 @@ export function useAdminUpstreams(): UseAdminUpstreamsState {
     if (modelsTarget?.id === updated.id) {
       setModelsTarget(updated);
     }
+    void load();
   }
 
   return {

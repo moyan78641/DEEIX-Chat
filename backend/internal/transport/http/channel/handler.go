@@ -352,7 +352,7 @@ func (h *Handler) ResetUpstreamCircuit(c *gin.Context) {
 // @Param page query int false "页码"
 // @Param page_size query int false "每页数量"
 // @Param q query string false "搜索关键词"
-// @Param route_status query string false "路由状态：active/inactive/unbound"
+// @Param route_status query string false "路由状态：bound/active/inactive"
 // @Param upstream_status query string false "上游模型状态：active/inactive"
 // @Param protocol query string false "接口协议"
 // @Param sort query string false "排序：upstream_asc/upstream_desc/platform_asc/platform_desc/status_asc/protocol_asc"
