@@ -33,7 +33,7 @@
   "accessDeniedDescription": "您无权访问此页面",
   "title": "用户",
   "pageTitle": "账户管理",
-  "create": "新增用户",
+  "create": "新增",
   "edit": "编辑用户",
   "delete": "删除用户",
   "fallbackUser": "用户",
@@ -181,7 +181,7 @@
     "reset2fa": "重置 2FA",
     "revokeSessions": "吊销会话",
     "creating": "创建中",
-    "createUser": "创建用户"
+    "createUser": "创建"
   },
   "validation": {
     "nonFreeRequiresExpiry": "非 Free 订阅必须指定到期时间。",

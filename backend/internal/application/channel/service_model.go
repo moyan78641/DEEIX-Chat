@@ -302,19 +302,22 @@ func (s *Service) UpdateModel(ctx context.Context, modelID uint, input UpdateMod
 	}
 
 	if update.IsZero() {
-		view := toModelView(repository.ChannelModelListRow{PlatformModel: *current})
-		return &view, nil
+		return s.getModelViewByID(ctx, modelID)
 	}
 
 	if err := s.repo.UpdateModel(ctx, modelID, update); err != nil {
 		return nil, err
 	}
 	s.InvalidateModelCatalog()
-	current, err = s.repo.GetModelByID(ctx, modelID)
+	return s.getModelViewByID(ctx, modelID)
+}
+
+func (s *Service) getModelViewByID(ctx context.Context, modelID uint) (*ModelView, error) {
+	item, err := s.repo.GetModelListRowByID(ctx, modelID)
 	if err != nil {
 		return nil, err
 	}
-	view := toModelView(repository.ChannelModelListRow{PlatformModel: *current})
+	view := toModelView(*item)
 	return &view, nil
 }
 

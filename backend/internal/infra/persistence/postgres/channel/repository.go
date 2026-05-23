@@ -371,6 +371,18 @@ func (r *Repo) GetActiveModelByName(ctx context.Context, platformModelName strin
 	return &result, nil
 }
 
+// GetModelListRowByID 按 ID 获取带来源统计的平台模型列表行。
+func (r *Repo) GetModelListRowByID(ctx context.Context, modelID uint) (*ModelListRow, error) {
+	var item ModelListRow
+	if err := r.modelListQuery(ctx).Where("m.id = ?", modelID).Take(&item).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrModelNotFound
+		}
+		return nil, translateError(err)
+	}
+	return &item, nil
+}
+
 // ListModels 分页查询平台模型。
 func (r *Repo) ListModels(ctx context.Context, input repository.ListChannelModelsInput) ([]ModelListRow, int64, error) {
 	items := make([]ModelListRow, 0)
@@ -381,7 +393,20 @@ func (r *Repo) ListModels(ctx context.Context, input repository.ListChannelModel
 		return nil, 0, translateError(err)
 	}
 
-	listQuery := r.db.WithContext(ctx).
+	listQuery := r.modelListQuery(ctx)
+	listQuery = applyModelListFilters(listQuery, input)
+	if err := listQuery.
+		Order(modelListOrder(input.Sort)).
+		Offset(input.Offset).
+		Limit(input.Limit).
+		Scan(&items).Error; err != nil {
+		return nil, 0, translateError(err)
+	}
+	return items, total, nil
+}
+
+func (r *Repo) modelListQuery(ctx context.Context) *gorm.DB {
+	return r.db.WithContext(ctx).
 		Table("llm_platform_models AS m").
 		Select(
 			"m.id, m.name AS platform_model_name, m.vendor, m.kinds_json, m.icon, m.capabilities_json, m.status, m.description, m.sort_order, m.created_at, m.updated_at, " +
@@ -399,15 +424,6 @@ func (r *Repo) ListModels(ctx context.Context, input repository.ListChannelModel
 				GROUP BY r.platform_model_id
 			) AS stats ON stats.platform_model_id = m.id`,
 		)
-	listQuery = applyModelListFilters(listQuery, input)
-	if err := listQuery.
-		Order(modelListOrder(input.Sort)).
-		Offset(input.Offset).
-		Limit(input.Limit).
-		Scan(&items).Error; err != nil {
-		return nil, 0, translateError(err)
-	}
-	return items, total, nil
 }
 
 func applyModelListFilters(query *gorm.DB, input repository.ListChannelModelsInput) *gorm.DB {

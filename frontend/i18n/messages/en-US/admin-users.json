@@ -33,7 +33,7 @@
   "accessDeniedDescription": "You are not allowed to access this page",
   "title": "Users",
   "pageTitle": "Account management",
-  "create": "Create user",
+  "create": "Create",
   "edit": "Edit user",
   "delete": "Delete user",
   "fallbackUser": "User",
@@ -181,7 +181,7 @@
     "reset2fa": "Reset 2FA",
     "revokeSessions": "Revoke sessions",
     "creating": "Creating",
-    "createUser": "Create user"
+    "createUser": "Create"
   },
   "validation": {
     "nonFreeRequiresExpiry": "Non-Free subscriptions require an expiration time.",

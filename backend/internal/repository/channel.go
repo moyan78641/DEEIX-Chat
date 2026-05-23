@@ -326,6 +326,7 @@ type ChannelRepository interface {
 	UpdateModel(ctx context.Context, modelID uint, input UpdateChannelModelInput) error
 	ReorderModels(ctx context.Context, orderedModelIDs []uint) error
 	GetModelByID(ctx context.Context, modelID uint) (*domainchannel.PlatformModel, error)
+	GetModelListRowByID(ctx context.Context, modelID uint) (*ChannelModelListRow, error)
 	GetModelByName(ctx context.Context, platformModelName string) (*domainchannel.PlatformModel, error)
 	GetActiveModelByName(ctx context.Context, platformModelName string) (*domainchannel.PlatformModel, error)
 	ListModels(ctx context.Context, input ListChannelModelsInput) ([]ChannelModelListRow, int64, error)

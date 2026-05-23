@@ -187,14 +187,24 @@ export function useAdminModels(): UseAdminModelsState {
       setItems((current) => patchByID(current, item.id, (model) => model.id, { status: nextStatus }));
       try {
         const data = await updateAdminLLMModel(token, item.id, { status: nextStatus });
-        setItems((current) => replaceByID(current, item.id, (model) => model.id, data.model));
+        const leavesCurrentStatusFilter = statusFilter !== "" && statusFilter !== nextStatus;
+        if (leavesCurrentStatusFilter) {
+          setItems((current) => removeByID(current, item.id, (model) => model.id));
+          setTotal((current) => Math.max(0, current - 1));
+        } else {
+          setItems((current) => replaceByID(current, item.id, (model) => model.id, data.model));
+        }
         toast.success(nextStatus === "active" ? t("modelEnabled") : t("modelDisabled"));
+        if (statusFilter || sortValue === "updated_desc") {
+          const nextPage = leavesCurrentStatusFilter && items.length === 1 && page > 1 ? page - 1 : page;
+          void loadModels(nextPage, pageSize);
+        }
       } catch (error) {
         setItems((current) => replaceByID(current, item.id, (model) => model.id, previousItem));
         toast.error(t("modelStatusUpdateFailed"), { description: resolveErrorMessage(error) });
       }
     },
-    [items, t],
+    [items, loadModels, page, pageSize, sortValue, statusFilter, t],
   );
 
   const handleSourceStatusChange = React.useCallback((modelID: number, previous: AdminLLMStatus, next: AdminLLMStatus) => {
