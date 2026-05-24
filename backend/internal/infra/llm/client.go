@@ -548,6 +548,7 @@ type GenerateOutput struct {
 	Citations           []string
 	GeneratedImages     []GeneratedImage
 	RawJSON             string
+	Debug               *UpstreamDebugSnapshot `json:"-"`
 }
 
 // GeneratedImage 表示图片生成/编辑接口返回的一张图片。

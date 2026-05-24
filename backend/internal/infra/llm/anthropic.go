@@ -682,7 +682,13 @@ func (c *Client) generateAnthropic(
 		return nil, parseAnthropicError(resp.StatusCode, body, upstreamDebugSnapshot(req, payload, resp, body))
 	}
 
-	return parseAnthropicResponse(body)
+	debug := upstreamDebugSnapshot(req, payload, resp, body)
+	output, err := parseAnthropicResponse(body)
+	if err != nil {
+		return nil, attachUpstreamDebug(err, debug)
+	}
+	output.Debug = debug
+	return output, nil
 }
 
 // parseAnthropicResponse 解析 Anthropic 非流式响应。

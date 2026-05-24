@@ -114,3 +114,8 @@ type ImportUpstreamModelItemRequest struct {
 	Status            string   `json:"status" binding:"omitempty,oneof=active inactive"`
 	Priority          int      `json:"priority"`
 }
+
+// ModelProbeRequest 后台模型连通性测试请求。
+type ModelProbeRequest struct {
+	TaskType string `json:"taskType" binding:"omitempty,oneof=chat image_generation image_edit"`
+}

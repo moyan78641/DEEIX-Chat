@@ -137,6 +137,48 @@ export type AdminLLMUpstreamHealthView = {
   lastSuccessAt: string;
 };
 
+export type AdminLLMModelProbeDebug = {
+  request: {
+    method: string;
+    path: string;
+    headers?: Record<string, string>;
+    body: string;
+  };
+  response: {
+    statusCode: number;
+    headers?: Record<string, string>;
+    body: string;
+  };
+};
+
+export type AdminLLMModelProbeResult = {
+  success: boolean;
+  status: "success" | "failed" | "unsupported";
+  errorCode?: string;
+  errorMessage?: string;
+  latencyMS: number;
+  protocol: AdminLLMAdapter | "";
+  endpoint: string;
+  platformModelID: number;
+  platformModelName: string;
+  upstreamID: number;
+  upstreamName: string;
+  upstreamModelID: number;
+  upstreamModelName: string;
+  routeID: number;
+  bindingCode: string;
+  upstreamStatusCode?: number;
+  debug?: AdminLLMModelProbeDebug;
+};
+
+export type AdminLLMModelProbeBatchResult = {
+  totalCount: number;
+  successCount: number;
+  failedCount: number;
+  unsupportedCount: number;
+  results: AdminLLMModelProbeResult[];
+};
+
 export type AdminLLMRemoteModelItem = {
   upstreamModelName: string;
   suggestedPlatformModelName: string;
@@ -285,6 +327,9 @@ export type AdminLLMUpstreamModelData = {
 export type AdminLLMModelUpstreamSourceData = {
   source: AdminLLMModelUpstreamSourceDTO;
 };
+
+export type AdminLLMModelProbeData = AdminLLMModelProbeResult;
+export type AdminLLMModelProbeBatchData = AdminLLMModelProbeBatchResult;
 
 export type ResetAdminLLMCircuitData = {
   reset: boolean;

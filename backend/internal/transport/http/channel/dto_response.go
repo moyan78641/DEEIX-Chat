@@ -244,6 +244,112 @@ func toUpstreamHealthResponse(v appchannel.UpstreamHealthView) UpstreamHealthRes
 	}
 }
 
+// ModelProbeResponse 模型连通性测试响应 DTO。
+type ModelProbeResponse struct {
+	Success            bool                     `json:"success"`
+	Status             string                   `json:"status"`
+	ErrorCode          string                   `json:"errorCode,omitempty"`
+	ErrorMessage       string                   `json:"errorMessage,omitempty"`
+	LatencyMS          int64                    `json:"latencyMS"`
+	Protocol           string                   `json:"protocol"`
+	Endpoint           string                   `json:"endpoint"`
+	PlatformModelID    uint                     `json:"platformModelID"`
+	PlatformModelName  string                   `json:"platformModelName"`
+	UpstreamID         uint                     `json:"upstreamID"`
+	UpstreamName       string                   `json:"upstreamName"`
+	UpstreamModelID    uint                     `json:"upstreamModelID"`
+	UpstreamModelName  string                   `json:"upstreamModelName"`
+	RouteID            uint                     `json:"routeID"`
+	BindingCode        string                   `json:"bindingCode"`
+	UpstreamStatusCode int                      `json:"upstreamStatusCode,omitempty"`
+	Debug              *ModelProbeDebugResponse `json:"debug,omitempty"`
+}
+
+// ModelProbeBatchResponse 模型批量连通性测试响应 DTO。
+type ModelProbeBatchResponse struct {
+	TotalCount       int                  `json:"totalCount"`
+	SuccessCount     int                  `json:"successCount"`
+	FailedCount      int                  `json:"failedCount"`
+	UnsupportedCount int                  `json:"unsupportedCount"`
+	Results          []ModelProbeResponse `json:"results"`
+}
+
+// ModelProbeDebugResponse 模型测试调试快照 DTO。
+type ModelProbeDebugResponse struct {
+	Request  ModelProbeDebugRequestResponse  `json:"request"`
+	Response ModelProbeDebugResponseResponse `json:"response"`
+}
+
+// ModelProbeDebugRequestResponse 模型测试请求调试信息 DTO。
+type ModelProbeDebugRequestResponse struct {
+	Method  string            `json:"method"`
+	Path    string            `json:"path"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Body    string            `json:"body"`
+}
+
+// ModelProbeDebugResponseResponse 模型测试响应调试信息 DTO。
+type ModelProbeDebugResponseResponse struct {
+	StatusCode int               `json:"statusCode"`
+	Headers    map[string]string `json:"headers,omitempty"`
+	Body       string            `json:"body"`
+}
+
+func toModelProbeResponse(v appchannel.ModelProbeResult) ModelProbeResponse {
+	return ModelProbeResponse{
+		Success:            v.Success,
+		Status:             v.Status,
+		ErrorCode:          v.ErrorCode,
+		ErrorMessage:       v.ErrorMessage,
+		LatencyMS:          v.LatencyMS,
+		Protocol:           v.Protocol,
+		Endpoint:           v.Endpoint,
+		PlatformModelID:    v.PlatformModelID,
+		PlatformModelName:  v.PlatformModelName,
+		UpstreamID:         v.UpstreamID,
+		UpstreamName:       v.UpstreamName,
+		UpstreamModelID:    v.UpstreamModelID,
+		UpstreamModelName:  v.UpstreamModelName,
+		RouteID:            v.RouteID,
+		BindingCode:        v.BindingCode,
+		UpstreamStatusCode: v.UpstreamStatusCode,
+		Debug:              toModelProbeDebugResponse(v.Debug),
+	}
+}
+
+func toModelProbeBatchResponse(v appchannel.ModelProbeBatchResult) ModelProbeBatchResponse {
+	results := make([]ModelProbeResponse, 0, len(v.Results))
+	for _, item := range v.Results {
+		results = append(results, toModelProbeResponse(item))
+	}
+	return ModelProbeBatchResponse{
+		TotalCount:       v.TotalCount,
+		SuccessCount:     v.SuccessCount,
+		FailedCount:      v.FailedCount,
+		UnsupportedCount: v.UnsupportedCount,
+		Results:          results,
+	}
+}
+
+func toModelProbeDebugResponse(v *appchannel.ModelProbeDebugView) *ModelProbeDebugResponse {
+	if v == nil {
+		return nil
+	}
+	return &ModelProbeDebugResponse{
+		Request: ModelProbeDebugRequestResponse{
+			Method:  v.Request.Method,
+			Path:    v.Request.Path,
+			Headers: v.Request.Headers,
+			Body:    v.Request.Body,
+		},
+		Response: ModelProbeDebugResponseResponse{
+			StatusCode: v.Response.StatusCode,
+			Headers:    v.Response.Headers,
+			Body:       v.Response.Body,
+		},
+	}
+}
+
 // UpstreamRemoteModelResponse 上游远程模型预览项响应 DTO。
 type UpstreamRemoteModelResponse struct {
 	UpstreamModelName          string   `json:"upstreamModelName"`
@@ -580,6 +686,18 @@ type ImportUpstreamModelsResponseDoc struct {
 type ResetUpstreamCircuitResponseDoc struct {
 	ErrorMsg string               `json:"errorMsg"`
 	Data     CircuitResetResponse `json:"data"`
+}
+
+// ModelProbeResponseDoc 模型连通性测试响应文档。
+type ModelProbeResponseDoc struct {
+	ErrorMsg string             `json:"errorMsg"`
+	Data     ModelProbeResponse `json:"data"`
+}
+
+// ModelProbeBatchResponseDoc 模型批量连通性测试响应文档。
+type ModelProbeBatchResponseDoc struct {
+	ErrorMsg string                  `json:"errorMsg"`
+	Data     ModelProbeBatchResponse `json:"data"`
 }
 
 // LLMSettingResponse 全局设置项响应 DTO。

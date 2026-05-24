@@ -25,6 +25,7 @@ func (m *Module) RegisterAdminRoutes(adminGroup *gin.RouterGroup) {
 	adminGroup.DELETE("/llm/upstreams/:id/models/:route_id", m.Handler.DeleteUpstreamModel)
 	adminGroup.PATCH("/llm/upstreams/:id/models/:route_id/disable", m.Handler.DisableUpstreamModel)
 	adminGroup.PATCH("/llm/upstreams/:id/models/:route_id/enable", m.Handler.EnableUpstreamModel)
+	adminGroup.POST("/llm/upstreams/:id/models/:route_id/test", m.Handler.TestUpstreamModelRoute)
 	adminGroup.POST("/llm/upstreams/:id/models/:route_id/circuit/open", m.Handler.OpenUpstreamModelCircuit)
 	adminGroup.POST("/llm/upstreams/:id/models/:route_id/circuit/reset", m.Handler.ResetUpstreamModelCircuit)
 
@@ -40,6 +41,8 @@ func (m *Module) RegisterAdminRoutes(adminGroup *gin.RouterGroup) {
 	adminGroup.POST("/llm/models/batch-delete", m.Handler.BatchDeleteModels)
 	adminGroup.PATCH("/llm/models/:id", m.Handler.UpdateModel)
 	adminGroup.DELETE("/llm/models/:id", m.Handler.DeleteModel)
+	adminGroup.POST("/llm/models/:id/test", m.Handler.TestModel)
+	adminGroup.POST("/llm/models/:id/test-all", m.Handler.TestModelAll)
 	adminGroup.GET("/llm/models/:id/sources", m.Handler.ListModelUpstreamSources)
 	adminGroup.PATCH("/llm/models/:id/sources/:route_id", m.Handler.UpdateModelUpstreamSource)
 

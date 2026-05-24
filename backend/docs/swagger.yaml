@@ -1746,6 +1746,112 @@ definitions:
       errorMsg:
         type: string
     type: object
+  internal_transport_http_channel.ModelProbeBatchResponse:
+    properties:
+      failedCount:
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/internal_transport_http_channel.ModelProbeResponse'
+        type: array
+      successCount:
+        type: integer
+      totalCount:
+        type: integer
+      unsupportedCount:
+        type: integer
+    type: object
+  internal_transport_http_channel.ModelProbeBatchResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeBatchResponse'
+      errorMsg:
+        type: string
+    type: object
+  internal_transport_http_channel.ModelProbeDebugRequestResponse:
+    properties:
+      body:
+        type: string
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      method:
+        type: string
+      path:
+        type: string
+    type: object
+  internal_transport_http_channel.ModelProbeDebugResponse:
+    properties:
+      request:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeDebugRequestResponse'
+      response:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeDebugResponseResponse'
+    type: object
+  internal_transport_http_channel.ModelProbeDebugResponseResponse:
+    properties:
+      body:
+        type: string
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      statusCode:
+        type: integer
+    type: object
+  internal_transport_http_channel.ModelProbeRequest:
+    properties:
+      taskType:
+        enum:
+        - chat
+        - image_generation
+        - image_edit
+        type: string
+    type: object
+  internal_transport_http_channel.ModelProbeResponse:
+    properties:
+      bindingCode:
+        type: string
+      debug:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeDebugResponse'
+      endpoint:
+        type: string
+      errorCode:
+        type: string
+      errorMessage:
+        type: string
+      latencyMS:
+        type: integer
+      platformModelID:
+        type: integer
+      platformModelName:
+        type: string
+      protocol:
+        type: string
+      routeID:
+        type: integer
+      status:
+        type: string
+      success:
+        type: boolean
+      upstreamID:
+        type: integer
+      upstreamModelID:
+        type: integer
+      upstreamModelName:
+        type: string
+      upstreamName:
+        type: string
+      upstreamStatusCode:
+        type: integer
+    type: object
+  internal_transport_http_channel.ModelProbeResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeResponse'
+      errorMsg:
+        type: string
+    type: object
   internal_transport_http_channel.ModelResponse:
     properties:
       activeSourceCount:
@@ -3957,6 +4063,86 @@ paths:
       summary: 管理员更新模型上游来源
       tags:
       - llm
+  /admin/llm/models/{id}/test:
+    post:
+      consumes:
+      - application/json
+      description: 按平台模型当前活跃路由选择一个来源执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥
+      parameters:
+      - description: 模型ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 测试参数
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/internal_transport_http_channel.ModelProbeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ModelProbeResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+      security:
+      - BearerAuth: []
+      summary: 管理员测试平台模型路由
+      tags:
+      - llm
+  /admin/llm/models/{id}/test-all:
+    post:
+      consumes:
+      - application/json
+      description: 按平台模型当前全部匹配的活跃路由并发执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥
+      parameters:
+      - description: 模型ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 测试参数
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/internal_transport_http_channel.ModelProbeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ModelProbeBatchResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+      security:
+      - BearerAuth: []
+      summary: 管理员批量测试平台模型全部路由
+      tags:
+      - llm
   /admin/llm/models/batch-delete:
     post:
       consumes:
@@ -4612,6 +4798,51 @@ paths:
       security:
       - BearerAuth: []
       summary: 管理员启用上游模型路由绑定
+      tags:
+      - llm
+  /admin/llm/upstreams/{id}/models/{route_id}/test:
+    post:
+      consumes:
+      - application/json
+      description: 使用指定路由绑定的当前上游配置执行一次轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥
+      parameters:
+      - description: 上游ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 路由绑定ID
+        in: path
+        name: route_id
+        required: true
+        type: integer
+      - description: 测试参数
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/internal_transport_http_channel.ModelProbeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ModelProbeResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+      security:
+      - BearerAuth: []
+      summary: 管理员测试上游模型路由绑定
       tags:
       - llm
   /admin/llm/upstreams/{id}/models/batch-delete:

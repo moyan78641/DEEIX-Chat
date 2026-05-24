@@ -102,3 +102,8 @@ type ImportUpstreamModelItemInput struct {
 	Status            string
 	Priority          int
 }
+
+// ModelProbeInput 定义后台模型连通性测试入参。
+type ModelProbeInput struct {
+	TaskType string
+}

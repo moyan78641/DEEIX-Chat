@@ -679,7 +679,13 @@ func (c *Client) generateGemini(
 		return nil, parseGeminiError(resp.StatusCode, body, upstreamDebugSnapshot(req, payload, resp, body))
 	}
 
-	return parseGeminiResponse(body)
+	debug := upstreamDebugSnapshot(req, payload, resp, body)
+	output, err := parseGeminiResponse(body)
+	if err != nil {
+		return nil, attachUpstreamDebug(err, debug)
+	}
+	output.Debug = debug
+	return output, nil
 }
 
 // parseGeminiResponse 解析 GenerateContentResponse（非流式）。

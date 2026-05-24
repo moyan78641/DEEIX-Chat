@@ -5,6 +5,7 @@ import type {
   AdminLLMStatus,
   AdminLLMUpstreamModelDTO,
 } from "@/features/admin/api/llm.types";
+import { sortProtocolsForDisplay } from "@/features/admin/utils/llm-display";
 import { parseKindsJSON, stringifyKinds } from "@/shared/model/llm-schema";
 
 export type RowDraft = AdminLLMUpstreamModelDTO & {
@@ -79,7 +80,14 @@ export function buildRowDrafts(items: AdminLLMUpstreamModelDTO[]): RowDraft[] {
       routeIDsByProtocol: item.protocol && item.routeID > 0 ? { [item.protocol]: item.routeID } : {},
     });
   }
-  return Array.from(grouped.values());
+  return Array.from(grouped.values()).map((row) => {
+    const protocols = sortProtocolsForDisplay(row.protocols);
+    return {
+      ...row,
+      protocol: protocols[0] ?? row.protocol,
+      protocols,
+    };
+  });
 }
 
 export type UpstreamModelMessages = {
