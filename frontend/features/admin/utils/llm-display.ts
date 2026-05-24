@@ -56,6 +56,10 @@ const PROTOCOL_KINDS: Record<string, readonly string[]> = {
   ...Object.fromEntries(PROTOCOL_OPTIONS.map((item) => [item.value, item.kinds])),
 };
 
+const PROTOCOL_DISPLAY_ORDER = new Map<string, number>(
+  PROTOCOL_OPTIONS.map((item, index) => [item.value, index]),
+);
+
 const IMAGE_ROUTE_PROTOCOL_PAIRS: ReadonlyArray<readonly [AdminLLMAdapter, AdminLLMAdapter]> = [
   ["openai_image_generations", "openai_image_edits"],
   ["xai_image", "xai_image_edits"],
@@ -82,6 +86,35 @@ export function resolveProtocolLabel(protocol: string): string {
   return PROTOCOL_LABELS[protocol] ?? protocol;
 }
 
+export function sortProtocolsForDisplay<T extends string>(protocols: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return protocols
+    .map((protocol, index) => ({ protocol, index }))
+    .filter(({ protocol }) => {
+      const key = String(protocol || "").trim();
+      if (!key || seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => {
+      const orderA = PROTOCOL_DISPLAY_ORDER.get(a.protocol);
+      const orderB = PROTOCOL_DISPLAY_ORDER.get(b.protocol);
+      if (orderA !== undefined && orderB !== undefined) {
+        return orderA - orderB;
+      }
+      if (orderA !== undefined) {
+        return -1;
+      }
+      if (orderB !== undefined) {
+        return 1;
+      }
+      return a.index - b.index;
+    })
+    .map(({ protocol }) => protocol);
+}
+
 export function isSupportedRouteProtocolSelection(protocols: readonly AdminLLMAdapter[]): boolean {
   const uniqueProtocols = Array.from(new Set(protocols));
   if (uniqueProtocols.length <= 1) {
@@ -96,11 +129,11 @@ export function resolveNextRouteProtocolSelection(
   currentProtocols: readonly AdminLLMAdapter[],
   protocol: AdminLLMAdapter,
 ): AdminLLMAdapter[] {
-  const current = Array.from(new Set(currentProtocols));
+  const current = sortProtocolsForDisplay(currentProtocols);
   if (current.includes(protocol)) {
-    return current.filter((item) => item !== protocol);
+    return sortProtocolsForDisplay(current.filter((item) => item !== protocol));
   }
-  const candidate = [...current, protocol];
+  const candidate = sortProtocolsForDisplay([...current, protocol]);
   if (isSupportedRouteProtocolSelection(candidate)) {
     return candidate;
   }

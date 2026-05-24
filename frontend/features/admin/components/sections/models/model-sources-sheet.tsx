@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CircleOff, MoreHorizontal, RefreshCw } from "lucide-react";
+import { Activity, CircleOff, MoreHorizontal, RefreshCw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -35,13 +35,16 @@ import {
 } from "@/components/ui/table";
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
 import {
+  deleteAdminLLMUpstreamModel,
   listAdminLLMModelUpstreamSources,
   openAdminLLMUpstreamModelCircuit,
   resetAdminLLMUpstreamModelCircuit,
+  testAdminLLMUpstreamModelRoute,
   updateAdminLLMModelUpstreamSource,
 } from "@/features/admin/api";
 import type {
   AdminLLMModelDTO,
+  AdminLLMModelProbeResult,
   AdminLLMModelUpstreamSourceDTO,
   AdminLLMStatus,
 } from "@/features/admin/api/llm.types";
@@ -53,6 +56,7 @@ import {
   resolveErrorMessage,
   resolveValue,
 } from "@/features/admin/types/llm";
+import { ModelProbeDialog } from "./model-probe-dialog";
 
 type UpstreamSourcesSheetProps = {
   model: AdminLLMModelDTO | null;
@@ -73,6 +77,7 @@ export function UpstreamSourcesSheet({
   onSourceStatusChange,
 }: UpstreamSourcesSheetProps) {
   const t = useTranslations("adminModels.sources");
+  const probeT = useTranslations("adminModels");
   const toastT = useTranslations("adminModels.toast");
   const commonT = useTranslations("common");
   const locale = useLocale();
@@ -82,6 +87,10 @@ export function UpstreamSourcesSheet({
   const [page, setPage] = React.useState(1);
   const [actionSourceID, setActionSourceID] = React.useState<number | null>(null);
   const [routeDrafts, setRouteDrafts] = React.useState<Record<number, RouteDraft>>({});
+  const [probeOpen, setProbeOpen] = React.useState(false);
+  const [probeLoading, setProbeLoading] = React.useState(false);
+  const [probeTargetName, setProbeTargetName] = React.useState("");
+  const [probeResults, setProbeResults] = React.useState<AdminLLMModelProbeResult[]>([]);
   const pageSize = 25;
 
   const loadSources = React.useCallback(
@@ -131,6 +140,7 @@ export function UpstreamSourcesSheet({
     setPage(1);
     setActionSourceID(null);
     setRouteDrafts({});
+    setProbeResults([]);
   }, [loadSources, model]);
 
   const setRouteDraft = React.useCallback(
@@ -290,17 +300,68 @@ export function UpstreamSourcesSheet({
     [model, toastT],
   );
 
+  const handleTestSource = React.useCallback(
+    async (source: AdminLLMModelUpstreamSourceDTO) => {
+      setProbeTargetName(`${source.upstreamName} / ${source.upstreamModelName}`);
+      setProbeResults([]);
+      setProbeOpen(true);
+      setProbeLoading(true);
+      try {
+        const token = await resolveAccessToken();
+        if (!token) {
+          toast.error(toastT("sessionExpired"), { description: toastT("signInAgain") });
+          setProbeOpen(false);
+          return;
+        }
+        setProbeResults([await testAdminLLMUpstreamModelRoute(token, source.upstreamID, source.id)]);
+      } catch (error) {
+        toast.error(toastT("operationFailed"), { description: resolveErrorMessage(error) });
+        setProbeOpen(false);
+      } finally {
+        setProbeLoading(false);
+      }
+    },
+    [toastT],
+  );
+
+  const handleDeleteProbeRoute = React.useCallback(
+    async (result: AdminLLMModelProbeResult) => {
+      const token = await resolveAccessToken();
+      if (!token) {
+        toast.error(toastT("sessionExpired"), { description: toastT("signInAgain") });
+        throw new Error("session expired");
+      }
+      try {
+        await deleteAdminLLMUpstreamModel(token, result.upstreamID, result.routeID);
+        const nextResults = probeResults.filter((item) => item.routeID !== result.routeID);
+        setSources((current) => current.filter((item) => item.id !== result.routeID));
+        setTotal((current) => Math.max(0, current - 1));
+        setProbeResults(nextResults);
+        if (nextResults.length === 0) {
+          setProbeOpen(false);
+        }
+        toast.success(toastT("sourceDeleted"));
+        onRefreshModel();
+      } catch (error) {
+        toast.error(toastT("sourceDeleteFailed"), { description: resolveErrorMessage(error) });
+        throw error;
+      }
+    },
+    [onRefreshModel, probeResults, toastT],
+  );
+
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <Sheet open={!!model} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="flex flex-col sm:max-w-[720px]">
-        <SheetHeader className="px-4 pb-4">
-          <SheetTitle>{t("title")}</SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={!!model} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent className="flex flex-col sm:max-w-[720px]">
+          <SheetHeader className="px-4 pb-4">
+            <SheetTitle>{t("title")}</SheetTitle>
+          </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
-          <Table className="min-w-[760px]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+            <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead>{t("upstream")}</TableHead>
@@ -400,6 +461,10 @@ export function UpstreamSourcesSheet({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => void handleTestSource(source)}>
+                              <Activity className="size-3.5 stroke-1" />
+                              {probeT("actions.test")}
+                            </DropdownMenuItem>
                             {source.circuitOpen ? (
                               <DropdownMenuItem
                                 onSelect={() => void handleCircuitAction(source, "reset")}
@@ -426,7 +491,7 @@ export function UpstreamSourcesSheet({
                   <TableEmptyRow colSpan={7}>{t("empty")}</TableEmptyRow>
                 ) : null}
               </TableBody>
-          </Table>
+            </Table>
 
           {total > pageSize ? (
             <div className="mt-4">
@@ -446,14 +511,29 @@ export function UpstreamSourcesSheet({
               />
             </div>
           ) : null}
-        </div>
+          </div>
 
-        <SheetFooter className="flex flex-row justify-end px-4 py-3 gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            {commonT("actions.close")}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+          <SheetFooter className="flex flex-row justify-end gap-2 px-4 py-3">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              {commonT("actions.close")}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+    <ModelProbeDialog
+      open={probeOpen}
+      loading={probeLoading}
+      targetName={probeTargetName}
+      result={null}
+      results={probeResults}
+      onDeleteRoute={handleDeleteProbeRoute}
+      onOpenChange={(open) => {
+        if (!open && !probeLoading) {
+          setProbeOpen(false);
+        }
+      }}
+    />
+    </>
   );
 }

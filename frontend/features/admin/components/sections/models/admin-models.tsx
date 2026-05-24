@@ -4,6 +4,7 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { Building2, Cable, Check, ChevronDownIcon, ListOrdered, Plus, Tags, ToggleLeft, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,18 +22,32 @@ import {
 
 import { TablePagination, TableToolbar } from "@/components/ui/table-tools";
 import { AdminBulkConfirmDialog } from "@/features/admin/components/bulk-confirm-dialog";
+import {
+  deleteAdminLLMUpstreamModel,
+  testAdminLLMModelAll,
+  testAdminLLMUpstreamModelRoute,
+} from "@/features/admin/api";
 import { useAdminModels } from "@/features/admin/hooks/use-admin-models";
 import { BulkDeleteModelsDialog, DeleteModelDialog } from "./models-dialog";
+import { ModelProbeDialog } from "./model-probe-dialog";
 import { ModelsTable } from "./models-table";
 import {
   ADAPTER_LABELS,
   MODEL_KIND_OPTIONS,
   MODEL_SORT_OPTIONS,
+  resolveErrorMessage,
   type ModelSortValue,
 } from "@/features/admin/types/llm";
-import type { AdminLLMAdapter, AdminLLMStatus } from "@/features/admin/api/llm.types";
+import type {
+  AdminLLMAdapter,
+  AdminLLMModelDTO,
+  AdminLLMModelProbeResult,
+  AdminLLMModelUpstreamSourceDTO,
+  AdminLLMStatus,
+} from "@/features/admin/api/llm.types";
 import { KNOWN_VENDOR_OPTIONS } from "@/shared/lib/model-identity";
 import { cn } from "@/lib/utils";
+import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
 
 const ModelSheet = dynamic(() => import("./model-sheet").then((module) => module.ModelSheet), {
   ssr: false,
@@ -161,6 +176,10 @@ export function AdminModelsPage() {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [orderOpen, setOrderOpen] = React.useState(false);
   const [bulkConfirmAction, setBulkConfirmAction] = React.useState<ModelBulkAction | null>(null);
+  const [probeOpen, setProbeOpen] = React.useState(false);
+  const [probeLoading, setProbeLoading] = React.useState(false);
+  const [probeTargetName, setProbeTargetName] = React.useState("");
+  const [probeResults, setProbeResults] = React.useState<AdminLLMModelProbeResult[]>([]);
 
   const bulkConfirmOpen = bulkConfirmAction !== null;
 
@@ -178,6 +197,61 @@ export function AdminModelsPage() {
       case "status":
         void models.handleBulkApplyStatus().then(() => setBulkConfirmAction(null));
         break;
+    }
+  }
+
+  async function runProbe(
+    targetName: string,
+    loader: (token: string) => Promise<AdminLLMModelProbeResult | AdminLLMModelProbeResult[]>,
+  ) {
+    setProbeTargetName(targetName);
+    setProbeResults([]);
+    setProbeOpen(true);
+    setProbeLoading(true);
+    try {
+      const token = await resolveAccessToken();
+      if (!token) {
+        toast.error(t("toast.sessionExpired"), { description: t("toast.signInAgain") });
+        setProbeOpen(false);
+        return;
+      }
+      const data = await loader(token);
+      setProbeResults(Array.isArray(data) ? data : [data]);
+    } catch (error) {
+      toast.error(t("toast.operationFailed"), { description: resolveErrorMessage(error) });
+      setProbeOpen(false);
+    } finally {
+      setProbeLoading(false);
+    }
+  }
+
+  function handleTestModel(item: AdminLLMModelDTO) {
+    void runProbe(item.platformModelName, async (token) => (await testAdminLLMModelAll(token, item.id)).results);
+  }
+
+  function handleTestSource(source: AdminLLMModelUpstreamSourceDTO) {
+    const targetName = `${source.upstreamName} / ${source.upstreamModelName}`;
+    void runProbe(targetName, (token) => testAdminLLMUpstreamModelRoute(token, source.upstreamID, source.id));
+  }
+
+  async function handleDeleteProbeRoute(result: AdminLLMModelProbeResult) {
+    const token = await resolveAccessToken();
+    if (!token) {
+      toast.error(t("toast.sessionExpired"), { description: t("toast.signInAgain") });
+      throw new Error("session expired");
+    }
+    try {
+      await deleteAdminLLMUpstreamModel(token, result.upstreamID, result.routeID);
+      const nextResults = probeResults.filter((item) => item.routeID !== result.routeID);
+      setProbeResults(nextResults);
+      if (nextResults.length === 0) {
+        setProbeOpen(false);
+      }
+      toast.success(t("toast.sourceDeleted"));
+      void models.loadModels(models.page, models.pageSize);
+    } catch (error) {
+      toast.error(t("toast.sourceDeleteFailed"), { description: resolveErrorMessage(error) });
+      throw error;
     }
   }
 
@@ -365,6 +439,8 @@ export function AdminModelsPage() {
           onViewSources={models.setSourcesModel}
           onToggleStatus={(item, status) => void models.handleToggleStatus(item, status)}
           onDelete={models.setDeleteTarget}
+          onTestModel={handleTestModel}
+          onTestSource={handleTestSource}
           onSourceStatusChange={models.handleSourceStatusChange}
           onSourceDeleteChange={models.handleSourceDeleteChange}
         />
@@ -437,6 +513,20 @@ export function AdminModelsPage() {
         confirmLabel={t("bulkConfirm.confirm")}
         pendingLabel={t("bulkConfirm.pending")}
         onConfirm={handleConfirmBulkAction}
+      />
+
+      <ModelProbeDialog
+        open={probeOpen}
+        loading={probeLoading}
+        targetName={probeTargetName}
+        result={null}
+        results={probeResults}
+        onDeleteRoute={handleDeleteProbeRoute}
+        onOpenChange={(open) => {
+          if (!open && !probeLoading) {
+            setProbeOpen(false);
+          }
+        }}
       />
     </div>
   );

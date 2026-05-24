@@ -1,6 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
-import { Cable, Check, ChevronDownIcon, CloudDownload, Plus, Tags, ToggleLeft, Trash2 } from "lucide-react";
+import { Activity, Cable, Check, ChevronDownIcon, CloudDownload, Plus, Tags, ToggleLeft, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   AlertDialog,
@@ -39,6 +39,11 @@ import {
 import { SpinnerLabel } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Table,
   TableBody,
   TableCell,
@@ -59,19 +64,23 @@ import {
   importAdminLLMUpstreamModels,
   listAdminLLMRemoteModels,
   listAdminLLMUpstreamModels,
+  testAdminLLMUpstreamModelRoute,
   upsertAdminLLMUpstreamModel,
 } from "@/features/admin/api";
 import { cn } from "@/lib/utils";
 import type {
   AdminLLMAdapter,
+  AdminLLMModelProbeResult,
   AdminLLMRemoteModelItem,
   AdminLLMUpstreamView,
   UpsertAdminLLMUpstreamModelRequest,
 } from "@/features/admin/api/llm.types";
+import { ModelProbeDialog } from "@/features/admin/components/sections/models/model-probe-dialog";
 import {
   PROTOCOL_OPTIONS,
   resolveKindsDisplayForProtocols,
   resolveNextRouteProtocolSelection,
+  sortProtocolsForDisplay,
 } from "@/features/admin/utils/llm-display";
 import { MODEL_KIND_OPTIONS, PAGE_SIZE_DEFAULT } from "@/features/admin/types/llm";
 import {
@@ -270,6 +279,31 @@ function routeIDsForRow(row: RowDraft): number[] {
   return Object.values(row.routeIDsByProtocol).filter((id) => id > 0);
 }
 
+function removeRouteIDFromRows(rows: RowDraft[], routeID: number): RowDraft[] {
+  return rows.flatMap((row) => {
+    if (!routeIDsForRow(row).includes(routeID)) {
+      return [row];
+    }
+    const nextRouteIDsByProtocol = Object.fromEntries(
+      Object.entries(row.routeIDsByProtocol).filter(([, id]) => id !== routeID),
+    );
+    const nextRouteIDs = Object.values(nextRouteIDsByProtocol).filter((id) => id > 0);
+    if (nextRouteIDs.length === 0) {
+      return [];
+    }
+    const nextProtocols = row.protocols.filter((protocol) => nextRouteIDsByProtocol[protocol] > 0);
+    return [
+      {
+        ...row,
+        protocol: nextProtocols[0] ?? row.protocol,
+        protocols: nextProtocols,
+        routeID: Math.min(...nextRouteIDs),
+        routeIDsByProtocol: nextRouteIDsByProtocol,
+      },
+    ];
+  });
+}
+
 function selectedProtocolsForSave(row: RowDraft): AdminLLMAdapter[] {
   const protocols = row.protocols.length > 0 ? row.protocols : [];
   return Array.from(new Set(protocols));
@@ -286,14 +320,20 @@ type ModelRowProps = {
   isSelected: boolean;
   onSelect: (draftKey: string, checked: boolean) => void;
   onUpdate: (draftKey: string, patch: Partial<Omit<RowDraft, "draftKey" | "isDirty">>) => void;
+  onTest: (row: RowDraft, routeID: number) => void;
 };
 
-const ModelRow = React.memo(function ModelRow({ row, isSelected, onSelect, onUpdate }: ModelRowProps) {
+const ModelRow = React.memo(function ModelRow({ row, isSelected, onSelect, onUpdate, onTest }: ModelRowProps) {
   const t = useTranslations("adminChannels");
+  const modelT = useTranslations("adminModels");
   const platformModelName = row.platformModelNameDraft.trim();
   const hasBindingDraft = platformModelName.length > 0;
   const routeChecked = row.routeStatus === "active";
-  const persistedRouteCount = routeIDsForRow(row).length;
+  const routeIDs = routeIDsForRow(row);
+  const persistedRouteCount = routeIDs.length;
+  const testRouteID = row.routeID || routeIDs[0] || 0;
+  const testDisabled = testRouteID <= 0 || row.isDirty;
+  const testTooltip = testDisabled ? modelT("probe.saveBeforeTest") : modelT("actions.test");
 
   const handlePlatformModelChange = (value: string) => {
     onUpdate(row.draftKey, { platformModelNameDraft: value });
@@ -360,6 +400,26 @@ const ModelRow = React.memo(function ModelRow({ row, isSelected, onSelect, onUpd
           value={row.kindsDisplay}
           onChange={(value) => onUpdate(row.draftKey, { kindsDisplay: value })}
         />
+      </TableCell>
+      <TableCell className="w-[48px] text-right" stickyEnd>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground shadow-none"
+                disabled={testDisabled}
+                onClick={() => onTest(row, testRouteID)}
+                aria-label={modelT("actions.test")}
+              >
+                <Activity className="size-3.5 stroke-1" />
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top">{testTooltip}</TooltipContent>
+        </Tooltip>
       </TableCell>
     </TableRow>
   );
@@ -509,7 +569,11 @@ function RemoteModelsDialog({
         .map((i) => ({
           upstreamModelName: i.upstreamModelName,
           platformModelName: (draftPlatformModelNames.get(i.upstreamModelName) || i.upstreamModelName).trim(),
-          protocols: (i.suggestedProtocols?.length ? i.suggestedProtocols : i.suggestedProtocol ? [i.suggestedProtocol] : undefined),
+          protocols: i.suggestedProtocols?.length
+            ? sortProtocolsForDisplay(i.suggestedProtocols)
+            : i.suggestedProtocol
+              ? [i.suggestedProtocol]
+              : undefined,
           kindsJSON: i.suggestedKindsJSON || undefined,
         }));
       const result = await importAdminLLMUpstreamModels(token, upstream.id, { items });
@@ -848,6 +912,7 @@ export function UpstreamModelsDialog({
   onRemoteOpenHandled,
 }: UpstreamModelsDialogProps) {
   const t = useTranslations("adminChannels");
+  const modelT = useTranslations("adminModels");
   const commonT = useTranslations("common");
   const resolveErrorMessage = useLocalizedErrorMessage();
   const [rows, setRows] = React.useState<RowDraft[]>([]);
@@ -866,6 +931,10 @@ export function UpstreamModelsDialog({
   const [query, setQuery] = React.useState("");
   const [listParams, setListParams] = React.useState<RouteListParams>(DEFAULT_ROUTE_LIST_PARAMS);
   const [total, setTotal] = React.useState(0);
+  const [probeOpen, setProbeOpen] = React.useState(false);
+  const [probeLoading, setProbeLoading] = React.useState(false);
+  const [probeTargetName, setProbeTargetName] = React.useState("");
+  const [probeResults, setProbeResults] = React.useState<AdminLLMModelProbeResult[]>([]);
   const requestSeqRef = React.useRef(0);
   const upstreamID = upstream?.id ?? null;
 
@@ -1004,6 +1073,65 @@ export function UpstreamModelsDialog({
       return next;
     });
   }, []);
+
+  const handleTestRoute = React.useCallback(
+    async (row: RowDraft, routeID: number) => {
+      if (!upstreamID || routeID <= 0) return;
+      setProbeTargetName(`${row.platformModelNameDraft || row.platformModelName} / ${row.upstreamModelName}`);
+      setProbeResults([]);
+      setProbeOpen(true);
+      setProbeLoading(true);
+      try {
+        const token = await resolveAccessToken();
+        if (!token) {
+          toast.error(modelT("toast.sessionExpired"), { description: modelT("toast.signInAgain") });
+          setProbeOpen(false);
+          return;
+        }
+        setProbeResults([await testAdminLLMUpstreamModelRoute(token, upstreamID, routeID)]);
+      } catch (error) {
+        toast.error(t("toast.operationFailed"), { description: resolveErrorMessage(error) });
+        setProbeOpen(false);
+      } finally {
+        setProbeLoading(false);
+      }
+    },
+    [modelT, resolveErrorMessage, t, upstreamID],
+  );
+
+  const handleDeleteProbeRoute = React.useCallback(
+    async (result: AdminLLMModelProbeResult) => {
+      if (!upstream) {
+        return;
+      }
+      try {
+        const token = await resolveAccessToken();
+        await deleteAdminLLMUpstreamModel(token, result.upstreamID, result.routeID);
+        const nextResults = probeResults.filter((item) => item.routeID !== result.routeID);
+        setRows((prev) => removeRouteIDFromRows(prev, result.routeID));
+        setProbeResults(nextResults);
+        if (nextResults.length === 0) {
+          setProbeOpen(false);
+        }
+        setSelected((prev) => {
+          const next = new Set(prev);
+          rows.forEach((row) => {
+            if (routeIDsForRow(row).includes(result.routeID)) {
+              next.delete(row.draftKey);
+            }
+          });
+          return next;
+        });
+        toast.success(modelT("toast.sourceDeleted"));
+        void loadBindings();
+        onUpstreamUpdated({ ...upstream });
+      } catch (error) {
+        toast.error(modelT("toast.sourceDeleteFailed"), { description: resolveErrorMessage(error) });
+        throw error;
+      }
+    },
+    [loadBindings, modelT, onUpstreamUpdated, probeResults, resolveErrorMessage, rows, upstream],
+  );
 
   const updateRow = React.useCallback((
     draftKey: string,
@@ -1375,12 +1503,13 @@ export function UpstreamModelsDialog({
                     <TableHead className="min-w-[220px]">{t("modelsDialog.platformModel")}</TableHead>
                     <TableHead className="w-[220px]">{t("modelsDialog.protocol")}</TableHead>
                     <TableHead className="w-[140px]">{t("modelsDialog.kind")}</TableHead>
+                    <TableHead className="w-[48px]" stickyEnd />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!tableReady ? <TableSkeletonRows colSpan={6} rowCount={10} /> : null}
+                  {!tableReady ? <TableSkeletonRows colSpan={7} rowCount={10} /> : null}
                   {tableReady && rows.length === 0 ? (
-                    <TableEmptyRow colSpan={6}>
+                    <TableEmptyRow colSpan={7}>
                       {hasActiveListQuery ? t("modelsDialog.noMatchedBindings") : t("modelsDialog.noBindings")}
                     </TableEmptyRow>
                   ) : null}
@@ -1391,6 +1520,7 @@ export function UpstreamModelsDialog({
                       isSelected={selected.has(row.draftKey)}
                       onSelect={handleSelectOne}
                       onUpdate={updateRow}
+                      onTest={handleTestRoute}
                     />
                   ))}
                 </TableBody>
@@ -1442,6 +1572,20 @@ export function UpstreamModelsDialog({
           }}
         />
       )}
+
+      <ModelProbeDialog
+        open={probeOpen}
+        loading={probeLoading}
+        targetName={probeTargetName}
+        result={null}
+        results={probeResults}
+        onDeleteRoute={handleDeleteProbeRoute}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !probeLoading) {
+            setProbeOpen(false);
+          }
+        }}
+      />
 
       <AlertDialog
         open={deleteConfirmOpen}

@@ -992,6 +992,132 @@
                 }
             }
         },
+        "/admin/llm/models/{id}/test": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按平台模型当前活跃路由选择一个来源执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "llm"
+                ],
+                "summary": "管理员测试平台模型路由",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "模型ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "测试参数",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/llm/models/{id}/test-all": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按平台模型当前全部匹配的活跃路由并发执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "llm"
+                ],
+                "summary": "管理员批量测试平台模型全部路由",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "模型ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "测试参数",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeBatchResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/llm/settings": {
             "get": {
                 "security": [
@@ -2182,6 +2308,76 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_DEEIX-AI_DEEIX-Chat_backend_internal_shared_response.SuccessDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/llm/upstreams/{id}/models/{route_id}/test": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "使用指定路由绑定的当前上游配置执行一次轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "llm"
+                ],
+                "summary": "管理员测试上游模型路由绑定",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "上游ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "路由绑定ID",
+                        "name": "route_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "测试参数",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeResponseDoc"
                         }
                     },
                     "400": {
@@ -9191,6 +9387,168 @@
                             "type": "integer"
                         }
                     }
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeBatchResponse": {
+            "type": "object",
+            "properties": {
+                "failedCount": {
+                    "type": "integer"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_transport_http_channel.ModelProbeResponse"
+                    }
+                },
+                "successCount": {
+                    "type": "integer"
+                },
+                "totalCount": {
+                    "type": "integer"
+                },
+                "unsupportedCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeBatchResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeBatchResponse"
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeDebugRequestResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "method": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeDebugResponse": {
+            "type": "object",
+            "properties": {
+                "request": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeDebugRequestResponse"
+                },
+                "response": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeDebugResponseResponse"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeDebugResponseResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "statusCode": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeRequest": {
+            "type": "object",
+            "properties": {
+                "taskType": {
+                    "type": "string",
+                    "enum": [
+                        "chat",
+                        "image_generation",
+                        "image_edit"
+                    ]
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeResponse": {
+            "type": "object",
+            "properties": {
+                "bindingCode": {
+                    "type": "string"
+                },
+                "debug": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeDebugResponse"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                },
+                "latencyMS": {
+                    "type": "integer"
+                },
+                "platformModelID": {
+                    "type": "integer"
+                },
+                "platformModelName": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "routeID": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "upstreamID": {
+                    "type": "integer"
+                },
+                "upstreamModelID": {
+                    "type": "integer"
+                },
+                "upstreamModelName": {
+                    "type": "string"
+                },
+                "upstreamName": {
+                    "type": "string"
+                },
+                "upstreamStatusCode": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeResponse"
                 },
                 "errorMsg": {
                     "type": "string"
