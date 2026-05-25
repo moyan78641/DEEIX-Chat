@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { useLocalizedErrorMessage } from "@/i18n/use-localized-error";
 import { useFileExtract } from "@/features/files/hooks/use-file-extract";
+import { useFileInvalidation } from "@/features/files/hooks/use-file-invalidation";
 import { useFilePreview } from "@/features/files/hooks/use-file-preview";
 import type { FileFilterValue, FileSortKey } from "@/features/files/types/files";
 import { resolveFileFilter } from "@/features/files/utils/file-display";
@@ -186,8 +187,10 @@ export function useFilesPage(): UseFilesPageResult {
 
       if (options.append) {
         setLoadingMore(true);
-      } else if (options.silent && !options.background) {
-        setSyncing(true);
+      } else if (options.silent) {
+        if (!options.background) {
+          setSyncing(true);
+        }
       } else {
         setLoading(true);
       }
@@ -241,8 +244,10 @@ export function useFilesPage(): UseFilesPageResult {
         if (!isMountedRef.current || !isLatestRequest()) {
           return;
         }
-        const description = resolveErrorMessage(error, t("toasts.listLoadFailed"));
-        toast.error(t("toasts.listLoadFailed"), { id: "files-list-load-error", description });
+        if (!options.background) {
+          const description = resolveErrorMessage(error, t("toasts.listLoadFailed"));
+          toast.error(t("toasts.listLoadFailed"), { id: "files-list-load-error", description });
+        }
       } finally {
         if (!isMountedRef.current || !isLatestRequest()) {
           return;
@@ -286,6 +291,15 @@ export function useFilesPage(): UseFilesPageResult {
 
     return () => window.clearInterval(timer);
   }, [files, loadFiles, loading, loadingMore, selectedFileID, uploading]);
+
+  useFileInvalidation(
+    React.useCallback((detail) => {
+      if (detail.quota) {
+        setQuota(detail.quota);
+      }
+      void loadFiles({ preferredFileID: selectedFileID, silent: true, background: true });
+    }, [loadFiles, selectedFileID]),
+  );
 
   const selectedFile = React.useMemo(
     () => files.find((item) => item.fileID === selectedFileID) ?? null,

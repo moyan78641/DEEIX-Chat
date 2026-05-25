@@ -7,6 +7,7 @@ import type { RecentDeleteTarget } from "@/features/recent/types/recent";
 import {
   ConversationShareDialog,
 } from "@/features/chat/components/sections/conversation-share-dialog";
+import { DeleteFilesOption } from "@/features/recent/components/delete-files-option";
 import type { ConversationDTO, ConversationShareDTO } from "@/shared/api/conversation.types";
 import {
   AlertDialog,
@@ -33,10 +34,12 @@ type RecentDialogsProps = {
   renameTarget: ConversationDTO | null;
   renameValue: string;
   deleteTarget: RecentDeleteTarget;
+  deleteFiles: boolean;
   shareTarget: ConversationDTO | null;
   onRenameValueChange: (value: string) => void;
   onRenameCommit: () => void | Promise<void>;
   onCloseRenameDialog: () => void;
+  onDeleteFilesChange: (checked: boolean) => void;
   onConfirmDelete: () => void | Promise<void>;
   onCloseDeleteDialog: () => void;
   onCloseShareDialog: () => void;
@@ -47,16 +50,19 @@ export function RecentDialogs({
   renameTarget,
   renameValue,
   deleteTarget,
+  deleteFiles,
   shareTarget,
   onRenameValueChange,
   onRenameCommit,
   onCloseRenameDialog,
+  onDeleteFilesChange,
   onConfirmDelete,
   onCloseDeleteDialog,
   onCloseShareDialog,
   onShareChange,
 }: RecentDialogsProps) {
   const t = useTranslations("recent.dialogs");
+  const deleteFilesID = React.useId();
   return (
     <>
       <Dialog open={Boolean(renameTarget)} onOpenChange={(open) => !open && onCloseRenameDialog()}>
@@ -95,6 +101,11 @@ export function RecentDialogs({
             <AlertDialogDescription>
               {t("deleteDescription", { label: deleteTarget?.label || t("thisConversation") })}
             </AlertDialogDescription>
+            <DeleteFilesOption
+              id={deleteFilesID}
+              checked={deleteFiles}
+              onCheckedChange={onDeleteFilesChange}
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>

@@ -32,6 +32,7 @@ import {
   ConversationShareDialog,
   sharePatchFromDTO,
 } from "@/features/chat/components/sections/conversation-share-dialog"
+import { DeleteFilesOption } from "@/features/recent/components/delete-files-option"
 import { useActiveSidebarConversation } from "@/features/layouts/hooks/use-active-sidebar-conversation"
 import { useSidebarListFlip } from "@/features/layouts/hooks/use-sidebar-list-flip"
 import { SIDEBAR_OVERFLOW_ROW_TRANSITION } from "@/features/layouts/model/sidebar-motion"
@@ -83,10 +84,12 @@ export function NavStarred() {
   const [dialogLoading, setDialogLoading] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [deleteTarget, setDeleteTarget] = React.useState<SidebarConversationDeleteTarget>(null)
+  const [deleteFiles, setDeleteFiles] = React.useState(false)
   const [renameTarget, setRenameTarget] = React.useState<SidebarConversationRenameTarget>(null)
   const [shareTarget, setShareTarget] = React.useState<{ publicID: string; title: string } | null>(null)
   const [renameValue, setRenameValue] = React.useState("")
   const listContainerRef = React.useRef<HTMLDivElement | null>(null)
+  const deleteFilesID = React.useId()
 
   const starredConversationItems = React.useMemo(
     () => starredItems.map((item) => toSidebarConversationItem(item, t("untitled"))),
@@ -198,12 +201,13 @@ export function NavStarred() {
     if (!deleteTarget) {
       return
     }
-    const ok = await deleteByPublicID(deleteTarget.publicID)
+    const ok = await deleteByPublicID(deleteTarget.publicID, { deleteFiles })
     if (ok && activeConversationID === deleteTarget.publicID) {
       router.push("/chat")
     }
     setDeleteTarget(null)
-  }, [activeConversationID, deleteByPublicID, deleteTarget, router])
+    setDeleteFiles(false)
+  }, [activeConversationID, deleteByPublicID, deleteFiles, deleteTarget, router])
 
   const onSelectSearchResult = React.useCallback((href: string) => {
     setShowAllStarredDialog(false)
@@ -325,13 +329,26 @@ export function NavStarred() {
         onSelect={onSelectSearchResult}
       />
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null)
+            setDeleteFiles(false)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("dialogs.deleteTitle")}</AlertDialogTitle>
             <AlertDialogBody>
               {t("dialogs.deleteDescription", { label: t("deleteConversationLabel", { title: deleteTarget?.title || t("untitled") }) })}
             </AlertDialogBody>
+            <DeleteFilesOption
+              id={deleteFilesID}
+              checked={deleteFiles}
+              onCheckedChange={setDeleteFiles}
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("dialogs.cancel")}</AlertDialogCancel>

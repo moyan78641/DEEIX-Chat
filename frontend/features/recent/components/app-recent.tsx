@@ -71,10 +71,12 @@ export function AppRecent() {
         renameTarget={controller.renameTarget}
         renameValue={controller.renameValue}
         deleteTarget={controller.deleteTarget}
+        deleteFiles={controller.deleteFiles}
         shareTarget={controller.shareTarget}
         onRenameValueChange={controller.setRenameValue}
         onRenameCommit={controller.onRenameCommit}
         onCloseRenameDialog={controller.closeRenameDialog}
+        onDeleteFilesChange={controller.setDeleteFiles}
         onConfirmDelete={controller.confirmDelete}
         onCloseDeleteDialog={controller.closeDeleteDialog}
         onCloseShareDialog={controller.closeShareDialog}

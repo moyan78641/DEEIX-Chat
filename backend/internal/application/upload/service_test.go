@@ -85,6 +85,33 @@ func TestUploadFileAllowsReuploadAfterDelete(t *testing.T) {
 	}
 }
 
+func TestDeleteFileIfUnreferencedSkipsReferencedFile(t *testing.T) {
+	ctx := context.Background()
+	repo := newUploadTestRepo()
+	store := newUploadTestStore()
+	service := newUploadTestService(repo, store)
+
+	uploaded, err := service.UploadFile(ctx, uploadTestInput("notes.md", "same content"))
+	if err != nil {
+		t.Fatalf("upload failed: %v", err)
+	}
+	repo.referencedFileIDs[uploaded.File.FileID] = true
+
+	result, deleted, err := service.DeleteFileIfUnreferenced(ctx, 1, uploaded.File.FileID)
+	if err != nil {
+		t.Fatalf("delete if unreferenced failed: %v", err)
+	}
+	if deleted || result != nil {
+		t.Fatal("referenced file should be skipped without returning a delete result")
+	}
+	if status := repo.fileStatus(uploaded.File.FileID); status != "active" {
+		t.Fatalf("referenced file should remain active, got %q", status)
+	}
+	if got := store.objectCount(); got != 1 {
+		t.Fatalf("referenced file should keep physical object, got %d objects", got)
+	}
+}
+
 func TestUploadFileReplacesStaleDuplicatePointer(t *testing.T) {
 	ctx := context.Background()
 	repo := newUploadTestRepo()
@@ -301,6 +328,7 @@ type uploadTestRepo struct {
 	quota                   domainconversation.StorageQuota
 	missNextDuplicateLookup bool
 	failNextCreateDuplicate bool
+	referencedFileIDs       map[string]bool
 }
 
 func newUploadTestRepo() *uploadTestRepo {
@@ -310,6 +338,7 @@ func newUploadTestRepo() *uploadTestRepo {
 			UserID:     1,
 			QuotaBytes: 10 * 1024 * 1024,
 		},
+		referencedFileIDs: make(map[string]bool),
 	}
 }
 
@@ -392,13 +421,16 @@ func (r *uploadTestRepo) CreateFileObjectAndConsumeQuota(_ context.Context, item
 	return cloneQuota(r.quota), nil
 }
 
-func (r *uploadTestRepo) DeleteFileObjectAndReleaseQuota(_ context.Context, userID uint, fileID string, quotaLimit int64) (*domainconversation.FileObject, *domainconversation.StorageQuota, bool, error) {
+func (r *uploadTestRepo) DeleteFileObjectAndReleaseQuota(_ context.Context, userID uint, fileID string, quotaLimit int64, options repository.DeleteFileObjectOptions) (*domainconversation.FileObject, *domainconversation.StorageQuota, bool, error) {
 	if quotaLimit > 0 {
 		r.quota.QuotaBytes = quotaLimit
 	}
 	for i := range r.files {
 		if r.files[i].UserID != userID || r.files[i].FileID != fileID || r.files[i].Status != "active" {
 			continue
+		}
+		if options.RequireUnreferenced && r.referencedFileIDs[fileID] {
+			return nil, nil, false, repository.ErrConflict
 		}
 		deleted := r.files[i]
 		r.files[i].Status = "deleted"

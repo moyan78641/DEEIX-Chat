@@ -114,6 +114,39 @@ func TestRuntimeSettingsNormalizeConfigDisablesEmbeddingDependentFeatures(t *tes
 	}
 }
 
+func TestValidateTurnstileRegistrationSettings(t *testing.T) {
+	repo := &testSettingsRepo{byNamespace: map[string][]domainsettings.SystemSetting{
+		"auth": {
+			{Namespace: "auth", Key: "email_login_enabled", Value: "true"},
+			{Namespace: "auth", Key: "email_registration_enabled", Value: "true"},
+			{Namespace: "auth", Key: "turnstile_registration_enabled", Value: "false"},
+			{Namespace: "auth", Key: "turnstile_site_key", Value: ""},
+			{Namespace: "auth", Key: "turnstile_secret_key", Value: ""},
+		},
+	}}
+	service := NewService(repo, "test-data-encryption-key")
+
+	if _, err := service.applyAuthSettingDependencies(context.Background(), []PatchItem{
+		{Namespace: "auth", Key: "turnstile_registration_enabled", Value: "true"},
+	}); err == nil {
+		t.Fatal("expected missing turnstile keys to fail")
+	}
+
+	if _, err := service.applyAuthSettingDependencies(context.Background(), []PatchItem{
+		{Namespace: "auth", Key: "turnstile_registration_enabled", Value: "true"},
+		{Namespace: "auth", Key: "turnstile_site_key", Value: "site-key"},
+		{Namespace: "auth", Key: "turnstile_secret_key", Value: "secret-key"},
+	}); err != nil {
+		t.Fatalf("expected complete turnstile settings to pass, got %v", err)
+	}
+}
+
+func TestValidateTurnstileRegistrationEnabledRequiresBool(t *testing.T) {
+	if err := validatePatchItem(PatchItem{Namespace: "auth", Key: "turnstile_registration_enabled", Value: "enabled"}); err == nil {
+		t.Fatal("expected turnstile registration switch to reject non-bool value")
+	}
+}
+
 func TestValidateModelOptionPolicySettings(t *testing.T) {
 	if err := validatePatchItem(PatchItem{Namespace: "chat", Key: "model_option_policy_mode", Value: "allowlist"}); err != nil {
 		t.Fatalf("expected allowlist mode to pass, got %v", err)
@@ -132,6 +165,18 @@ func TestValidateModelOptionPolicySettings(t *testing.T) {
 	}
 	if err := validatePatchItem(PatchItem{Namespace: "chat", Key: "model_option_native_tool_types", Value: `{"anthropic_messages":["unknown_tool"]}`}); err == nil {
 		t.Fatal("expected unsupported native tool type to fail")
+	}
+}
+
+func TestValidateMCPSelectedToolsSetting(t *testing.T) {
+	if err := validatePatchItem(PatchItem{Namespace: "mcp", Key: "mcp_max_selected_tools_per_message", Value: "32"}); err != nil {
+		t.Fatalf("expected selected tool limit to pass, got %v", err)
+	}
+	if err := validatePatchItem(PatchItem{Namespace: "mcp", Key: "mcp_max_selected_tools_per_message", Value: "0"}); err == nil {
+		t.Fatal("expected zero selected tool limit to fail")
+	}
+	if err := validatePatchItem(PatchItem{Namespace: "mcp", Key: "mcp_max_selected_tools_per_message", Value: "129"}); err == nil {
+		t.Fatal("expected selected tool limit above safe maximum to fail")
 	}
 }
 

@@ -150,6 +150,10 @@ func (s *Service) sendMessageInternal(
 	if len(input.FileIDs) > maxFiles {
 		return nil, ErrTooManyMessageFiles
 	}
+	// application 层保留兜底校验，保证非 HTTP 调用路径也遵守同一 MCP 工具数量策略。
+	if err := s.ValidateSelectedToolIDs(input.SelectedToolIDs); err != nil {
+		return nil, err
+	}
 
 	startedAt := time.Now()
 	runID := normalizeRunID(input.ClientRunID)
@@ -403,7 +407,7 @@ func (s *Service) sendMessageInternal(
 
 	// ContextAssembler 只承载真正的系统级行为指令；资料型上下文稍后进入用户 XML。
 	assembler := NewContextAssembler(int64(cfg.ContextMaxInputTokens))
-	systemPrompt := resolveSystemPromptInjection(cfg, route)
+	systemPrompt := resolveMessageSystemPromptInjection(cfg, route, input.HTMLVisualPromptEnabled)
 	if systemPrompt.Content != "" {
 		if systemPrompt.InlineToUser {
 			historyMsgs = inlineSystemPromptIntoLatestUserMessage(historyMsgs, systemPrompt.Content)
@@ -675,6 +679,7 @@ func (s *Service) sendMessageInternal(
 	sendSpan.SetAttributes(promptShapeTraceAttributes("conversation.prompt", initialPromptShape)...)
 
 	var streamedText strings.Builder
+	streamUsageTotal := llm.Usage{}
 	emitVisibleDelta := func(delta string) error {
 		if delta == "" {
 			return nil
@@ -759,18 +764,18 @@ func (s *Service) sendMessageInternal(
 			return output, err
 		}
 		thinkingRouter := &thinkingDeltaRouter{}
+		callStreamUsage := llm.Usage{}
 		output, streamErr := s.llmClient.GenerateStream(generationCtx, routeConfig, currentInput, func(event llm.GenerateStreamEvent) error {
 			if s.isMessageGenerationCanceled(generationCtx, runID) {
 				return ErrMessageGenerationCanceled
 			}
 			if event.Usage != (llm.Usage{}) && input.OnEvent != nil {
-				if err := input.OnEvent("usage", map[string]interface{}{
-					"input_tokens":       event.Usage.InputTokens,
-					"output_tokens":      event.Usage.OutputTokens,
-					"cache_read_tokens":  event.Usage.CacheReadTokens,
-					"cache_write_tokens": event.Usage.CacheWriteTokens,
-					"reasoning_tokens":   event.Usage.ReasoningTokens,
-				}); err != nil {
+				// 上游流式 usage 通常是“本次 LLM 调用累计值”，但一条消息可能包含多轮 LLM 调用。
+				// 这里先换算成本次调用内增量，再累加成本轮消息总量，保证实时展示和最终账单口径一致。
+				usageDelta := diffLLMUsage(event.Usage, callStreamUsage)
+				callStreamUsage = event.Usage
+				streamUsageTotal = addLLMUsage(streamUsageTotal, usageDelta)
+				if err := emitLLMUsageEvent(input.OnEvent, streamUsageTotal); err != nil {
 					return err
 				}
 			}
@@ -928,6 +933,7 @@ func (s *Service) sendMessageInternal(
 	assistantText, nativeToolRows := syncUpstreamOutputTrace(traceRecorder, upstreamOutput, runID)
 	toolCallRows = append(toolCallRows, nativeToolRows...)
 	totalUsage := upstreamOutput.Usage
+	totalServerSideToolUsage := addServerSideToolUsage(nil, upstreamOutput.ServerSideToolUsage)
 	remainingToolCalls := s.resolveMaxToolCallsPerRun()
 	maxLLMCalls := s.resolveMaxLLMCallsPerRun()
 	if maxLLMCalls <= 0 {
@@ -968,6 +974,10 @@ func (s *Service) sendMessageInternal(
 		toolSpan.End()
 		toolCallRows = append(toolCallRows, toolResult.Rows...)
 		remainingToolCalls -= len(toolResult.Rows)
+		if toolResult.FatalErr != nil {
+			retErr = wrapUpstreamRequestError(toolResult.FatalErr)
+			return nil, retErr
+		}
 		if len(toolResult.ToolResults) == 0 {
 			break
 		}
@@ -1008,6 +1018,7 @@ func (s *Service) sendMessageInternal(
 		}
 		s.routeResolver.MarkRouteSuccess(ctx, route)
 		totalUsage = addLLMUsage(totalUsage, nextOutput.Usage)
+		totalServerSideToolUsage = addServerSideToolUsage(totalServerSideToolUsage, nextOutput.ServerSideToolUsage)
 		upstreamOutput = nextOutput
 		llmCallCount++
 		var nextNativeToolRows []model.ToolCall
@@ -1031,6 +1042,7 @@ func (s *Service) sendMessageInternal(
 		}
 		s.routeResolver.MarkRouteSuccess(ctx, route)
 		totalUsage = addLLMUsage(totalUsage, nextOutput.Usage)
+		totalServerSideToolUsage = addServerSideToolUsage(totalServerSideToolUsage, nextOutput.ServerSideToolUsage)
 		upstreamOutput = nextOutput
 		llmCallCount++
 		var nextNativeToolRows []model.ToolCall
@@ -1050,6 +1062,13 @@ func (s *Service) sendMessageInternal(
 	if strings.TrimSpace(assistantText) == "" {
 		retErr = ErrUpstreamEmptyResponse
 		return nil, retErr
+	}
+	finalUsageEvent := totalUsage
+	finalUsageEvent.InputTokens = effectiveInputTokens
+	finalUsageEvent.OutputTokens = effectiveOutputTokens
+	if err := emitLLMUsageEvent(input.OnEvent, finalUsageEvent); err != nil {
+		retErr = err
+		return nil, err
 	}
 	statefulPromptFingerprint := buildPromptStateFingerprint(promptStateFingerprintInput{
 		Protocol:          route.Protocol,
@@ -1212,19 +1231,20 @@ func (s *Service) sendMessageInternal(
 	}
 
 	return &SendMessageResult{
-		UserMessage:        *userMessage,
-		AssistantMessage:   *assistantMessage,
-		UpstreamID:         run.UpstreamID,
-		UpstreamName:       run.UpstreamName,
-		PlatformModelName:  route.PlatformModelName,
-		RoutedBindingCode:  route.BindingCode,
-		UpstreamModelName:  route.UpstreamModel,
-		UpstreamProtocol:   route.Protocol,
-		EffectiveOptions:   filteredOptions,
-		UsageSpeed:         totalUsage.Speed,
-		UsageServiceTier:   totalUsage.ServiceTier,
-		CacheWrite5mTokens: totalUsage.CacheWrite5mTokens,
-		CacheWrite1hTokens: totalUsage.CacheWrite1hTokens,
-		LatencyMS:          time.Since(startedAt).Milliseconds(),
+		UserMessage:         *userMessage,
+		AssistantMessage:    *assistantMessage,
+		UpstreamID:          run.UpstreamID,
+		UpstreamName:        run.UpstreamName,
+		PlatformModelName:   route.PlatformModelName,
+		RoutedBindingCode:   route.BindingCode,
+		UpstreamModelName:   route.UpstreamModel,
+		UpstreamProtocol:    route.Protocol,
+		EffectiveOptions:    filteredOptions,
+		UsageSpeed:          totalUsage.Speed,
+		UsageServiceTier:    totalUsage.ServiceTier,
+		CacheWrite5mTokens:  totalUsage.CacheWrite5mTokens,
+		CacheWrite1hTokens:  totalUsage.CacheWrite1hTokens,
+		ServerSideToolUsage: totalServerSideToolUsage,
+		LatencyMS:           time.Since(startedAt).Milliseconds(),
 	}, nil
 }

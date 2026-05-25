@@ -999,6 +999,132 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/llm/models/{id}/test": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按平台模型当前活跃路由选择一个来源执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "llm"
+                ],
+                "summary": "管理员测试平台模型路由",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "模型ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "测试参数",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/llm/models/{id}/test-all": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按平台模型当前全部匹配的活跃路由并发执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "llm"
+                ],
+                "summary": "管理员批量测试平台模型全部路由",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "模型ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "测试参数",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeBatchResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/llm/settings": {
             "get": {
                 "security": [
@@ -2212,6 +2338,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/llm/upstreams/{id}/models/{route_id}/test": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "使用指定路由绑定的当前上游配置执行一次轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "llm"
+                ],
+                "summary": "管理员测试上游模型路由绑定",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "上游ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "路由绑定ID",
+                        "name": "route_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "测试参数",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ModelProbeResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_channel.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/settings": {
             "get": {
                 "security": [
@@ -3291,6 +3487,32 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/login-options": {
+            "get": {
+                "description": "获取用户名、邮箱、OAuth/OIDC 登录入口，以及邮箱注册 Turnstile 公共配置",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "获取登录入口配置",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.LoginOptionsResponseDoc"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/logout": {
             "post": {
                 "security": [
@@ -3402,6 +3624,86 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register/email/complete": {
+            "post": {
+                "description": "使用邮箱、密码和验证码完成注册；未开启邮箱验证码但启用 Turnstile 时需要提交 turnstileToken",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "完成邮箱注册",
+                "parameters": [
+                    {
+                        "description": "邮箱注册完成请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.EmailRegistrationCompleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.LoginResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register/email/start": {
+            "post": {
+                "description": "邮箱验证码注册开启时发送验证码；启用 Turnstile 后需要提交 turnstileToken",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "发送邮箱注册验证码",
+                "parameters": [
+                    {
+                        "description": "邮箱注册验证码请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.EmailRegistrationStartRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.EmailRegistrationStartResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/internal_transport_http_auth.ErrorDoc"
                         }
@@ -4160,7 +4462,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "删除当前用户项目分组。默认仅解除其下会话归属；delete_conversations=true 时同时软删除项目内会话。",
+                "description": "删除当前用户项目分组。默认仅解除其下会话归属；delete_conversations=true 时同时软删除项目内会话；delete_files=true 时同步删除不再被其他会话引用的文件。",
                 "consumes": [
                     "application/json"
                 ],
@@ -4183,6 +4485,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "是否同时删除项目内会话",
                         "name": "delete_conversations",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "是否同步删除不再被其他会话引用的会话文件",
+                        "name": "delete_files",
                         "in": "query"
                     }
                 ],
@@ -4675,6 +4983,12 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "是否同步删除不再被其他会话引用的会话文件",
+                        "name": "delete_files",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -6317,6 +6631,30 @@ const docTemplate = `{
                 }
             }
         },
+        "/settings/mcp-policy": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "查询 MCP 工具运行策略",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_DEEIX-AI_DEEIX-Chat_backend_internal_shared_response.Envelope"
+                        }
+                    }
+                }
+            }
+        },
         "/settings/model-option-policy": {
             "get": {
                 "security": [
@@ -7451,6 +7789,69 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_transport_http_auth.EmailRegistrationCompleteRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 8
+                },
+                "turnstileToken": {
+                    "type": "string",
+                    "maxLength": 2048
+                }
+            }
+        },
+        "internal_transport_http_auth.EmailRegistrationStartRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "turnstileToken": {
+                    "type": "string",
+                    "maxLength": 2048
+                }
+            }
+        },
+        "internal_transport_http_auth.EmailRegistrationStartResponse": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "sent": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_transport_http_auth.EmailRegistrationStartResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_auth.EmailRegistrationStartResponse"
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_transport_http_auth.EmailVerificationStartResponse": {
             "type": "object",
             "properties": {
@@ -7494,6 +7895,120 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "requestId": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_auth.IdentityProviderResponse": {
+            "type": "object",
+            "properties": {
+                "authURL": {
+                    "type": "string"
+                },
+                "avatarField": {
+                    "type": "string"
+                },
+                "clientID": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "defaultRole": {
+                    "type": "string"
+                },
+                "discoveryURL": {
+                    "type": "string"
+                },
+                "emailField": {
+                    "type": "string"
+                },
+                "emailVerifiedField": {
+                    "type": "string"
+                },
+                "issuerURL": {
+                    "type": "string"
+                },
+                "jwksURL": {
+                    "type": "string"
+                },
+                "loginEnabled": {
+                    "type": "boolean"
+                },
+                "logoURL": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nameField": {
+                    "type": "string"
+                },
+                "publicID": {
+                    "type": "string"
+                },
+                "registrationEnabled": {
+                    "type": "boolean"
+                },
+                "scopes": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "subjectField": {
+                    "type": "string"
+                },
+                "tokenURL": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userinfoURL": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_auth.LoginOptionsResponse": {
+            "type": "object",
+            "properties": {
+                "emailEnabled": {
+                    "type": "boolean"
+                },
+                "emailRegistrationEnabled": {
+                    "type": "boolean"
+                },
+                "emailVerificationEnabled": {
+                    "type": "boolean"
+                },
+                "providers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_transport_http_auth.IdentityProviderResponse"
+                    }
+                },
+                "turnstileRegistrationEnabled": {
+                    "type": "boolean"
+                },
+                "turnstileSiteKey": {
+                    "type": "string"
+                },
+                "usernameEnabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_transport_http_auth.LoginOptionsResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_auth.LoginOptionsResponse"
+                },
+                "errorMsg": {
                     "type": "string"
                 }
             }
@@ -7891,6 +8406,9 @@ const docTemplate = `{
                         "usage"
                     ]
                 },
+                "nativeToolBillingEnabled": {
+                    "type": "boolean"
+                },
                 "prepaidAmountUSD": {
                     "type": "number",
                     "minimum": 0
@@ -7908,6 +8426,15 @@ const docTemplate = `{
                 },
                 "mode": {
                     "type": "string"
+                },
+                "nativeToolBillingEnabled": {
+                    "type": "boolean"
+                },
+                "nativeToolPricing": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_transport_http_billing.NativeToolPricingResponse"
+                    }
                 },
                 "paymentProviders": {
                     "type": "array",
@@ -8303,6 +8830,29 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_billing.NativeToolPricingResponse": {
+            "type": "object",
+            "properties": {
+                "billable": {
+                    "type": "boolean"
+                },
+                "priceLabel": {
+                    "type": "string"
+                },
+                "priceNanousd": {
+                    "type": "integer"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "toolKey": {
+                    "type": "string"
+                },
+                "unit": {
                     "type": "string"
                 }
             }
@@ -9186,6 +9736,168 @@ const docTemplate = `{
                             "type": "integer"
                         }
                     }
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeBatchResponse": {
+            "type": "object",
+            "properties": {
+                "failedCount": {
+                    "type": "integer"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_transport_http_channel.ModelProbeResponse"
+                    }
+                },
+                "successCount": {
+                    "type": "integer"
+                },
+                "totalCount": {
+                    "type": "integer"
+                },
+                "unsupportedCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeBatchResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeBatchResponse"
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeDebugRequestResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "method": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeDebugResponse": {
+            "type": "object",
+            "properties": {
+                "request": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeDebugRequestResponse"
+                },
+                "response": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeDebugResponseResponse"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeDebugResponseResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "statusCode": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeRequest": {
+            "type": "object",
+            "properties": {
+                "taskType": {
+                    "type": "string",
+                    "enum": [
+                        "chat",
+                        "image_generation",
+                        "image_edit"
+                    ]
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeResponse": {
+            "type": "object",
+            "properties": {
+                "bindingCode": {
+                    "type": "string"
+                },
+                "debug": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeDebugResponse"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                },
+                "latencyMS": {
+                    "type": "integer"
+                },
+                "platformModelID": {
+                    "type": "integer"
+                },
+                "platformModelName": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "routeID": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "upstreamID": {
+                    "type": "integer"
+                },
+                "upstreamModelID": {
+                    "type": "integer"
+                },
+                "upstreamModelName": {
+                    "type": "string"
+                },
+                "upstreamName": {
+                    "type": "string"
+                },
+                "upstreamStatusCode": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_transport_http_channel.ModelProbeResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_channel.ModelProbeResponse"
                 },
                 "errorMsg": {
                     "type": "string"
@@ -10168,6 +10880,12 @@ const docTemplate = `{
             "properties": {
                 "deleted": {
                     "type": "boolean"
+                },
+                "deletedFileCount": {
+                    "type": "integer"
+                },
+                "quota": {
+                    "$ref": "#/definitions/internal_transport_http_conversation.StorageQuotaResponse"
                 }
             }
         },
@@ -11323,6 +12041,9 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "htmlVisualPrompt": {
+                    "type": "boolean"
+                },
                 "model": {
                     "type": "string",
                     "maxLength": 128
@@ -11337,7 +12058,7 @@ const docTemplate = `{
                 },
                 "selectedToolIDs": {
                     "type": "array",
-                    "maxItems": 32,
+                    "maxItems": 128,
                     "items": {
                         "type": "integer"
                     }
@@ -11671,7 +12392,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.1.1",
+	Version:          "0.1.2",
 	Host:             "",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

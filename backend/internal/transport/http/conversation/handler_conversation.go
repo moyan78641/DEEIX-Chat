@@ -277,6 +277,7 @@ func (h *Handler) SetConversationArchive(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "会话 public_id"
+// @Param delete_files query bool false "是否同步删除不再被其他会话引用的会话文件"
 // @Success 200 {object} ConversationDeleteResponseDoc
 // @Failure 400 {object} ErrorDoc
 // @Failure 404 {object} ErrorDoc
@@ -289,8 +290,12 @@ func (h *Handler) DeleteConversation(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "invalid conversation id")
 		return
 	}
+	deleteFiles := c.Query("delete_files") == "true"
 
-	if err = h.service.DeleteConversation(c.Request.Context(), userID, publicID); err != nil {
+	result, err := h.service.DeleteConversation(c.Request.Context(), userID, publicID, appconversation.DeleteConversationOptions{
+		DeleteFiles: deleteFiles,
+	})
+	if err != nil {
 		if errors.Is(err, appconversation.ErrConversationNotFound) {
 			response.Error(c, http.StatusNotFound, "conversation not found")
 			return
@@ -302,8 +307,12 @@ func (h *Handler) DeleteConversation(c *gin.Context) {
 	h.recordAudit(c, "delete_conversation",
 		"conversation",
 		publicID,
-		map[string]bool{"deleted": true},
+		map[string]interface{}{
+			"deleted":            true,
+			"delete_files":       deleteFiles,
+			"deleted_file_count": result.DeletedFileCount,
+		},
 	)
 
-	response.Success(c, ConversationDeleteResponse{Deleted: true})
+	response.Success(c, toConversationDeleteResponse(result))
 }

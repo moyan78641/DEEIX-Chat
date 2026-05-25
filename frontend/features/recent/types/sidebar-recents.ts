@@ -13,6 +13,15 @@ export type SidebarConversationChange = {
   patch?: Partial<ConversationDTO>;
 };
 
+export type DeleteConversationOptions = {
+  deleteFiles?: boolean;
+};
+
+export type DeleteConversationProjectOptions = {
+  deleteConversations?: boolean;
+  deleteFiles?: boolean;
+};
+
 export type SidebarRecentsControllerValue = {
   items: ConversationDTO[];
   recentItems: ConversationDTO[];
@@ -32,12 +41,12 @@ export type SidebarRecentsControllerValue = {
   renameByPublicID: (publicID: string, title: string) => Promise<ConversationDTO | null>;
   createProject: (payload: CreateConversationProjectRequest) => Promise<ConversationProjectDTO | null>;
   updateProject: (projectID: string, payload: UpdateConversationProjectRequest) => Promise<ConversationProjectDTO | null>;
-  deleteProject: (projectID: string, deleteConversations?: boolean) => Promise<boolean>;
+  deleteProject: (projectID: string, options?: DeleteConversationProjectOptions) => Promise<boolean>;
   reorderProjects: (projectIDs: string[]) => Promise<void>;
   setProjectByPublicID: (publicID: string, projectID?: string) => Promise<ConversationDTO | null>;
   batchSetProjectByPublicIDs: (publicIDs: string[], projectID?: string) => Promise<number>;
   setStarByPublicID: (publicID: string, starred: boolean) => Promise<ConversationDTO | null>;
   loadAllStarred: () => Promise<ConversationDTO[]>;
   archiveByPublicID: (publicID: string, archived: boolean) => Promise<ConversationDTO | null>;
-  deleteByPublicID: (publicID: string) => Promise<boolean>;
+  deleteByPublicID: (publicID: string, options?: DeleteConversationOptions) => Promise<boolean>;
 };

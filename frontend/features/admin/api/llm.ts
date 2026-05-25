@@ -7,6 +7,8 @@ import type {
   AdminLLMSetting,
   AdminLLMModelData,
   AdminLLMModelDTO,
+  AdminLLMModelProbeBatchData,
+  AdminLLMModelProbeData,
   AdminLLMModelUpstreamSourceData,
   AdminLLMModelUpstreamSourceDTO,
   AdminLLMUpstreamData,
@@ -387,6 +389,28 @@ export async function batchDeleteAdminLLMModels(
   );
 }
 
+export async function testAdminLLMModel(
+  accessToken: string,
+  modelID: number,
+): Promise<AdminLLMModelProbeData> {
+  return authedRequest<AdminLLMModelProbeData>(
+    `/api/v1/admin/llm/models/${modelID}/test`,
+    { method: "POST", accessToken, body: {} },
+    true,
+  );
+}
+
+export async function testAdminLLMModelAll(
+  accessToken: string,
+  modelID: number,
+): Promise<AdminLLMModelProbeBatchData> {
+  return authedRequest<AdminLLMModelProbeBatchData>(
+    `/api/v1/admin/llm/models/${modelID}/test-all`,
+    { method: "POST", accessToken, body: {} },
+    true,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Model upstream sources
 // ---------------------------------------------------------------------------
@@ -414,6 +438,18 @@ export async function updateAdminLLMModelUpstreamSource(
   return authedRequest<AdminLLMModelUpstreamSourceData>(
     `/api/v1/admin/llm/models/${modelID}/sources/${routeID}`,
     { method: "PATCH", accessToken, body: payload },
+    true,
+  );
+}
+
+export async function testAdminLLMUpstreamModelRoute(
+  accessToken: string,
+  upstreamID: number,
+  routeID: number,
+): Promise<AdminLLMModelProbeData> {
+  return authedRequest<AdminLLMModelProbeData>(
+    `/api/v1/admin/llm/upstreams/${upstreamID}/models/${routeID}/test`,
+    { method: "POST", accessToken, body: {} },
     true,
   );
 }

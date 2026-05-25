@@ -577,6 +577,49 @@ definitions:
       errorMsg:
         type: string
     type: object
+  internal_transport_http_auth.EmailRegistrationCompleteRequest:
+    properties:
+      code:
+        type: string
+      email:
+        maxLength: 128
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+      turnstileToken:
+        maxLength: 2048
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_transport_http_auth.EmailRegistrationStartRequest:
+    properties:
+      email:
+        maxLength: 128
+        type: string
+      turnstileToken:
+        maxLength: 2048
+        type: string
+    required:
+    - email
+    type: object
+  internal_transport_http_auth.EmailRegistrationStartResponse:
+    properties:
+      expiresAt:
+        type: string
+      sent:
+        type: boolean
+    type: object
+  internal_transport_http_auth.EmailRegistrationStartResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_auth.EmailRegistrationStartResponse'
+      errorMsg:
+        type: string
+    type: object
   internal_transport_http_auth.EmailVerificationStartResponse:
     properties:
       availableMethods:
@@ -606,6 +649,81 @@ definitions:
       errorMsg:
         type: string
       requestId:
+        type: string
+    type: object
+  internal_transport_http_auth.IdentityProviderResponse:
+    properties:
+      authURL:
+        type: string
+      avatarField:
+        type: string
+      clientID:
+        type: string
+      createdAt:
+        type: string
+      defaultRole:
+        type: string
+      discoveryURL:
+        type: string
+      emailField:
+        type: string
+      emailVerifiedField:
+        type: string
+      issuerURL:
+        type: string
+      jwksURL:
+        type: string
+      loginEnabled:
+        type: boolean
+      logoURL:
+        type: string
+      name:
+        type: string
+      nameField:
+        type: string
+      publicID:
+        type: string
+      registrationEnabled:
+        type: boolean
+      scopes:
+        type: string
+      slug:
+        type: string
+      subjectField:
+        type: string
+      tokenURL:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+      userinfoURL:
+        type: string
+    type: object
+  internal_transport_http_auth.LoginOptionsResponse:
+    properties:
+      emailEnabled:
+        type: boolean
+      emailRegistrationEnabled:
+        type: boolean
+      emailVerificationEnabled:
+        type: boolean
+      providers:
+        items:
+          $ref: '#/definitions/internal_transport_http_auth.IdentityProviderResponse'
+        type: array
+      turnstileRegistrationEnabled:
+        type: boolean
+      turnstileSiteKey:
+        type: string
+      usernameEnabled:
+        type: boolean
+    type: object
+  internal_transport_http_auth.LoginOptionsResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_auth.LoginOptionsResponse'
+      errorMsg:
         type: string
     type: object
   internal_transport_http_auth.LoginRequest:
@@ -869,6 +987,8 @@ definitions:
         - period
         - usage
         type: string
+      nativeToolBillingEnabled:
+        type: boolean
       prepaidAmountUSD:
         minimum: 0
         type: number
@@ -883,6 +1003,12 @@ definitions:
         type: array
       mode:
         type: string
+      nativeToolBillingEnabled:
+        type: boolean
+      nativeToolPricing:
+        items:
+          $ref: '#/definitions/internal_transport_http_billing.NativeToolPricingResponse'
+        type: array
       paymentProviders:
         items:
           type: string
@@ -1144,6 +1270,21 @@ definitions:
       tieredPricingJSON:
         type: string
       updatedAt:
+        type: string
+    type: object
+  internal_transport_http_billing.NativeToolPricingResponse:
+    properties:
+      billable:
+        type: boolean
+      priceLabel:
+        type: string
+      priceNanousd:
+        type: integer
+      provider:
+        type: string
+      toolKey:
+        type: string
+      unit:
         type: string
     type: object
   internal_transport_http_billing.PaymentTypeResponse:
@@ -1743,6 +1884,112 @@ definitions:
           total:
             type: integer
         type: object
+      errorMsg:
+        type: string
+    type: object
+  internal_transport_http_channel.ModelProbeBatchResponse:
+    properties:
+      failedCount:
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/internal_transport_http_channel.ModelProbeResponse'
+        type: array
+      successCount:
+        type: integer
+      totalCount:
+        type: integer
+      unsupportedCount:
+        type: integer
+    type: object
+  internal_transport_http_channel.ModelProbeBatchResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeBatchResponse'
+      errorMsg:
+        type: string
+    type: object
+  internal_transport_http_channel.ModelProbeDebugRequestResponse:
+    properties:
+      body:
+        type: string
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      method:
+        type: string
+      path:
+        type: string
+    type: object
+  internal_transport_http_channel.ModelProbeDebugResponse:
+    properties:
+      request:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeDebugRequestResponse'
+      response:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeDebugResponseResponse'
+    type: object
+  internal_transport_http_channel.ModelProbeDebugResponseResponse:
+    properties:
+      body:
+        type: string
+      headers:
+        additionalProperties:
+          type: string
+        type: object
+      statusCode:
+        type: integer
+    type: object
+  internal_transport_http_channel.ModelProbeRequest:
+    properties:
+      taskType:
+        enum:
+        - chat
+        - image_generation
+        - image_edit
+        type: string
+    type: object
+  internal_transport_http_channel.ModelProbeResponse:
+    properties:
+      bindingCode:
+        type: string
+      debug:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeDebugResponse'
+      endpoint:
+        type: string
+      errorCode:
+        type: string
+      errorMessage:
+        type: string
+      latencyMS:
+        type: integer
+      platformModelID:
+        type: integer
+      platformModelName:
+        type: string
+      protocol:
+        type: string
+      routeID:
+        type: integer
+      status:
+        type: string
+      success:
+        type: boolean
+      upstreamID:
+        type: integer
+      upstreamModelID:
+        type: integer
+      upstreamModelName:
+        type: string
+      upstreamName:
+        type: string
+      upstreamStatusCode:
+        type: integer
+    type: object
+  internal_transport_http_channel.ModelProbeResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_channel.ModelProbeResponse'
       errorMsg:
         type: string
     type: object
@@ -2397,6 +2644,10 @@ definitions:
     properties:
       deleted:
         type: boolean
+      deletedFileCount:
+        type: integer
+      quota:
+        $ref: '#/definitions/internal_transport_http_conversation.StorageQuotaResponse'
     type: object
   internal_transport_http_conversation.ConversationDeleteResponseDoc:
     properties:
@@ -3156,6 +3407,8 @@ definitions:
           type: string
         maxItems: 20
         type: array
+      htmlVisualPrompt:
+        type: boolean
       model:
         maxLength: 128
         type: string
@@ -3168,7 +3421,7 @@ definitions:
       selectedToolIDs:
         items:
           type: integer
-        maxItems: 32
+        maxItems: 128
         type: array
       sourceMessagePublicID:
         maxLength: 32
@@ -3387,7 +3640,7 @@ info:
   contact: {}
   description: DEEIX Chat 后端 API 文档
   title: DEEIX Chat API
-  version: 0.1.1
+  version: "0.1.2"
 paths:
   /admin/audit-logs:
     get:
@@ -3951,6 +4204,86 @@ paths:
       security:
       - BearerAuth: []
       summary: 管理员更新模型上游来源
+      tags:
+      - llm
+  /admin/llm/models/{id}/test:
+    post:
+      consumes:
+      - application/json
+      description: 按平台模型当前活跃路由选择一个来源执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥
+      parameters:
+      - description: 模型ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 测试参数
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/internal_transport_http_channel.ModelProbeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ModelProbeResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+      security:
+      - BearerAuth: []
+      summary: 管理员测试平台模型路由
+      tags:
+      - llm
+  /admin/llm/models/{id}/test-all:
+    post:
+      consumes:
+      - application/json
+      description: 按平台模型当前全部匹配的活跃路由并发执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥
+      parameters:
+      - description: 模型ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 测试参数
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/internal_transport_http_channel.ModelProbeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ModelProbeBatchResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+      security:
+      - BearerAuth: []
+      summary: 管理员批量测试平台模型全部路由
       tags:
       - llm
   /admin/llm/models/batch-delete:
@@ -4608,6 +4941,51 @@ paths:
       security:
       - BearerAuth: []
       summary: 管理员启用上游模型路由绑定
+      tags:
+      - llm
+  /admin/llm/upstreams/{id}/models/{route_id}/test:
+    post:
+      consumes:
+      - application/json
+      description: 使用指定路由绑定的当前上游配置执行一次轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥
+      parameters:
+      - description: 上游ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 路由绑定ID
+        in: path
+        name: route_id
+        required: true
+        type: integer
+      - description: 测试参数
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/internal_transport_http_channel.ModelProbeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ModelProbeResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_transport_http_channel.ErrorDoc'
+      security:
+      - BearerAuth: []
+      summary: 管理员测试上游模型路由绑定
       tags:
       - llm
   /admin/llm/upstreams/{id}/models/batch-delete:
@@ -5464,6 +5842,23 @@ paths:
       summary: 用户登录
       tags:
       - auth
+  /auth/login-options:
+    get:
+      description: 获取用户名、邮箱、OAuth/OIDC 登录入口，以及邮箱注册 Turnstile 公共配置
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.LoginOptionsResponseDoc'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.ErrorDoc'
+      summary: 获取登录入口配置
+      tags:
+      - auth
   /auth/logout:
     post:
       consumes:
@@ -5537,6 +5932,58 @@ paths:
           schema:
             $ref: '#/definitions/internal_transport_http_auth.ErrorDoc'
       summary: 刷新访问令牌
+      tags:
+      - auth
+  /auth/register/email/complete:
+    post:
+      consumes:
+      - application/json
+      description: 使用邮箱、密码和验证码完成注册；未开启邮箱验证码但启用 Turnstile 时需要提交 turnstileToken
+      parameters:
+      - description: 邮箱注册完成请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_transport_http_auth.EmailRegistrationCompleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.LoginResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.ErrorDoc'
+      summary: 完成邮箱注册
+      tags:
+      - auth
+  /auth/register/email/start:
+    post:
+      consumes:
+      - application/json
+      description: 邮箱验证码注册开启时发送验证码；启用 Turnstile 后需要提交 turnstileToken
+      parameters:
+      - description: 邮箱注册验证码请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_transport_http_auth.EmailRegistrationStartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.EmailRegistrationStartResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.ErrorDoc'
+      summary: 发送邮箱注册验证码
       tags:
       - auth
   /auth/sessions:
@@ -5974,7 +6421,8 @@ paths:
     delete:
       consumes:
       - application/json
-      description: 删除当前用户项目分组。默认仅解除其下会话归属；delete_conversations=true 时同时软删除项目内会话。
+      description: 删除当前用户项目分组。默认仅解除其下会话归属；delete_conversations=true 时同时软删除项目内会话；delete_files=true
+        时同步删除不再被其他会话引用的文件。
       parameters:
       - description: 项目 public_id
         in: path
@@ -5984,6 +6432,10 @@ paths:
       - description: 是否同时删除项目内会话
         in: query
         name: delete_conversations
+        type: boolean
+      - description: 是否同步删除不再被其他会话引用的会话文件
+        in: query
+        name: delete_files
         type: boolean
       produces:
       - application/json
@@ -6227,6 +6679,10 @@ paths:
         name: id
         required: true
         type: string
+      - description: 是否同步删除不再被其他会话引用的会话文件
+        in: query
+        name: delete_files
+        type: boolean
       produces:
       - application/json
       responses:
@@ -7382,6 +7838,20 @@ paths:
           schema:
             $ref: '#/definitions/github_com_DEEIX-AI_DEEIX-Chat_backend_internal_shared_response.Envelope'
       summary: 查询公开登录页配置
+      tags:
+      - settings
+  /settings/mcp-policy:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_DEEIX-AI_DEEIX-Chat_backend_internal_shared_response.Envelope'
+      security:
+      - BearerAuth: []
+      summary: 查询 MCP 工具运行策略
       tags:
       - settings
   /settings/model-option-policy:

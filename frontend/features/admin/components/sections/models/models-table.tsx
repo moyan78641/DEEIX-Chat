@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
+  Activity,
   CheckCircle2,
   CircleOff,
   CircleX,
@@ -73,6 +74,7 @@ import {
   resolveErrorMessage,
   resolveValue,
 } from "@/features/admin/types/llm";
+import { sortProtocolsForDisplay } from "@/features/admin/utils/llm-display";
 import { parseKindsJSON } from "@/shared/model/llm-schema";
 
 const EXPANDED_ROW_ANIMATION_MS = 220;
@@ -131,10 +133,11 @@ function formatCircuitUntil(until: string, locale: string): string {
 }
 
 function ProtocolBadges({ protocols }: { protocols: string[] }) {
-  if (protocols.length === 0) return <span className="text-muted-foreground">-</span>;
+  const sortedProtocols = sortProtocolsForDisplay(protocols);
+  if (sortedProtocols.length === 0) return <span className="text-muted-foreground">-</span>;
   return (
     <div className="flex min-w-0 flex-nowrap items-center gap-1">
-      {protocols.map((item) => (
+      {sortedProtocols.map((item) => (
         <Badge key={item} variant="secondary" className="whitespace-nowrap">
           {ADAPTER_LABELS[item] ?? item}
         </Badge>
@@ -152,7 +155,7 @@ function KindsBadges({ kindsJson }: { kindsJson: string | null | undefined }) {
   const kinds = parseKindsJSON(kindsJson);
   if (kinds.length === 0) return <span className="text-muted-foreground">-</span>;
   return (
-    <div className="flex min-w-0 flex-nowrap items-center justify-center gap-1 overflow-hidden">
+    <div className="flex min-w-0 flex-nowrap items-center justify-start gap-1 overflow-hidden">
       {kinds.map((kind) => (
         <Badge key={kind} variant="secondary">
           {["chat", "audio", "image_gen", "image_edit", "video_gen"].includes(kind)
@@ -222,6 +225,8 @@ type ModelsTableProps = {
   onViewSources: (item: AdminLLMModelDTO) => void;
   onToggleStatus: (item: AdminLLMModelDTO, status: AdminLLMStatus) => void;
   onDelete: (item: AdminLLMModelDTO) => void;
+  onTestModel?: (item: AdminLLMModelDTO) => void;
+  onTestSource?: (source: AdminLLMModelUpstreamSourceDTO) => void;
   onSourceStatusChange?: (modelID: number, previous: AdminLLMStatus, next: AdminLLMStatus) => void;
   onSourceDeleteChange?: (modelID: number, source: AdminLLMModelUpstreamSourceDTO, deleted: boolean) => void;
 };
@@ -239,6 +244,8 @@ type ModelTableRowProps = {
   onViewSources: (item: AdminLLMModelDTO) => void;
   onToggleStatus: (item: AdminLLMModelDTO, status: AdminLLMStatus) => void;
   onDelete: (item: AdminLLMModelDTO) => void;
+  onTestModel?: (item: AdminLLMModelDTO) => void;
+  onTestSource?: (source: AdminLLMModelUpstreamSourceDTO) => void;
   onInlineStatusToggle: (source: AdminLLMModelUpstreamSourceDTO, modelId: number) => void;
   onInlineCircuit: (source: AdminLLMModelUpstreamSourceDTO, modelId: number, action: "open" | "reset") => void;
   onInlineSourceDeleteRequest: (target: InlineSourceDeleteTarget) => void;
@@ -246,7 +253,7 @@ type ModelTableRowProps = {
 
 function resolveModelProtocols(item: AdminLLMModelDTO): string[] {
   try {
-    return item.protocolsJSON ? (JSON.parse(item.protocolsJSON) as string[]) : [];
+    return item.protocolsJSON ? sortProtocolsForDisplay(JSON.parse(item.protocolsJSON) as string[]) : [];
   } catch {
     return [];
   }
@@ -265,6 +272,8 @@ const ModelTableRow = React.memo(function ModelTableRow({
   onViewSources,
   onToggleStatus,
   onDelete,
+  onTestModel,
+  onTestSource,
   onInlineStatusToggle,
   onInlineCircuit,
   onInlineSourceDeleteRequest,
@@ -310,7 +319,7 @@ const ModelTableRow = React.memo(function ModelTableRow({
           </div>
         </TableCell>
 
-        <TableCell className="py-1 text-center">
+        <TableCell className="py-1">
           <KindsBadges kindsJson={item.kindsJSON} />
         </TableCell>
 
@@ -378,6 +387,12 @@ const ModelTableRow = React.memo(function ModelTableRow({
                 <List className="size-3.5 stroke-1" />
                 {t("table.viewSources")}
               </DropdownMenuItem>
+              {onTestModel ? (
+                <DropdownMenuItem onSelect={() => onTestModel(item)}>
+                  <Activity className="size-3.5 stroke-1" />
+                  {t("actions.testAll")}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuSeparator />
               {item.status === "active" ? (
                 <DropdownMenuItem onSelect={() => onToggleStatus(item, "inactive")}>
@@ -447,7 +462,7 @@ const ModelTableRow = React.memo(function ModelTableRow({
                       </span>
                     </div>
                   </CollapsibleTableCell>
-                  <CollapsibleTableCell opening={opening} closing={collapsing} className="py-1 text-center">
+                  <CollapsibleTableCell opening={opening} closing={collapsing} className="py-1">
                     <KindsBadges kindsJson={source.upstreamModelKindsJSON} />
                   </CollapsibleTableCell>
                   <CollapsibleTableCell opening={opening} closing={collapsing} className="py-1">
@@ -513,6 +528,15 @@ const ModelTableRow = React.memo(function ModelTableRow({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {onTestSource ? (
+                          <>
+                            <DropdownMenuItem onSelect={() => onTestSource(source)}>
+                              <Activity className="size-3.5 stroke-1" />
+                              {t("actions.test")}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        ) : null}
                         {source.status === "active" ? (
                           <DropdownMenuItem onSelect={() => onInlineStatusToggle(source, item.id)}>
                             <CircleOff className="size-3.5 stroke-1" />
@@ -577,6 +601,8 @@ export function ModelsTable({
   onViewSources,
   onToggleStatus,
   onDelete,
+  onTestModel,
+  onTestSource,
   onSourceStatusChange,
   onSourceDeleteChange,
 }: ModelsTableProps) {
@@ -893,7 +919,7 @@ export function ModelsTable({
             </div>
           </TableHead>
           <TableHead>{t("platformModel")}</TableHead>
-          <TableHead className="text-center">{t("table.kind")}</TableHead>
+          <TableHead>{t("table.kind")}</TableHead>
           <TableHead>{t("sources.protocol")}</TableHead>
           <TableHead className="w-[120px]">{t("table.vendor")}</TableHead>
           <TableHead className="w-[96px] text-center">{t("table.sources")}</TableHead>
@@ -927,6 +953,8 @@ export function ModelsTable({
             onViewSources={onViewSources}
             onToggleStatus={onToggleStatus}
             onDelete={onDelete}
+            onTestModel={onTestModel}
+            onTestSource={onTestSource}
             onInlineStatusToggle={handleInlineStatusToggle}
             onInlineCircuit={handleInlineCircuit}
             onInlineSourceDeleteRequest={setDeleteSourceTarget}

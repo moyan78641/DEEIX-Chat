@@ -114,6 +114,12 @@ func (r *RuntimeSettings) applyItem(cfg *config.Config, item domainsettings.Syst
 		cfg.EmailRegistrationNoAlias = toBool(item.Value, cfg.EmailRegistrationNoAlias)
 	case "auth:auto_link_verified_email":
 		cfg.AutoLinkVerifiedEmail = toBool(item.Value, cfg.AutoLinkVerifiedEmail)
+	case "auth:turnstile_registration_enabled":
+		cfg.TurnstileRegistrationEnabled = toBool(item.Value, cfg.TurnstileRegistrationEnabled)
+	case "auth:turnstile_site_key":
+		cfg.TurnstileSiteKey = strings.TrimSpace(item.Value)
+	case "auth:turnstile_secret_key":
+		cfg.TurnstileSecretKey = strings.TrimSpace(item.Value)
 
 		// 对话配置
 	case "chat:max_context_messages":
@@ -332,6 +338,8 @@ func (r *RuntimeSettings) applyItem(cfg *config.Config, item domainsettings.Syst
 		cfg.MCPToolRetryCount = toInt(item.Value, cfg.MCPToolRetryCount)
 	case "mcp:mcp_max_concurrent_calls":
 		cfg.MCPMaxConcurrentCalls = toInt(item.Value, cfg.MCPMaxConcurrentCalls)
+	case "mcp:mcp_max_selected_tools_per_message":
+		cfg.MCPMaxSelectedToolsPerMessage = toInt(item.Value, cfg.MCPMaxSelectedToolsPerMessage)
 	case "mcp:mcp_max_llm_calls_per_run":
 		cfg.MCPMaxLLMCallsPerRun = toInt(item.Value, cfg.MCPMaxLLMCallsPerRun)
 	case "mcp:mcp_max_tool_calls_per_run":
@@ -343,6 +351,9 @@ func (r *RuntimeSettings) applyItem(cfg *config.Config, item domainsettings.Syst
 func (r *RuntimeSettings) normalizeConfig(cfg *config.Config) {
 	if !cfg.EmailLoginEnabled {
 		cfg.EmailRegistrationEnabled = false
+	}
+	if !cfg.EmailRegistrationEnabled {
+		cfg.TurnstileRegistrationEnabled = false
 	}
 	if !cfg.EmbeddingEnabled || strings.TrimSpace(cfg.EmbeddingHost) == "" || strings.TrimSpace(cfg.RAGModel) == "" {
 		cfg.RAGEnabled = false
@@ -371,6 +382,12 @@ func (r *RuntimeSettings) normalizeConfig(cfg *config.Config) {
 	}
 	if strings.TrimSpace(cfg.NativeToolAllowedTypes) == "" {
 		cfg.NativeToolAllowedTypes = config.DefaultNativeToolAllowedTypesJSON()
+	}
+	if cfg.MCPMaxSelectedToolsPerMessage <= 0 {
+		cfg.MCPMaxSelectedToolsPerMessage = config.DefaultMCPMaxSelectedToolsPerMessage
+	}
+	if cfg.MCPMaxSelectedToolsPerMessage > config.MaxMCPSelectedToolsPerMessage {
+		cfg.MCPMaxSelectedToolsPerMessage = config.MaxMCPSelectedToolsPerMessage
 	}
 	if !cfg.FileFullContextLimitEnabled {
 		cfg.FileFullContextMaxBytes = 0

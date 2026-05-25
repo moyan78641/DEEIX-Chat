@@ -124,13 +124,14 @@ func (h *Handler) UpdateConversationProject(c *gin.Context) {
 
 // DeleteConversationProject godoc
 // @Summary 删除会话项目
-// @Description 删除当前用户项目分组。默认仅解除其下会话归属；delete_conversations=true 时同时软删除项目内会话。
+// @Description 删除当前用户项目分组。默认仅解除其下会话归属；delete_conversations=true 时同时软删除项目内会话；delete_files=true 时同步删除不再被其他会话引用的文件。
 // @Tags chat
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "项目 public_id"
 // @Param delete_conversations query bool false "是否同时删除项目内会话"
+// @Param delete_files query bool false "是否同步删除不再被其他会话引用的会话文件"
 // @Success 200 {object} ConversationDeleteResponseDoc
 // @Failure 400 {object} ErrorDoc
 // @Failure 404 {object} ErrorDoc
@@ -144,7 +145,15 @@ func (h *Handler) DeleteConversationProject(c *gin.Context) {
 		return
 	}
 	deleteConversations := c.Query("delete_conversations") == "true"
-	if err = h.service.DeleteConversationProject(c.Request.Context(), userID, publicID, deleteConversations); err != nil {
+	deleteFiles := c.Query("delete_files") == "true"
+	result, err := h.service.DeleteConversationProject(
+		c.Request.Context(),
+		userID,
+		publicID,
+		deleteConversations,
+		appconversation.DeleteConversationOptions{DeleteFiles: deleteFiles},
+	)
+	if err != nil {
 		if errors.Is(err, appconversation.ErrConversationProjectNotFound) {
 			response.Error(c, http.StatusNotFound, "conversation project not found")
 			return
@@ -152,11 +161,13 @@ func (h *Handler) DeleteConversationProject(c *gin.Context) {
 		response.Error(c, http.StatusInternalServerError, "delete conversation project failed")
 		return
 	}
-	h.recordAudit(c, "delete_conversation_project", "conversation_project", publicID, map[string]bool{
+	h.recordAudit(c, "delete_conversation_project", "conversation_project", publicID, map[string]interface{}{
 		"deleted":              true,
 		"delete_conversations": deleteConversations,
+		"delete_files":         deleteFiles,
+		"deleted_file_count":   result.DeletedFileCount,
 	})
-	response.Success(c, ConversationDeleteResponse{Deleted: true})
+	response.Success(c, toConversationDeleteResponse(result))
 }
 
 // ReorderConversationProjects godoc

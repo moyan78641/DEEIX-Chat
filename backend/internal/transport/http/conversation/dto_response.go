@@ -242,7 +242,24 @@ func toPublicSharedConversationResponse(item *appconversation.PublicSharedConver
 
 // ConversationDeleteResponse 删除会话响应 DTO。
 type ConversationDeleteResponse struct {
-	Deleted bool `json:"deleted"`
+	Deleted          bool                  `json:"deleted"`
+	DeletedFileCount int                   `json:"deletedFileCount,omitempty"`
+	Quota            *StorageQuotaResponse `json:"quota,omitempty"`
+}
+
+func toConversationDeleteResponse(result *appconversation.DeleteConversationResult) ConversationDeleteResponse {
+	if result == nil {
+		return ConversationDeleteResponse{Deleted: true}
+	}
+	response := ConversationDeleteResponse{
+		Deleted:          result.Deleted,
+		DeletedFileCount: result.DeletedFileCount,
+	}
+	if result.Quota != nil {
+		quota := toStorageQuotaResponse(*result.Quota)
+		response.Quota = &quota
+	}
+	return response
 }
 
 // ---------- File Object ----------

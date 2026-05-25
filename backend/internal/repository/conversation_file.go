@@ -27,6 +27,11 @@ type FileBatchRepository interface {
 	GetActiveFileObjectsByIDs(ctx context.Context, userID uint, fileIDs []string) ([]domainconversation.FileObject, error)
 }
 
+// DeleteFileObjectOptions 定义文件对象删除的仓储约束。
+type DeleteFileObjectOptions struct {
+	RequireUnreferenced bool
+}
+
 // UploadRepository 封装上传、去重和配额能力。
 type UploadRepository interface {
 	FileListingRepository
@@ -34,7 +39,7 @@ type UploadRepository interface {
 	GetUserByID(ctx context.Context, userID uint) (*domainuser.User, error)
 	GetLatestActiveFileObjectBySHA(ctx context.Context, userID uint, sha256 string, sizeBytes int64) (*domainconversation.FileObject, error)
 	CreateFileObjectAndConsumeQuota(ctx context.Context, item *domainconversation.FileObject, quotaLimit int64) (*domainconversation.StorageQuota, error)
-	DeleteFileObjectAndReleaseQuota(ctx context.Context, userID uint, fileID string, quotaLimit int64) (*domainconversation.FileObject, *domainconversation.StorageQuota, bool, error)
+	DeleteFileObjectAndReleaseQuota(ctx context.Context, userID uint, fileID string, quotaLimit int64, options DeleteFileObjectOptions) (*domainconversation.FileObject, *domainconversation.StorageQuota, bool, error)
 	GetOrInitUserStorageQuota(ctx context.Context, userID uint, quotaLimit int64) (*domainconversation.StorageQuota, error)
 }
 

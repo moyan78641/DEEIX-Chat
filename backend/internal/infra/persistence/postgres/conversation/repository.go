@@ -544,16 +544,123 @@ func (r *Repo) UpdateConversationArchiveByPublicID(
 	return r.GetConversationByPublicID(ctx, publicID, userID)
 }
 
-// DeleteConversationByPublicID 删除会话（软删除）。
-func (r *Repo) DeleteConversationByPublicID(ctx context.Context, userID uint, publicID string) error {
-	result := r.db.WithContext(ctx).
-		Where("user_id = ? AND public_id = ?", userID, publicID).
-		Delete(&models.Conversation{})
-	if result.Error != nil {
-		return translateError(result.Error)
+// DeleteConversationByPublicID 删除会话（软删除），并可返回仅被该会话引用的文件 ID。
+func (r *Repo) DeleteConversationByPublicID(ctx context.Context, userID uint, publicID string, deleteFiles bool) ([]string, error) {
+	normalizedPublicID := strings.TrimSpace(publicID)
+	cleanupFileIDs := make([]string, 0)
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var item models.Conversation
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("user_id = ? AND public_id = ?", userID, normalizedPublicID).
+			First(&item).Error; err != nil {
+			return translateError(err)
+		}
+		if err := tx.Delete(&item).Error; err != nil {
+			return translateError(err)
+		}
+		if !deleteFiles {
+			return nil
+		}
+		// 候选文件必须在会话软删除后计算，避免仍被其他活跃会话引用的文件被误删。
+		fileIDs, err := listConversationFileCleanupCandidates(tx, userID, []uint{item.ID})
+		if err != nil {
+			return err
+		}
+		cleanupFileIDs = fileIDs
+		return nil
+	})
+	if err != nil {
+		return nil, translateError(err)
 	}
-	if result.RowsAffected == 0 {
+	return cleanupFileIDs, nil
+}
+
+type conversationFileCleanupCandidate struct {
+	FileID string `gorm:"column:file_id"`
+}
+
+// listConversationFileCleanupCandidates 返回仅被指定会话集合引用、且仍处于 active 状态的文件 ID。
+func listConversationFileCleanupCandidates(tx *gorm.DB, userID uint, conversationIDs []uint) ([]string, error) {
+	if len(conversationIDs) == 0 {
+		return nil, nil
+	}
+	activeReferenceQuery := tx.
+		Table("chat_attachments AS other_a").
+		Select("1").
+		Joins("JOIN chat_conversations AS other_c ON other_c.id = other_a.conversation_id AND other_c.user_id = other_a.user_id AND other_c.deleted_at IS NULL").
+		Where("other_a.user_id = a.user_id AND other_a.file_id = a.file_id AND other_a.status <> ?", "deleted")
+
+	rows := make([]conversationFileCleanupCandidate, 0)
+	if err := tx.
+		Table("chat_attachments AS a").
+		Select("DISTINCT a.file_id AS file_id").
+		Joins("JOIN file_objects AS fo ON fo.user_id = a.user_id AND fo.file_id = a.file_id AND fo.status = ? AND fo.deleted_at IS NULL", "active").
+		Where("a.user_id = ? AND a.conversation_id IN ? AND a.status <> ? AND a.file_id <> ''", userID, conversationIDs, "deleted").
+		Where("NOT EXISTS (?)", activeReferenceQuery).
+		Order("a.file_id ASC").
+		Scan(&rows).Error; err != nil {
+		return nil, translateError(err)
+	}
+	fileIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if strings.TrimSpace(row.FileID) != "" {
+			fileIDs = append(fileIDs, row.FileID)
+		}
+	}
+	return fileIDs, nil
+}
+
+func lockActiveFileObjectsForAttachments(tx *gorm.DB, userID uint, attachments []domainconversation.Attachment) error {
+	fileIDs := make([]string, 0, len(attachments))
+	seen := make(map[string]struct{}, len(attachments))
+	for i := range attachments {
+		fileID := strings.TrimSpace(attachments[i].FileID)
+		if fileID == "" {
+			continue
+		}
+		attachmentUserID := attachments[i].UserID
+		if userID == 0 {
+			userID = attachmentUserID
+		}
+		if attachmentUserID != 0 && attachmentUserID != userID {
+			return repository.ErrInvalidInput
+		}
+		if _, exists := seen[fileID]; exists {
+			continue
+		}
+		seen[fileID] = struct{}{}
+		fileIDs = append(fileIDs, fileID)
+	}
+	if len(fileIDs) == 0 {
+		return nil
+	}
+	if userID == 0 {
+		return repository.ErrInvalidInput
+	}
+
+	lockedIDs := make([]uint, 0, len(fileIDs))
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Model(&models.FileObject{}).
+		Where("user_id = ? AND status = ? AND file_id IN ?", userID, "active", fileIDs).
+		Pluck("id", &lockedIDs).Error; err != nil {
+		return translateError(err)
+	}
+	if len(lockedIDs) != len(fileIDs) {
 		return repository.ErrNotFound
+	}
+	return nil
+}
+
+func ensureFileObjectUnreferencedByActiveConversations(tx *gorm.DB, userID uint, fileID string) error {
+	var activeReferences int64
+	if err := tx.Table("chat_attachments AS a").
+		Joins("JOIN chat_conversations AS c ON c.id = a.conversation_id AND c.user_id = a.user_id AND c.deleted_at IS NULL").
+		Where("a.user_id = ? AND a.file_id = ? AND a.status <> ?", userID, fileID, "deleted").
+		Count(&activeReferences).Error; err != nil {
+		return translateError(err)
+	}
+	if activeReferences > 0 {
+		return repository.ErrConflict
 	}
 	return nil
 }
@@ -658,6 +765,9 @@ func (r *Repo) CreateMessagePairWithUserAttachments(
 		userMessage.Attachments = userAttachmentSnapshot
 
 		if len(userAttachments) > 0 {
+			if err := lockActiveFileObjectsForAttachments(tx, userMessage.UserID, userAttachments); err != nil {
+				return err
+			}
 			entities := make([]models.Attachment, 0, len(userAttachments))
 			for i := range userAttachments {
 				item := userAttachments[i]
@@ -847,6 +957,9 @@ func (r *Repo) CompleteAssistantMessageWithAttachments(
 ) error {
 	return translateError(r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if len(assistantAttachments) > 0 {
+			if err := lockActiveFileObjectsForAttachments(tx, 0, assistantAttachments); err != nil {
+				return err
+			}
 			entities := make([]models.Attachment, 0, len(assistantAttachments))
 			for i := range assistantAttachments {
 				item := assistantAttachments[i]
@@ -1790,12 +1903,13 @@ func (r *Repo) CreateFileObjectAndConsumeQuota(
 	return &result, nil
 }
 
-// DeleteFileObjectAndReleaseQuota 删除文件对象并释放配额。
+// DeleteFileObjectAndReleaseQuota 删除文件对象并释放配额，可按需要求文件未被活跃会话引用。
 func (r *Repo) DeleteFileObjectAndReleaseQuota(
 	ctx context.Context,
 	userID uint,
 	fileID string,
 	defaultQuotaBytes int64,
+	options repository.DeleteFileObjectOptions,
 ) (*domainconversation.FileObject, *domainconversation.StorageQuota, bool, error) {
 	var deletedFile models.FileObject
 	var updatedQuota models.UserStorageQuota
@@ -1809,6 +1923,12 @@ func (r *Repo) DeleteFileObjectAndReleaseQuota(
 				return ErrFileNotFound
 			}
 			return translateError(err)
+		}
+
+		if options.RequireUnreferenced {
+			if err := ensureFileObjectUnreferencedByActiveConversations(tx, userID, fileID); err != nil {
+				return err
+			}
 		}
 
 		quota, err := getOrInitQuotaForUpdate(tx, userID, defaultQuotaBytes)

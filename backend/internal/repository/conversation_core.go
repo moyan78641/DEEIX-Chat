@@ -38,7 +38,7 @@ type ConversationMetadataRepository interface {
 	ListConversationProjects(ctx context.Context, userID uint, statusFilter string) ([]domainconversation.ConversationProject, error)
 	GetConversationProjectByPublicID(ctx context.Context, userID uint, publicID string) (*domainconversation.ConversationProject, error)
 	UpdateConversationProjectMetadataByPublicID(ctx context.Context, userID uint, publicID string, patch domainconversation.ConversationProjectPatch) (*domainconversation.ConversationProject, error)
-	DeleteConversationProjectByPublicID(ctx context.Context, userID uint, publicID string, deleteConversations bool) error
+	DeleteConversationProjectByPublicID(ctx context.Context, userID uint, publicID string, deleteConversations bool, deleteFiles bool) ([]string, error)
 	ReorderConversationProjects(ctx context.Context, userID uint, publicIDs []string) error
 	UpdateConversationProjectAssignmentByPublicID(ctx context.Context, userID uint, conversationPublicID string, projectID *uint) (*domainconversation.Conversation, error)
 	BatchUpdateConversationProjectByPublicIDs(ctx context.Context, userID uint, conversationPublicIDs []string, projectID *uint) (int64, error)
@@ -53,7 +53,7 @@ type ConversationMetadataRepository interface {
 	UpdateConversationMetadata(ctx context.Context, conversationID uint, title string, labelsJSON string) (*domainconversation.Conversation, error)
 	UpdateConversationStarByPublicID(ctx context.Context, userID uint, publicID string, starred bool) (*domainconversation.Conversation, error)
 	UpdateConversationArchiveByPublicID(ctx context.Context, userID uint, publicID string, archived bool) (*domainconversation.Conversation, error)
-	DeleteConversationByPublicID(ctx context.Context, userID uint, publicID string) error
+	DeleteConversationByPublicID(ctx context.Context, userID uint, publicID string, deleteFiles bool) ([]string, error)
 	GetUserByID(ctx context.Context, userID uint) (*domainuser.User, error)
 	IncrementMessageCount(ctx context.Context, conversationID uint, delta int) error
 	UpdateConversationLastResponseID(ctx context.Context, conversationID uint, responseID string) error

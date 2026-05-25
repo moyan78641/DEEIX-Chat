@@ -123,6 +123,7 @@ export function useRecentPage() {
   const [renameTarget, setRenameTarget] = React.useState<ConversationDTO | null>(null);
   const [renameValue, setRenameValue] = React.useState("");
   const [deleteTarget, setDeleteTarget] = React.useState<RecentDeleteTarget>(null);
+  const [deleteFiles, setDeleteFiles] = React.useState(false);
   const [shareTarget, setShareTarget] = React.useState<ConversationDTO | null>(null);
   const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
   const pageRef = React.useRef(1);
@@ -462,14 +463,26 @@ export function useRecentPage() {
       return;
     }
 
-    await Promise.all(deleteTarget.ids.map((id) => deleteByPublicID(id)));
+    if (deleteFiles) {
+      for (const id of deleteTarget.ids) {
+        await deleteByPublicID(id, { deleteFiles: true });
+      }
+    } else {
+      await Promise.all(deleteTarget.ids.map((id) => deleteByPublicID(id)));
+    }
     setItems((current) => current.filter((item) => !deleteTarget.ids.includes(item.publicID)));
     setSelectedConversationIDs((current) => current.filter((item) => !deleteTarget.ids.includes(item)));
     if (deleteTarget.ids.length > 1) {
       setSelectionMode(false);
     }
     setDeleteTarget(null);
-  }, [deleteByPublicID, deleteTarget]);
+    setDeleteFiles(false);
+  }, [deleteByPublicID, deleteFiles, deleteTarget]);
+
+  const closeDeleteDialog = React.useCallback(() => {
+    setDeleteTarget(null);
+    setDeleteFiles(false);
+  }, []);
 
   const exitSelectionMode = React.useCallback(() => {
     setSelectionMode(false);
@@ -635,6 +648,7 @@ export function useRecentPage() {
     renameTarget,
     renameValue,
     deleteTarget,
+    deleteFiles,
     shareTarget,
     rowStates,
     allSelectedArchived,
@@ -663,7 +677,8 @@ export function useRecentPage() {
       setRenameValue("");
     },
     confirmDelete,
-    closeDeleteDialog: () => setDeleteTarget(null),
+    closeDeleteDialog,
+    setDeleteFiles,
     closeShareDialog,
     onShareChange,
     toggleSelectionMode,

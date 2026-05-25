@@ -311,6 +311,11 @@ type ListConversationProjectsOptions = {
 
 type DeleteConversationProjectOptions = {
   deleteConversations?: boolean;
+  deleteFiles?: boolean;
+};
+
+type DeleteConversationOptions = {
+  deleteFiles?: boolean;
 };
 
 type ListConversationRunsOptions = {
@@ -403,6 +408,9 @@ export async function deleteConversationProject(
   const params = new URLSearchParams();
   if (options.deleteConversations) {
     params.set("delete_conversations", "true");
+  }
+  if (options.deleteFiles) {
+    params.set("delete_files", "true");
   }
   const query = params.toString();
   return authedRequest<DeleteConversationData>(
@@ -540,9 +548,15 @@ export async function setConversationArchive(
 export async function deleteConversation(
   accessToken: string,
   conversationPublicID: string,
+  options: DeleteConversationOptions = {},
 ): Promise<DeleteConversationData> {
+  const params = new URLSearchParams();
+  if (options.deleteFiles) {
+    params.set("delete_files", "true");
+  }
+  const query = params.toString();
   return authedRequest<DeleteConversationData>(
-    `/api/v1/conversations/${pathParam(conversationPublicID)}`,
+    `/api/v1/conversations/${pathParam(conversationPublicID)}${query ? `?${query}` : ""}`,
     {
       method: "DELETE",
       accessToken,

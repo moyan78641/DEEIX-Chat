@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
 import { readAccessToken } from "@/shared/auth/session";
+import { dispatchFileLibraryInvalidated } from "@/shared/events/file-library-events";
 import {
   batchSetConversationProject,
   createConversation,
@@ -28,6 +29,8 @@ import type {
 } from "@/shared/api/conversation.types";
 
 import type {
+  DeleteConversationOptions,
+  DeleteConversationProjectOptions,
   SidebarConversationChange,
   SidebarRecentsControllerValue,
 } from "@/features/recent/types/sidebar-recents";
@@ -481,11 +484,12 @@ export function useSidebarRecentsController(): SidebarRecentsControllerValue {
   );
 
   const deleteProject = React.useCallback(
-    async (projectID: string, deleteConversations = false): Promise<boolean> => {
+    async (projectID: string, options: DeleteConversationProjectOptions = {}): Promise<boolean> => {
       const token = await resolveAccessToken();
       if (!token) {
         return false;
       }
+      const deleteConversations = options.deleteConversations === true;
       const affectedItems = new Map<string, ConversationDTO>();
       for (const item of [...recentItemsRef.current, ...starredItemsRef.current]) {
         if (item.projectID === projectID) {
@@ -493,7 +497,16 @@ export function useSidebarRecentsController(): SidebarRecentsControllerValue {
         }
       }
 
-      await deleteConversationProject(token, projectID, { deleteConversations });
+      const result = await deleteConversationProject(token, projectID, {
+        deleteConversations,
+        deleteFiles: deleteConversations && options.deleteFiles === true,
+      });
+      dispatchFileLibraryInvalidated({
+        reason: "conversation_project_deleted",
+        deletedFileCount: result.deletedFileCount ?? 0,
+        quota: result.quota,
+        sourceID: projectID,
+      });
       setProjects((current) => current.filter((item) => item.publicID !== projectID));
       if (deleteConversations) {
         setRecentItems((current) => current.filter((item) => item.projectID !== projectID));
@@ -723,13 +736,19 @@ export function useSidebarRecentsController(): SidebarRecentsControllerValue {
     [currentConversationSnapshot, publishChange, refreshStarredWindow],
   );
 
-  const deleteByPublicID = React.useCallback(async (publicID: string): Promise<boolean> => {
+  const deleteByPublicID = React.useCallback(async (publicID: string, options: DeleteConversationOptions = {}): Promise<boolean> => {
     const token = await resolveAccessToken();
     if (!token) {
       return false;
     }
 
-    await deleteConversation(token, publicID);
+    const result = await deleteConversation(token, publicID, { deleteFiles: options.deleteFiles === true });
+    dispatchFileLibraryInvalidated({
+      reason: "conversation_deleted",
+      deletedFileCount: result.deletedFileCount ?? 0,
+      quota: result.quota,
+      sourceID: publicID,
+    });
     const removedStarred = starredItemsRef.current.some((item) => item.publicID === publicID);
     setRecentItems((prev) => removeByPublicID(prev, publicID));
     setStarredItems((prev) => removeByPublicID(prev, publicID));

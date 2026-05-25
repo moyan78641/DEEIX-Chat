@@ -82,14 +82,31 @@ func (s *Service) UpdateConversationProject(
 }
 
 // DeleteConversationProject 删除当前用户项目分组。
-func (s *Service) DeleteConversationProject(ctx context.Context, userID uint, publicID string, deleteConversations bool) error {
-	if err := s.repo.DeleteConversationProjectByPublicID(ctx, userID, strings.TrimSpace(publicID), deleteConversations); err != nil {
+func (s *Service) DeleteConversationProject(
+	ctx context.Context,
+	userID uint,
+	publicID string,
+	deleteConversations bool,
+	options DeleteConversationOptions,
+) (*DeleteConversationResult, error) {
+	cleanupFileIDs, err := s.repo.DeleteConversationProjectByPublicID(
+		ctx,
+		userID,
+		strings.TrimSpace(publicID),
+		deleteConversations,
+		deleteConversations && options.DeleteFiles,
+	)
+	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return ErrConversationProjectNotFound
+			return nil, ErrConversationProjectNotFound
 		}
-		return err
+		return nil, err
 	}
-	return nil
+	result := &DeleteConversationResult{Deleted: true}
+	if deleteConversations && options.DeleteFiles {
+		result.DeletedFileCount, result.Quota = s.deleteConversationFiles(ctx, userID, cleanupFileIDs)
+	}
+	return result, nil
 }
 
 // ReorderConversationProjects 更新当前用户项目展示顺序。

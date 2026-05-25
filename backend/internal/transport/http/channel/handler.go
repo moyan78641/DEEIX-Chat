@@ -2,6 +2,7 @@ package channel
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -13,6 +14,21 @@ import (
 // Handler 封装上游与模型管理 HTTP 处理。
 type Handler struct {
 	service *appchannel.Service
+}
+
+func bindModelProbeRequest(c *gin.Context) (ModelProbeRequest, bool) {
+	var req ModelProbeRequest
+	if c.Request == nil || c.Request.ContentLength == 0 {
+		return req, true
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		if errors.Is(err, io.EOF) {
+			return req, true
+		}
+		response.InvalidRequestBody(c, err)
+		return req, false
+	}
+	return req, true
 }
 
 // NewHandler 创建处理器。
@@ -673,6 +689,56 @@ func (h *Handler) ResetUpstreamModelCircuit(c *gin.Context) {
 	response.Success(c, CircuitResetResponse{Reset: true})
 }
 
+// TestUpstreamModelRoute godoc
+// @Summary 管理员测试上游模型路由绑定
+// @Description 使用指定路由绑定的当前上游配置执行一次轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥
+// @Tags llm
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "上游ID"
+// @Param route_id path int true "路由绑定ID"
+// @Param body body ModelProbeRequest false "测试参数"
+// @Success 200 {object} ModelProbeResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 404 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/llm/upstreams/{id}/models/{route_id}/test [post]
+func (h *Handler) TestUpstreamModelRoute(c *gin.Context) {
+	upstreamID, err := uintParam(c, "id")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid upstream id")
+		return
+	}
+	routeID, err := uintParam(c, "route_id")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid route id")
+		return
+	}
+	req, ok := bindModelProbeRequest(c)
+	if !ok {
+		return
+	}
+
+	result, err := h.service.TestUpstreamModelRoute(c.Request.Context(), upstreamID, routeID, appchannel.ModelProbeInput{
+		TaskType: req.TaskType,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, appchannel.ErrUpstreamModelNotFound):
+			response.Error(c, http.StatusNotFound, "upstream model not found")
+		case errors.Is(err, appchannel.ErrUpstreamNotFound):
+			response.Error(c, http.StatusNotFound, "upstream not found")
+		case errors.Is(err, appchannel.ErrModelNotFound):
+			response.Error(c, http.StatusNotFound, "model not found")
+		default:
+			response.Error(c, http.StatusInternalServerError, "test upstream model route failed")
+		}
+		return
+	}
+	response.Success(c, toModelProbeResponse(*result))
+}
+
 // ---------------------------------------------------------------------------
 // 远端模型发现
 // ---------------------------------------------------------------------------
@@ -1053,6 +1119,84 @@ func (h *Handler) BatchDeleteModels(c *gin.Context) {
 	}
 
 	response.Success(c, toBatchDeleteResponse(*h.service.BatchDeleteModels(c.Request.Context(), req.IDs)))
+}
+
+// TestModel godoc
+// @Summary 管理员测试平台模型路由
+// @Description 按平台模型当前活跃路由选择一个来源执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥
+// @Tags llm
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "模型ID"
+// @Param body body ModelProbeRequest false "测试参数"
+// @Success 200 {object} ModelProbeResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 404 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/llm/models/{id}/test [post]
+func (h *Handler) TestModel(c *gin.Context) {
+	modelID, err := uintParam(c, "id")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid model id")
+		return
+	}
+	req, ok := bindModelProbeRequest(c)
+	if !ok {
+		return
+	}
+
+	result, err := h.service.TestModel(c.Request.Context(), modelID, appchannel.ModelProbeInput{
+		TaskType: req.TaskType,
+	})
+	if err != nil {
+		if errors.Is(err, appchannel.ErrModelNotFound) {
+			response.Error(c, http.StatusNotFound, "model not found")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "test model failed")
+		return
+	}
+	response.Success(c, toModelProbeResponse(*result))
+}
+
+// TestModelAll godoc
+// @Summary 管理员批量测试平台模型全部路由
+// @Description 按平台模型当前全部匹配的活跃路由并发执行轻量连通性测试；返回结果内的调试信息已脱敏且不包含 Base URL 或密钥
+// @Tags llm
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "模型ID"
+// @Param body body ModelProbeRequest false "测试参数"
+// @Success 200 {object} ModelProbeBatchResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 404 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/llm/models/{id}/test-all [post]
+func (h *Handler) TestModelAll(c *gin.Context) {
+	modelID, err := uintParam(c, "id")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid model id")
+		return
+	}
+	req, ok := bindModelProbeRequest(c)
+	if !ok {
+		return
+	}
+
+	result, err := h.service.TestModelAll(c.Request.Context(), modelID, appchannel.ModelProbeInput{
+		TaskType: req.TaskType,
+	})
+	if err != nil {
+		if errors.Is(err, appchannel.ErrModelNotFound) {
+			response.Error(c, http.StatusNotFound, "model not found")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "test model failed")
+		return
+	}
+	response.Success(c, toModelProbeBatchResponse(*result))
 }
 
 // ListModelUpstreamSources godoc

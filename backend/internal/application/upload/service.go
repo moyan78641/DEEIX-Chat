@@ -348,7 +348,7 @@ func (s *Service) tryReuseExistingFile(
 					zap.String("path", existingFile.StoragePath),
 				)
 			}
-			deletedFile, _, shouldRemovePhysical, deleteErr := s.repo.DeleteFileObjectAndReleaseQuota(ctx, userID, existingFile.FileID, quotaBytes)
+			deletedFile, _, shouldRemovePhysical, deleteErr := s.repo.DeleteFileObjectAndReleaseQuota(ctx, userID, existingFile.FileID, quotaBytes, repository.DeleteFileObjectOptions{})
 			if deleteErr != nil {
 				return nil, false, deleteErr
 			}
@@ -413,15 +413,28 @@ func objectMatchesContent(ctx context.Context, store objectstore.Store, path str
 
 // DeleteFile 删除文件并回收配额。
 func (s *Service) DeleteFile(ctx context.Context, userID uint, fileID string) (*DeleteFileResult, error) {
+	result, _, err := s.deleteFile(ctx, userID, fileID, repository.DeleteFileObjectOptions{})
+	return result, err
+}
+
+// DeleteFileIfUnreferenced 仅在文件未被活跃会话引用时删除文件并回收配额。
+func (s *Service) DeleteFileIfUnreferenced(ctx context.Context, userID uint, fileID string) (*DeleteFileResult, bool, error) {
+	return s.deleteFile(ctx, userID, fileID, repository.DeleteFileObjectOptions{RequireUnreferenced: true})
+}
+
+func (s *Service) deleteFile(ctx context.Context, userID uint, fileID string, options repository.DeleteFileObjectOptions) (*DeleteFileResult, bool, error) {
 	normalizedFileID := strings.TrimSpace(fileID)
 	if normalizedFileID == "" {
-		return nil, s.errInvalidFileReference()
+		return nil, false, s.errInvalidFileReference()
 	}
 
 	cfg := s.snapshot()
-	deletedFile, quota, shouldRemovePhysical, err := s.repo.DeleteFileObjectAndReleaseQuota(ctx, userID, normalizedFileID, cfg.UserStorageQuotaBytes)
+	deletedFile, quota, shouldRemovePhysical, err := s.repo.DeleteFileObjectAndReleaseQuota(ctx, userID, normalizedFileID, cfg.UserStorageQuotaBytes, options)
 	if err != nil {
-		return nil, err
+		if options.RequireUnreferenced && errors.Is(err, repository.ErrConflict) {
+			return nil, false, nil
+		}
+		return nil, false, err
 	}
 	if shouldRemovePhysical {
 		store, storeErr := s.openObjectStore(ctx)
@@ -442,7 +455,7 @@ func (s *Service) DeleteFile(ctx context.Context, userID uint, fileID string) (*
 		Deleted: true,
 		FileID:  normalizedFileID,
 		Quota:   *quota,
-	}, nil
+	}, true, nil
 }
 
 // RenameFile 重命名当前用户文件。

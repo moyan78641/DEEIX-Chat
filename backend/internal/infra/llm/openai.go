@@ -67,7 +67,13 @@ func (c *Client) generateOpenAICompatible(ctx context.Context, route RouteConfig
 		return nil, parseUpstreamError(resp.StatusCode, body, upstreamDebugSnapshot(req, payload, resp, body))
 	}
 
-	return parseOpenAIGenerateOutput(endpoint, route.Protocol, body)
+	debug := upstreamDebugSnapshot(req, payload, resp, body)
+	output, err := parseOpenAIGenerateOutput(endpoint, route.Protocol, body)
+	if err != nil {
+		return nil, attachUpstreamDebug(err, debug)
+	}
+	output.Debug = debug
+	return output, nil
 }
 
 // generateStreamOpenAICompatible 调用上游流式推理接口并实时回传增量文本。

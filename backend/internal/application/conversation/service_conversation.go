@@ -15,6 +15,18 @@ const (
 	maxPageSize     = 100
 )
 
+// DeleteConversationOptions 定义会话删除选项。
+type DeleteConversationOptions struct {
+	DeleteFiles bool
+}
+
+// DeleteConversationResult 返回会话删除结果。
+type DeleteConversationResult struct {
+	Deleted          bool
+	DeletedFileCount int
+	Quota            *model.StorageQuota
+}
+
 // CreateConversation 创建用户新会话。
 func (s *Service) CreateConversation(ctx context.Context, userID uint, title string, modelName string, projectPublicID string) (*model.Conversation, error) {
 	normalizedTitle := strings.TrimSpace(title)
@@ -218,15 +230,20 @@ func (s *Service) SetConversationArchived(ctx context.Context, userID uint, publ
 	return item, nil
 }
 
-// DeleteConversation 删除会话（软删除）。
-func (s *Service) DeleteConversation(ctx context.Context, userID uint, publicID string) error {
-	if err := s.repo.DeleteConversationByPublicID(ctx, userID, publicID); err != nil {
+// DeleteConversation 删除会话（软删除），并按需清理不再被其他会话引用的文件。
+func (s *Service) DeleteConversation(ctx context.Context, userID uint, publicID string, options DeleteConversationOptions) (*DeleteConversationResult, error) {
+	cleanupFileIDs, err := s.repo.DeleteConversationByPublicID(ctx, userID, publicID, options.DeleteFiles)
+	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return ErrConversationNotFound
+			return nil, ErrConversationNotFound
 		}
-		return err
+		return nil, err
 	}
-	return nil
+	result := &DeleteConversationResult{Deleted: true}
+	if options.DeleteFiles {
+		result.DeletedFileCount, result.Quota = s.deleteConversationFiles(ctx, userID, cleanupFileIDs)
+	}
+	return result, nil
 }
 
 // GetConversation 查询用户会话元信息。

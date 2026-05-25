@@ -53,6 +53,7 @@ import {
   ConversationShareDialog,
   sharePatchFromDTO,
 } from "@/features/chat/components/sections/conversation-share-dialog"
+import { DeleteFilesOption } from "@/features/recent/components/delete-files-option"
 import { useActiveSidebarConversation } from "@/features/layouts/hooks/use-active-sidebar-conversation"
 import { SidebarConversationItem } from "@/features/layouts/components/navigation/sidebar-conversation-item"
 import type {
@@ -218,8 +219,10 @@ export function NavProjects() {
   const [draft, setDraft] = React.useState<ProjectDraft | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<ProjectDraft | null>(null)
   const [deleteProjectConversations, setDeleteProjectConversations] = React.useState(false)
+  const [deleteProjectFiles, setDeleteProjectFiles] = React.useState(false)
   const [conversationRenameTarget, setConversationRenameTarget] = React.useState<SidebarConversationRenameTarget>(null)
   const [conversationDeleteTarget, setConversationDeleteTarget] = React.useState<SidebarConversationDeleteTarget>(null)
+  const [deleteConversationFiles, setDeleteConversationFiles] = React.useState(false)
   const [shareTarget, setShareTarget] = React.useState<{ publicID: string; title: string } | null>(null)
   const [renameValue, setRenameValue] = React.useState("")
   const [expandedProjectIDs, setExpandedProjectIDs] = React.useState<Set<string>>(() => new Set())
@@ -229,6 +232,8 @@ export function NavProjects() {
   const [hoveredProjectRowID, setHoveredProjectRowID] = React.useState<string | null>(null)
   const projectConversationStateRef = React.useRef(projectConversationState)
   const deleteProjectConversationsID = React.useId()
+  const deleteProjectFilesID = React.useId()
+  const deleteConversationFilesID = React.useId()
 
   React.useEffect(() => {
     projectConversationStateRef.current = projectConversationState
@@ -279,12 +284,13 @@ export function NavProjects() {
     if (!conversationDeleteTarget) {
       return
     }
-    const ok = await deleteByPublicID(conversationDeleteTarget.publicID)
+    const ok = await deleteByPublicID(conversationDeleteTarget.publicID, { deleteFiles: deleteConversationFiles })
     if (ok && activeConversationID === conversationDeleteTarget.publicID) {
       router.push("/chat")
     }
     setConversationDeleteTarget(null)
-  }, [activeConversationID, conversationDeleteTarget, deleteByPublicID, router])
+    setDeleteConversationFiles(false)
+  }, [activeConversationID, conversationDeleteTarget, deleteByPublicID, deleteConversationFiles, router])
 
   const loadProjectConversations = React.useCallback(async (projectID: string, force = false) => {
     const current = projectConversationStateRef.current[projectID]
@@ -444,7 +450,10 @@ export function NavProjects() {
         projectConversationState[deletingProjectID]?.items.some((item) => item.publicID === activeConversationID) ||
         items.some((item) => item.projectID === deletingProjectID && item.publicID === activeConversationID)
       )
-    const deleted = await deleteProject(deletingProjectID, deleteProjectConversations)
+    const deleted = await deleteProject(deletingProjectID, {
+      deleteConversations: deleteProjectConversations,
+      deleteFiles: deleteProjectConversations && deleteProjectFiles,
+    })
     if (deleted && pathname === "/recent" && activeProjectID === deleteTarget.publicID) {
       router.replace("/recent")
     }
@@ -464,11 +473,13 @@ export function NavProjects() {
     }
     setDeleteTarget(null)
     setDeleteProjectConversations(false)
+    setDeleteProjectFiles(false)
   }, [
     activeConversationID,
     activeProjectID,
     deleteProject,
     deleteProjectConversations,
+    deleteProjectFiles,
     deleteTarget,
     items,
     pathname,
@@ -479,8 +490,21 @@ export function NavProjects() {
   React.useEffect(() => {
     if (!deleteTarget) {
       setDeleteProjectConversations(false)
+      setDeleteProjectFiles(false)
     }
   }, [deleteTarget])
+
+  React.useEffect(() => {
+    if (!deleteProjectConversations) {
+      setDeleteProjectFiles(false)
+    }
+  }, [deleteProjectConversations])
+
+  React.useEffect(() => {
+    if (!conversationDeleteTarget) {
+      setDeleteConversationFiles(false)
+    }
+  }, [conversationDeleteTarget])
 
   if (projects.length === 0) {
     return (
@@ -660,7 +684,16 @@ export function NavProjects() {
 
       <ProjectDialog draft={draft} setDraft={setDraft} onOpenChange={(open) => !open && closeDraft()} onSubmit={commitDraft} />
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null)
+            setDeleteProjectConversations(false)
+            setDeleteProjectFiles(false)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
@@ -679,6 +712,13 @@ export function NavProjects() {
                 <span className="block text-xs leading-5 text-muted-foreground">{t("deleteConversationsDescription")}</span>
               </label>
             </div>
+            {deleteProjectConversations ? (
+              <DeleteFilesOption
+                id={deleteProjectFilesID}
+                checked={deleteProjectFiles}
+                onCheckedChange={setDeleteProjectFiles}
+              />
+            ) : null}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
@@ -689,7 +729,15 @@ export function NavProjects() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={Boolean(conversationDeleteTarget)} onOpenChange={(open) => !open && setConversationDeleteTarget(null)}>
+      <AlertDialog
+        open={Boolean(conversationDeleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConversationDeleteTarget(null)
+            setDeleteConversationFiles(false)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{tRecent("dialogs.deleteTitle")}</AlertDialogTitle>
@@ -698,6 +746,11 @@ export function NavProjects() {
                 label: tRecent("deleteConversationLabel", { title: conversationDeleteTarget?.title || tRecent("untitled") }),
               })}
             </AlertDialogDescription>
+            <DeleteFilesOption
+              id={deleteConversationFilesID}
+              checked={deleteConversationFiles}
+              onCheckedChange={setDeleteConversationFiles}
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{tRecent("dialogs.cancel")}</AlertDialogCancel>

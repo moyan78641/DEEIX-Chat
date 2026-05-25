@@ -29,6 +29,7 @@ import {
   ConversationShareDialog,
   sharePatchFromDTO,
 } from "@/features/chat/components/sections/conversation-share-dialog"
+import { DeleteFilesOption } from "@/features/recent/components/delete-files-option"
 import { useActiveSidebarConversation } from "@/features/layouts/hooks/use-active-sidebar-conversation"
 import { useSidebarListFlip } from "@/features/layouts/hooks/use-sidebar-list-flip"
 import type {
@@ -66,11 +67,13 @@ export function NavRecents() {
   } = useSidebarRecents()
 
   const [deleteTarget, setDeleteTarget] = React.useState<SidebarConversationDeleteTarget>(null)
+  const [deleteFiles, setDeleteFiles] = React.useState(false)
   const [renameTarget, setRenameTarget] = React.useState<SidebarConversationRenameTarget>(null)
   const [shareTarget, setShareTarget] = React.useState<{ publicID: string; title: string } | null>(null)
   const [renameValue, setRenameValue] = React.useState("")
   const loadMoreRef = React.useRef<HTMLLIElement | null>(null)
   const listContainerRef = React.useRef<HTMLDivElement | null>(null)
+  const deleteFilesID = React.useId()
 
   useLoadMoreSentinel({
     enabled: hasMore && !loadingInitial && !loadMoreFailed,
@@ -130,12 +133,13 @@ export function NavRecents() {
     if (!deleteTarget) {
       return
     }
-    const ok = await deleteByPublicID(deleteTarget.publicID)
+    const ok = await deleteByPublicID(deleteTarget.publicID, { deleteFiles })
     if (ok && activeConversationID === deleteTarget.publicID) {
       router.push("/chat")
     }
     setDeleteTarget(null)
-  }, [activeConversationID, deleteByPublicID, deleteTarget, router])
+    setDeleteFiles(false)
+  }, [activeConversationID, deleteByPublicID, deleteFiles, deleteTarget, router])
 
   const visibleItemsSignature = React.useMemo(
     () => recentItems.filter((item) => !item.projectID).map((item) => item.publicID).join("|"),
@@ -244,13 +248,26 @@ export function NavRecents() {
         </SidebarGroup>
       </div>
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null)
+            setDeleteFiles(false)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("dialogs.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("dialogs.deleteDescription", { label: t("deleteConversationLabel", { title: deleteTarget?.title || t("untitled") }) })}
             </AlertDialogDescription>
+            <DeleteFilesOption
+              id={deleteFilesID}
+              checked={deleteFiles}
+              onCheckedChange={setDeleteFiles}
+            />
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("dialogs.cancel")}</AlertDialogCancel>

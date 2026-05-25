@@ -74,17 +74,20 @@ func NewServiceWithRuntime(cfg *config.Runtime, repo repository.AuthRepository, 
 		env = snapshot.Env
 		ssrfProtectionEnabled = snapshot.SSRFProtectionEnabled
 	}
-	transport := security.NewOutboundHTTPTransport(env, ssrfProtectionEnabled, 10*time.Second)
+	providerHTTPClient := newAuthOutboundHTTPClient(env, ssrfProtectionEnabled)
 	return &Service{
-		cfg:         cfg,
-		repo:        repo,
-		geoResolver: geoResolver,
-		providerHTTPClient: &http.Client{
-			Timeout:   providerHTTPTimeout,
-			Transport: platformtracing.NewHTTPTransport(transport),
-		},
-		storeProvider: appstorage.NewRuntimeProvider(cfg, nil),
+		cfg:                cfg,
+		repo:               repo,
+		geoResolver:        geoResolver,
+		providerHTTPClient: providerHTTPClient,
+		storeProvider:      appstorage.NewRuntimeProvider(cfg, nil),
 	}
+}
+
+func newAuthOutboundHTTPClient(env string, ssrfProtectionEnabled bool) *http.Client {
+	client := security.NewOutboundHTTPClient(env, ssrfProtectionEnabled, providerHTTPTimeout)
+	client.Transport = platformtracing.NewHTTPTransport(client.Transport)
+	return client
 }
 
 // SetSubscriptionResolver 注入订阅派生解析能力。

@@ -74,6 +74,15 @@ function resolveImageLoadingAspectRatio(options: ConversationOptions): ImageLoad
   return "square";
 }
 
+function resolveInputSideUsageValue(...values: Array<number | null | undefined>): number {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+  }
+  return 0;
+}
+
 function resolveMediaStatusLabel(
   status: string,
   fallbackMessage: string,
@@ -160,6 +169,7 @@ export function useChatMessageSubmit({
   selectedPlatformModelName,
   modelOptions,
   selectedToolIDs,
+  htmlVisualPromptEnabled,
   options,
   draft,
   attachments,
@@ -195,6 +205,7 @@ export function useChatMessageSubmit({
   selectedPlatformModelName: string;
   modelOptions: ChatModelOption[];
   selectedToolIDs: number[];
+  htmlVisualPromptEnabled: boolean;
   options: ConversationOptions;
   draft: string;
   attachments: PendingAttachment[];
@@ -524,6 +535,7 @@ export function useChatMessageSubmit({
             contentType: effectiveAttachments.length > 0 ? "mixed" : "text",
             content: payloadContent,
             selectedToolIDs: selectedToolIDs.length > 0 ? selectedToolIDs : undefined,
+            htmlVisualPrompt: htmlVisualPromptEnabled || undefined,
           };
           completed = await streamConversationMessage(token, targetConversationID, chatPayload, streamOptions);
         } else {
@@ -561,10 +573,22 @@ export function useChatMessageSubmit({
             assistantCreatedAt: completed.assistantMessage.createdAt,
             assistantUpdatedAt: completed.assistantMessage.updatedAt,
             assistantContentType: completed.assistantMessage.contentType || prev.assistantContentType,
-            assistantInputTokens: completed.assistantMessage.inputTokens,
+            assistantInputTokens: resolveInputSideUsageValue(
+              completed.assistantMessage.inputTokens,
+              completed.userMessage.inputTokens,
+              prev.assistantInputTokens,
+            ),
             assistantOutputTokens: completed.assistantMessage.outputTokens,
-            assistantCacheReadTokens: completed.assistantMessage.cacheReadTokens,
-            assistantCacheWriteTokens: completed.assistantMessage.cacheWriteTokens,
+            assistantCacheReadTokens: resolveInputSideUsageValue(
+              completed.assistantMessage.cacheReadTokens,
+              completed.userMessage.cacheReadTokens,
+              prev.assistantCacheReadTokens,
+            ),
+            assistantCacheWriteTokens: resolveInputSideUsageValue(
+              completed.assistantMessage.cacheWriteTokens,
+              completed.userMessage.cacheWriteTokens,
+              prev.assistantCacheWriteTokens,
+            ),
             assistantReasoningTokens: completed.assistantMessage.reasoningTokens,
             assistantLatencyMS: completed.assistantMessage.latencyMS,
             assistantProcessTrace: toPendingProcessTrace(completed.assistantMessage.processTrace),
@@ -678,6 +702,7 @@ export function useChatMessageSubmit({
       restoreDraftOnFailure,
       modelOptions,
       selectedToolIDs,
+      htmlVisualPromptEnabled,
       selectedPlatformModelName,
       sending,
       setAttachments,

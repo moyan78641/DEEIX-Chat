@@ -93,20 +93,42 @@ func (r *Repo) UpdateConversationProjectMetadataByPublicID(
 	return r.GetConversationProjectByPublicID(ctx, userID, publicID)
 }
 
-// DeleteConversationProjectByPublicID 删除项目分组，可选择一并软删除其下会话。
-func (r *Repo) DeleteConversationProjectByPublicID(ctx context.Context, userID uint, publicID string, deleteConversations bool) error {
+// DeleteConversationProjectByPublicID 删除项目分组，可选择一并软删除其下会话并返回可清理文件 ID。
+func (r *Repo) DeleteConversationProjectByPublicID(
+	ctx context.Context,
+	userID uint,
+	publicID string,
+	deleteConversations bool,
+	deleteFiles bool,
+) ([]string, error) {
 	normalizedPublicID := strings.TrimSpace(publicID)
-	return translateError(r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	cleanupFileIDs := make([]string, 0)
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var project models.ConversationProject
 		if err := tx.Where("user_id = ? AND public_id = ?", userID, normalizedPublicID).First(&project).Error; err != nil {
 			return translateError(err)
 		}
 		// 项目删除与会话归属处理必须保持原子性，避免项目删除后留下不可见的项目引用。
 		if deleteConversations {
+			conversationIDs := make([]uint, 0)
+			if deleteFiles {
+				if err := tx.Model(&models.Conversation{}).
+					Where("user_id = ? AND project_id = ?", userID, project.ID).
+					Pluck("id", &conversationIDs).Error; err != nil {
+					return translateError(err)
+				}
+			}
 			if err := tx.
 				Where("user_id = ? AND project_id = ?", userID, project.ID).
 				Delete(&models.Conversation{}).Error; err != nil {
 				return translateError(err)
+			}
+			if deleteFiles {
+				fileIDs, err := listConversationFileCleanupCandidates(tx, userID, conversationIDs)
+				if err != nil {
+					return err
+				}
+				cleanupFileIDs = fileIDs
 			}
 		} else {
 			if err := tx.Model(&models.Conversation{}).
@@ -119,7 +141,11 @@ func (r *Repo) DeleteConversationProjectByPublicID(ctx context.Context, userID u
 			return translateError(err)
 		}
 		return nil
-	}))
+	})
+	if err != nil {
+		return nil, translateError(err)
+	}
+	return cleanupFileIDs, nil
 }
 
 // ReorderConversationProjects 更新项目展示顺序。

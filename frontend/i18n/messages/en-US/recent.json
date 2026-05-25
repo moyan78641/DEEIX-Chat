@@ -83,6 +83,8 @@
     "renamePlaceholder": "Enter a new conversation name",
     "deleteTitle": "Delete conversation",
     "deleteDescription": "Delete {label}? This cannot be undone.",
+    "deleteFilesLabel": "Also delete files in the conversation",
+    "deleteFilesDescription": "Only files not referenced by other conversations are deleted. Files still used elsewhere stay available.",
     "thisConversation": "this conversation",
     "untitled": "New chat",
     "cancel": "Cancel",

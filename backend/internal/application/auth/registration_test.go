@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -171,12 +173,117 @@ func TestRequestEmailRegistrationUsesSendCooldown(t *testing.T) {
 		EmailVerificationEnabled: true,
 	}, repo, nil)
 
-	_, err := service.RequestEmailRegistration(context.Background(), "user@example.com", "", requestmeta.SessionAuditContext{})
+	_, err := service.RequestEmailRegistration(context.Background(), "user@example.com", "", "", "", requestmeta.SessionAuditContext{})
 	if err == nil || err.Error() != "verification code was sent recently" {
 		t.Fatalf("expected cooldown error, got %v", err)
 	}
 	if repo.cancelCount != 0 || repo.createCount != 0 {
 		t.Fatalf("expected no verification rewrite during cooldown, cancel=%d create=%d", repo.cancelCount, repo.createCount)
+	}
+}
+
+func TestRequestEmailRegistrationRequiresTurnstileWhenEnabled(t *testing.T) {
+	service := NewService(config.Config{
+		EmailLoginEnabled:            true,
+		EmailRegistrationEnabled:     true,
+		EmailVerificationEnabled:     true,
+		TurnstileRegistrationEnabled: true,
+		TurnstileSiteKey:             "site-key",
+		TurnstileSecretKey:           "secret-key",
+	}, nil, nil)
+
+	_, err := service.RequestEmailRegistration(context.Background(), "user@example.com", "", "127.0.0.1", "", requestmeta.SessionAuditContext{})
+	if err == nil || err.Error() != "turnstile verification is required" {
+		t.Fatalf("expected turnstile required error, got %v", err)
+	}
+}
+
+func TestVerifyRegistrationTurnstileSkipsWhenSiteKeyEmpty(t *testing.T) {
+	service := NewService(config.Config{}, nil, nil)
+
+	err := service.verifyRegistrationTurnstile(context.Background(), config.Config{
+		TurnstileRegistrationEnabled: true,
+		TurnstileSecretKey:           "secret-key",
+	}, "", "")
+	if err != nil {
+		t.Fatalf("expected empty site key to skip turnstile, got %v", err)
+	}
+}
+
+func TestVerifyRegistrationTurnstileRequiresSecretWhenSiteKeyPresent(t *testing.T) {
+	service := NewService(config.Config{}, nil, nil)
+
+	err := service.verifyRegistrationTurnstile(context.Background(), config.Config{
+		TurnstileRegistrationEnabled: true,
+		TurnstileSiteKey:             "site-key",
+	}, "token", "")
+	if err == nil || err.Error() != "turnstile is not configured" {
+		t.Fatalf("expected missing secret error, got %v", err)
+	}
+}
+
+func TestVerifyRegistrationTurnstileUsesConfiguredEndpoint(t *testing.T) {
+	var gotRemoteIP string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("expected POST, got %s", r.Method)
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("parse turnstile form: %v", err)
+		}
+		if r.Form.Get("secret") != "secret-key" || r.Form.Get("response") != "token" {
+			t.Fatalf("unexpected form: %#v", r.Form)
+		}
+		gotRemoteIP = r.Form.Get("remoteip")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"success":true}`))
+	}))
+	defer server.Close()
+
+	service := NewService(config.Config{}, nil, nil)
+	err := service.verifyRegistrationTurnstile(context.Background(), config.Config{
+		TurnstileRegistrationEnabled: true,
+		TurnstileSiteKey:             "site-key",
+		TurnstileSecretKey:           "secret-key",
+		TurnstileSiteverifyURL:       server.URL,
+	}, "token", "203.0.113.7")
+	if err != nil {
+		t.Fatalf("expected configured endpoint verification to pass, got %v", err)
+	}
+	if gotRemoteIP != "203.0.113.7" {
+		t.Fatalf("expected remote ip to be forwarded, got %q", gotRemoteIP)
+	}
+}
+
+func TestRegisterWithEmailRequiresTurnstileWhenEmailVerificationDisabled(t *testing.T) {
+	service := NewService(config.Config{
+		EmailLoginEnabled:            true,
+		EmailRegistrationEnabled:     true,
+		EmailVerificationEnabled:     false,
+		TurnstileRegistrationEnabled: true,
+		TurnstileSiteKey:             "site-key",
+		TurnstileSecretKey:           "secret-key",
+	}, nil, nil)
+
+	_, err := service.RegisterWithEmail(context.Background(), "user@example.com", "securepass1", "", "", "127.0.0.1", "", requestmeta.SessionAuditContext{})
+	if err == nil || err.Error() != "turnstile verification is required" {
+		t.Fatalf("expected turnstile required error, got %v", err)
+	}
+}
+
+func TestRegisterWithEmailDoesNotRequireTurnstileWhenEmailVerificationEnabled(t *testing.T) {
+	service := NewService(config.Config{
+		EmailLoginEnabled:            true,
+		EmailRegistrationEnabled:     true,
+		EmailVerificationEnabled:     true,
+		TurnstileRegistrationEnabled: true,
+		TurnstileSiteKey:             "site-key",
+		TurnstileSecretKey:           "secret-key",
+	}, &emailRegistrationRepo{}, nil)
+
+	_, err := service.RegisterWithEmail(context.Background(), "user@example.com", "securepass1", "", "", "127.0.0.1", "", requestmeta.SessionAuditContext{})
+	if err == nil || err.Error() != "verification code is invalid or expired" {
+		t.Fatalf("expected verification code error instead of turnstile error, got %v", err)
 	}
 }
 

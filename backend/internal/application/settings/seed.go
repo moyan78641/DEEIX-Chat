@@ -36,10 +36,14 @@ func defaultSettings() []domainsettings.SystemSetting {
 		{Namespace: "auth", Key: "email_registration_allowed_domains", Value: "", ValueType: "string", Description: "邮箱注册域名白名单，留空表示不限制"},
 		{Namespace: "auth", Key: "email_registration_block_plus_alias", Value: "false", ValueType: "bool", Description: "邮箱注册是否禁止 + 别名地址"},
 		{Namespace: "auth", Key: "auto_link_verified_email", Value: "true", ValueType: "bool", Description: "是否允许相同已验证邮箱自动绑定第三方身份"},
+		{Namespace: "auth", Key: "turnstile_registration_enabled", Value: "false", ValueType: "bool", Description: "邮箱注册是否启用 Cloudflare Turnstile 人机验证"},
+		{Namespace: "auth", Key: "turnstile_site_key", Value: "", ValueType: "string", Description: "Cloudflare Turnstile Site Key"},
+		{Namespace: "auth", Key: "turnstile_secret_key", Value: "", ValueType: "string", Description: "Cloudflare Turnstile Secret Key"},
 
 		// 计费配置
 		{Namespace: "billing", Key: "mode", Value: "self", ValueType: "string", Description: "计费方式：self=自用模式，period=周期计费，usage=按量计费"},
 		{Namespace: "billing", Key: "prepaid_amount_usd", Value: "0", ValueType: "string", Description: "按量调用前要求账户保留的最低预付余额(美元)"},
+		{Namespace: "billing", Key: "native_tool_billing_enabled", Value: "true", ValueType: "bool", Description: "是否按官方默认价格计费模型原生工具调用"},
 		{Namespace: "billing", Key: "usd_to_cny_rate", Value: "7.2", ValueType: "string", Description: "美元换人民币支付汇率"},
 		{Namespace: "billing", Key: "payment_providers", Value: "disabled", ValueType: "string", Description: "启用支付渠道，多个用英文逗号分隔：stripe,epay"},
 		{Namespace: "billing", Key: "stripe_publishable_key", Value: "", ValueType: "string", Description: "Stripe Publishable Key"},
@@ -164,6 +168,7 @@ func defaultSettings() []domainsettings.SystemSetting {
 		{Namespace: "mcp", Key: "mcp_tool_timeout_seconds", Value: "10", ValueType: "int", Description: "MCP Tool Call 超时(秒)"},
 		{Namespace: "mcp", Key: "mcp_tool_retry_count", Value: "0", ValueType: "int", Description: "MCP Tool Call 重试次数"},
 		{Namespace: "mcp", Key: "mcp_max_concurrent_calls", Value: "8", ValueType: "int", Description: "MCP Tool Call 并发上限"},
+		{Namespace: "mcp", Key: "mcp_max_selected_tools_per_message", Value: "32", ValueType: "int", Description: "单次消息最多可选择的 MCP 工具数量"},
 		{Namespace: "mcp", Key: "mcp_max_llm_calls_per_run", Value: "5", ValueType: "int", Description: "单次 MCP 工具运行最大 LLM 请求次数（最小 2，首次请求 + 工具后续请求 + 最终总结）"},
 		{Namespace: "mcp", Key: "mcp_max_tool_calls_per_run", Value: "8", ValueType: "int", Description: "单次 MCP 工具运行最大 MCP Tool Call 次数"},
 

@@ -45,7 +45,51 @@
     "create": "Create",
     "displayOrder": "Order",
     "apply": "Apply",
-    "bulkDelete": "Delete"
+    "bulkDelete": "Delete",
+    "test": "Test",
+    "testAll": "Test all"
+  },
+  "probe": {
+    "title": "Model test",
+    "description": "Test the current model configuration",
+    "running": "Testing model connectivity",
+    "empty": "No test result",
+    "noDebug": "No debug details available",
+    "saveBeforeTest": "Save before testing",
+    "unknownError": "Unknown error",
+    "latency": "{value} ms",
+    "resultCount": "{current} / {total}",
+    "previous": "Previous",
+    "next": "Next",
+    "deleteSource": "Delete this model",
+    "deleteConfirmTitle": "Delete this model",
+    "deleteConfirmDescription": "Delete \"{upstream} / {model}\"? This source will no longer participate in routing for the current model.",
+    "deletingSource": "Deleting",
+    "status": {
+      "success": "Available",
+      "error": "Error",
+      "timeout": "Timeout",
+      "unsupported": "Unsupported"
+    },
+    "fields": {
+      "platformModel": "Platform model",
+      "upstreamModel": "Upstream model",
+      "upstream": "Upstream",
+      "protocol": "Protocol",
+      "endpoint": "Endpoint",
+      "statusCode": "Status",
+      "latency": "Latency"
+    },
+    "debug": {
+      "request": "Request",
+      "response": "Response",
+      "method": "Method",
+      "path": "Path",
+      "requestHeaders": "Request headers",
+      "responseHeaders": "Response headers",
+      "body": "Body",
+      "statusCode": "Status"
+    }
   },
   "deleteDialog": {
     "title": "Delete model",

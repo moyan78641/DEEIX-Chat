@@ -183,6 +183,7 @@ export function ChatLabel({
               if (!onDelete) {
                 return;
               }
+              setMenuOpen(false);
               void onDelete();
             }}
           >

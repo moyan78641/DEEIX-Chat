@@ -25,6 +25,16 @@ const (
 	defaultHTTPMaxHeaderBytes           = 1 << 20
 )
 
+const (
+	// DefaultTurnstileSiteverifyURL 是 Cloudflare Turnstile 默认校验端点。
+	DefaultTurnstileSiteverifyURL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
+	// DefaultMCPMaxSelectedToolsPerMessage 是单次消息可选择 MCP 工具数量的默认值。
+	DefaultMCPMaxSelectedToolsPerMessage = 32
+	// MaxMCPSelectedToolsPerMessage 是运行时配置允许的安全上限，防止一次请求暴露过多工具 schema。
+	MaxMCPSelectedToolsPerMessage = 128
+)
+
 // DefaultModelOptionAllowedPathsJSON 返回用户可透传模型参数的默认白名单。
 func DefaultModelOptionAllowedPathsJSON() string {
 	return `{
@@ -197,9 +207,10 @@ type yamlConfig struct {
 		MaxHeaderBytes           int    `yaml:"max_header_bytes"`
 	} `yaml:"server"`
 	Security struct {
-		JWTSecret             string `yaml:"jwt_secret"`
-		DataEncryptionKey     string `yaml:"data_encryption_key"`
-		SSRFProtectionEnabled *bool  `yaml:"ssrf_protection_enabled"`
+		JWTSecret              string `yaml:"jwt_secret"`
+		DataEncryptionKey      string `yaml:"data_encryption_key"`
+		SSRFProtectionEnabled  *bool  `yaml:"ssrf_protection_enabled"`
+		TurnstileSiteverifyURL string `yaml:"turnstile_siteverify_url"`
 	} `yaml:"security"`
 	Database struct {
 		Postgres struct {
@@ -302,6 +313,7 @@ type Config struct {
 	SMTPUsername                 string
 	SMTPPassword                 string
 	SMTPFrom                     string
+	TurnstileSiteverifyURL       string
 	OTelEnabled                  *bool
 	OTelExporterOTLPEndpoint     string
 	OTelExporterOTLPHeaders      string
@@ -310,20 +322,23 @@ type Config struct {
 
 	// ── 动态配置（由 DB 种子初始化默认值，settings.RuntimeSettings.ApplyTo 覆盖） ──
 	// 认证配置
-	TokenTTLHours            int
-	RefreshTokenTTLHours     int
-	LoginMaxFailures         int
-	LoginLockMinutes         int
-	RateLimitRPM             int
-	PublicAuthRateLimitRPM   int
-	UsernameLoginEnabled     bool
-	EmailLoginEnabled        bool
-	ThirdPartyLoginEnabled   bool
-	EmailRegistrationEnabled bool
-	EmailVerificationEnabled bool
-	EmailRegistrationDomains string
-	EmailRegistrationNoAlias bool
-	AutoLinkVerifiedEmail    bool
+	TokenTTLHours                int
+	RefreshTokenTTLHours         int
+	LoginMaxFailures             int
+	LoginLockMinutes             int
+	RateLimitRPM                 int
+	PublicAuthRateLimitRPM       int
+	UsernameLoginEnabled         bool
+	EmailLoginEnabled            bool
+	ThirdPartyLoginEnabled       bool
+	EmailRegistrationEnabled     bool
+	EmailVerificationEnabled     bool
+	EmailRegistrationDomains     string
+	EmailRegistrationNoAlias     bool
+	AutoLinkVerifiedEmail        bool
+	TurnstileRegistrationEnabled bool
+	TurnstileSiteKey             string
+	TurnstileSecretKey           string
 	// 对话配置
 	MaxContextMessages       int
 	ContextMaxTurns          int
@@ -433,12 +448,13 @@ type Config struct {
 	ProcessTracePersistInflight    bool // 是否在流式阶段持久化轨迹
 	ContextArtifactRetentionDays   int  // 上下文证据保留天数，<=0 表示不自动过期
 	// MCP 配置
-	MCPEnable             bool
-	MCPToolTimeoutSeconds int
-	MCPToolRetryCount     int
-	MCPMaxConcurrentCalls int
-	MCPMaxLLMCallsPerRun  int
-	MCPMaxToolCallsPerRun int
+	MCPEnable                     bool
+	MCPToolTimeoutSeconds         int
+	MCPToolRetryCount             int
+	MCPMaxConcurrentCalls         int
+	MCPMaxSelectedToolsPerMessage int
+	MCPMaxLLMCallsPerRun          int
+	MCPMaxToolCallsPerRun         int
 }
 
 // defaultYAMLPaths 固定读取仓库根目录的 config.yaml。
@@ -501,6 +517,7 @@ func Load() Config {
 		SMTPUsername:                 "",
 		SMTPPassword:                 "",
 		SMTPFrom:                     "",
+		TurnstileSiteverifyURL:       envOr("TURNSTILE_SITEVERIFY_URL", yc.Security.TurnstileSiteverifyURL, DefaultTurnstileSiteverifyURL),
 		OTelEnabled:                  envOrBoolOptional("OTEL_ENABLED", yc.Observability.Tracing.Enabled),
 		OTelExporterOTLPEndpoint:     envOr("OTEL_EXPORTER_OTLP_ENDPOINT", yc.Observability.Tracing.Endpoint, ""),
 		OTelExporterOTLPHeaders:      envOr("OTEL_EXPORTER_OTLP_HEADERS", yc.Observability.Tracing.Headers, ""),
@@ -522,6 +539,9 @@ func Load() Config {
 		EmailRegistrationDomains:          "",
 		EmailRegistrationNoAlias:          false,
 		AutoLinkVerifiedEmail:             true,
+		TurnstileRegistrationEnabled:      false,
+		TurnstileSiteKey:                  "",
+		TurnstileSecretKey:                "",
 		MaxContextMessages:                20,
 		ContextMaxTurns:                   48,
 		ContextMaxInputTokens:             32000,
@@ -623,6 +643,7 @@ func Load() Config {
 		MCPToolTimeoutSeconds:             10,
 		MCPToolRetryCount:                 0,
 		MCPMaxConcurrentCalls:             8,
+		MCPMaxSelectedToolsPerMessage:     DefaultMCPMaxSelectedToolsPerMessage,
 		MCPMaxLLMCallsPerRun:              5,
 		MCPMaxToolCallsPerRun:             8,
 	}

@@ -208,3 +208,54 @@ type UpstreamHealthView struct {
 	LastFailureAt string
 	LastSuccessAt string
 }
+
+// ModelProbeResult 模型连通性测试结果（内部传输，不携带序列化标记）。
+type ModelProbeResult struct {
+	Success            bool
+	Status             string
+	ErrorCode          string
+	ErrorMessage       string
+	LatencyMS          int64
+	Protocol           string
+	Endpoint           string
+	PlatformModelID    uint
+	PlatformModelName  string
+	UpstreamID         uint
+	UpstreamName       string
+	UpstreamModelID    uint
+	UpstreamModelName  string
+	RouteID            uint
+	BindingCode        string
+	UpstreamStatusCode int
+	Debug              *ModelProbeDebugView
+}
+
+// ModelProbeBatchResult 模型批量连通性测试结果。
+type ModelProbeBatchResult struct {
+	TotalCount       int
+	SuccessCount     int
+	FailedCount      int
+	UnsupportedCount int
+	Results          []ModelProbeResult
+}
+
+// ModelProbeDebugView 模型测试调试快照（内部传输，不携带序列化标记）。
+type ModelProbeDebugView struct {
+	Request  ModelProbeDebugRequestView
+	Response ModelProbeDebugResponseView
+}
+
+// ModelProbeDebugRequestView 模型测试请求调试信息。
+type ModelProbeDebugRequestView struct {
+	Method  string
+	Path    string
+	Headers map[string]string
+	Body    string
+}
+
+// ModelProbeDebugResponseView 模型测试响应调试信息。
+type ModelProbeDebugResponseView struct {
+	StatusCode int
+	Headers    map[string]string
+	Body       string
+}

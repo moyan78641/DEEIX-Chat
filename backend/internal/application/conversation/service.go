@@ -123,40 +123,42 @@ type AttachmentInput struct {
 
 // SendMessageInput 定义消息发送请求。
 type SendMessageInput struct {
-	UserID                uint
-	ConversationID        uint
-	RequestID             string
-	ContentType           string
-	Content               string
-	PlatformModelName     string
-	Options               map[string]interface{}
-	ClientRunID           string
-	FileIDs               []string
-	SelectedToolIDs       []uint
-	ParentMessagePublicID string
-	SourceMessagePublicID string
-	BranchReason          string
-	Cancelable            bool
+	UserID                  uint
+	ConversationID          uint
+	RequestID               string
+	ContentType             string
+	Content                 string
+	PlatformModelName       string
+	Options                 map[string]interface{}
+	ClientRunID             string
+	FileIDs                 []string
+	SelectedToolIDs         []uint
+	HTMLVisualPromptEnabled bool
+	ParentMessagePublicID   string
+	SourceMessagePublicID   string
+	BranchReason            string
+	Cancelable              bool
 	// OnEvent 用于向调用方推送中间事件（如 rag_search），流式场景使用。
 	OnEvent func(eventType string, payload map[string]interface{}) error
 }
 
 // SendMessageResult 返回用户消息与 AI 消息。
 type SendMessageResult struct {
-	UserMessage        model.Message
-	AssistantMessage   model.Message
-	UpstreamID         uint
-	UpstreamName       string
-	PlatformModelName  string
-	RoutedBindingCode  string
-	UpstreamModelName  string
-	UpstreamProtocol   string
-	EffectiveOptions   map[string]interface{}
-	UsageSpeed         string
-	UsageServiceTier   string
-	CacheWrite5mTokens int64
-	CacheWrite1hTokens int64
-	LatencyMS          int64
+	UserMessage         model.Message
+	AssistantMessage    model.Message
+	UpstreamID          uint
+	UpstreamName        string
+	PlatformModelName   string
+	RoutedBindingCode   string
+	UpstreamModelName   string
+	UpstreamProtocol    string
+	EffectiveOptions    map[string]interface{}
+	UsageSpeed          string
+	UsageServiceTier    string
+	CacheWrite5mTokens  int64
+	CacheWrite1hTokens  int64
+	ServerSideToolUsage map[string]int64
+	LatencyMS           int64
 }
 
 // MessageFeedbackResult 返回反馈后的当前状态（内部传输，不携带序列化标记）。
