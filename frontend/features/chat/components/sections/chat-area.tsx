@@ -74,6 +74,7 @@ type ChatAreaProps = {
   showScrollToLatestButton: boolean;
   onRetryUserMessage: (message: ChatAreaMessage) => Promise<void> | void;
   onRetryAssistantMessage: (message: ChatAreaMessage) => Promise<void> | void;
+  onContinueAssistantMessage?: (message: ChatAreaMessage) => Promise<void> | void;
   onEditUserMessage: (message: ChatAreaMessage, content: string) => Promise<boolean> | boolean;
   onEditImageAttachment?: (attachment: MessageAttachment, sourceModelName?: string) => void;
   onOpenCodeArtifact?: (message: ChatAreaMessage, artifact: OpenCodeArtifactInput) => void;
@@ -107,6 +108,7 @@ const ChatMessageRow = React.memo(function ChatMessageRow({
   reaction,
   onRetryUserMessage,
   onRetryAssistantMessage,
+  onContinueAssistantMessage,
   onEditUserMessage,
   onEditImageAttachment,
   onCycleMessageBranch,
@@ -123,6 +125,7 @@ const ChatMessageRow = React.memo(function ChatMessageRow({
   reaction: AssistantReaction;
   onRetryUserMessage: (message: ChatAreaMessage) => Promise<void> | void;
   onRetryAssistantMessage: (message: ChatAreaMessage) => Promise<void> | void;
+  onContinueAssistantMessage?: (message: ChatAreaMessage) => Promise<void> | void;
   onEditUserMessage: (message: ChatAreaMessage, content: string) => Promise<boolean> | boolean;
   onEditImageAttachment?: (attachment: MessageAttachment, sourceModelName?: string) => void;
   onCycleMessageBranch: (parentPublicID: string | null, direction: "previous" | "next") => void;
@@ -176,6 +179,7 @@ const ChatMessageRow = React.memo(function ChatMessageRow({
         busy={busy}
         reaction={reaction}
         onRetryAssistantMessage={onRetryAssistantMessage}
+        onContinueAssistantMessage={onContinueAssistantMessage}
         onCycleMessageBranch={onCycleMessageBranch}
         onReactAssistantMessage={onReactAssistantMessage}
         onCopy={() => void onCopy()}
@@ -229,6 +233,7 @@ export function ChatArea({
   showScrollToLatestButton,
   onRetryUserMessage,
   onRetryAssistantMessage,
+  onContinueAssistantMessage,
   onEditUserMessage,
   onEditImageAttachment,
   onOpenCodeArtifact,
@@ -250,6 +255,7 @@ export function ChatArea({
   const { getReaction, onReactAssistantMessage } = useMessageFeedback(messages);
   const stableOnRetryUserMessage = useStableEvent(onRetryUserMessage);
   const stableOnRetryAssistantMessage = useStableEvent(onRetryAssistantMessage);
+  const stableOnContinueAssistantMessage = useStableEvent(onContinueAssistantMessage ?? (() => undefined));
   const stableOnEditUserMessage = useStableEvent(onEditUserMessage);
   const stableOnEditImageAttachment = useStableEvent((attachment: MessageAttachment, sourceModelName?: string) => {
     onEditImageAttachment?.(attachment, sourceModelName);
@@ -321,6 +327,7 @@ export function ChatArea({
                   reaction={getReaction(item)}
                   onRetryUserMessage={stableOnRetryUserMessage}
                   onRetryAssistantMessage={stableOnRetryAssistantMessage}
+                  onContinueAssistantMessage={onContinueAssistantMessage ? stableOnContinueAssistantMessage : undefined}
                   onEditUserMessage={stableOnEditUserMessage}
                   onEditImageAttachment={editImageAttachmentHandler}
                   onCycleMessageBranch={stableOnCycleMessageBranch}

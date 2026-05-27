@@ -322,6 +322,7 @@ export function AppChatArea() {
   const {
     onCycleMessageBranch,
     onEditUserMessage,
+    onContinueAssistantMessage,
     onRetryAssistantMessage,
     onRetryUserMessage,
     onSendMessage,
@@ -718,6 +719,7 @@ export function AppChatArea() {
                   showScrollToLatestButton={showScrollToLatestButton}
                   onRetryUserMessage={onRetryUserMessage}
                   onRetryAssistantMessage={onRetryAssistantMessage}
+                  onContinueAssistantMessage={onContinueAssistantMessage}
                   onEditUserMessage={onEditUserMessage}
                   onEditImageAttachment={onEditGeneratedImageAttachment}
                   onOpenCodeArtifact={artifactWorkspace.openArtifact}
