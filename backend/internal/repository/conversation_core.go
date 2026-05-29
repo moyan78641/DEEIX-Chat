@@ -19,6 +19,7 @@ type MessageUsageUpdate struct {
 
 // AssistantMessageCompletionUpdate 定义助手消息完成态更新字段。
 type AssistantMessageCompletionUpdate struct {
+	ContentType     string
 	Content         string
 	OutputTokens    int64
 	ReasoningTokens int64

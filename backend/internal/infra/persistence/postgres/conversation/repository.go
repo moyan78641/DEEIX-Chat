@@ -996,18 +996,22 @@ func (r *Repo) CompleteAssistantMessageWithAttachments(
 		if latencyMS < 0 {
 			latencyMS = 0
 		}
+		updates := map[string]interface{}{
+			"content":          assistantCompletion.Content,
+			"token_usage":      assistantTokenUsage,
+			"output_tokens":    assistantCompletion.OutputTokens,
+			"reasoning_tokens": assistantCompletion.ReasoningTokens,
+			"latency_ms":       latencyMS,
+			"status":           assistantCompletion.Status,
+			"error_code":       assistantCompletion.ErrorCode,
+			"error_message":    assistantCompletion.ErrorMessage,
+		}
+		if contentType := strings.TrimSpace(assistantCompletion.ContentType); contentType != "" {
+			updates["content_type"] = contentType
+		}
 		return tx.Model(&models.Message{}).
 			Where("id = ?", assistantMessageID).
-			Updates(map[string]interface{}{
-				"content":          assistantCompletion.Content,
-				"token_usage":      assistantTokenUsage,
-				"output_tokens":    assistantCompletion.OutputTokens,
-				"reasoning_tokens": assistantCompletion.ReasoningTokens,
-				"latency_ms":       latencyMS,
-				"status":           assistantCompletion.Status,
-				"error_code":       assistantCompletion.ErrorCode,
-				"error_message":    assistantCompletion.ErrorMessage,
-			}).Error
+			Updates(updates).Error
 	}))
 }
 
