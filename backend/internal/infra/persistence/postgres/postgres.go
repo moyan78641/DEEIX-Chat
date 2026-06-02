@@ -141,6 +141,8 @@ func migrate(db *gorm.DB, cfg config.Config) error {
 		"billing_usage_ledgers":          "按量用量账本表",
 		"audit_logs":                     "可追溯审计日志表",
 		"system_events":                  "后台系统事件表",
+		"system_announcements":           "站点公告表",
+		"announcement_user_states":       "用户公告展示状态表",
 		"system_settings":                "系统动态配置表",
 		"user_settings":                  "用户个人偏好配置表",
 		"file_chunks":                    "RAG文件分片表",
@@ -167,6 +169,9 @@ func migrate(db *gorm.DB, cfg config.Config) error {
 		return err
 	}
 	if err := applyBillingBaselineIndexes(db); err != nil {
+		return err
+	}
+	if err := applyAnnouncementBaseline(db); err != nil {
 		return err
 	}
 	if err := applyVectorBaseline(db, vectorBaselineRequired(cfg)); err != nil {
@@ -220,6 +225,8 @@ func applySchemaBaseline(db *gorm.DB) error {
 		&model.UsageLedger{},
 		&model.AuditLog{},
 		&model.SystemEvent{},
+		&model.Announcement{},
+		&model.AnnouncementUserState{},
 		&model.SystemSetting{},
 		&model.UserSetting{},
 		&model.FileChunk{},
@@ -290,6 +297,37 @@ func applyBillingBaselineIndexes(db *gorm.DB) error {
 		ON "billing_redemption_codes" ("status", "mode", "id")`,
 		`CREATE INDEX IF NOT EXISTS idx_billing_redemptions_code_user_created
 		ON "billing_redemptions" ("code_id", "user_id", "created_at")`,
+	}
+
+	for _, statement := range statements {
+		if err := db.Exec(statement).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func applyAnnouncementBaseline(db *gorm.DB) error {
+	statements := []string{
+		`ALTER TABLE "system_announcements"
+		ADD COLUMN IF NOT EXISTS "type" varchar(32) NOT NULL DEFAULT 'general'`,
+		`COMMENT ON COLUMN "system_announcements"."type" IS '公告类型(critical/warning/info/normal/general)'`,
+		`ALTER TABLE "system_announcements"
+		ADD COLUMN IF NOT EXISTS "pinned" boolean NOT NULL DEFAULT false`,
+		`COMMENT ON COLUMN "system_announcements"."pinned" IS '是否置顶'`,
+		`CREATE INDEX IF NOT EXISTS idx_system_announcements_sort
+		ON "system_announcements" ("pinned", "priority", "updated_at", "id")`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_announcement_user_states_version
+		ON "announcement_user_states" ("announcement_id", "user_id", "announcement_updated_at")`,
+		`ALTER TABLE "announcement_user_states"
+		ADD COLUMN IF NOT EXISTS "closed_at" timestamptz`,
+		`COMMENT ON COLUMN "announcement_user_states"."closed_at" IS '关闭时间'`,
+		`CREATE INDEX IF NOT EXISTS idx_announcement_user_states_user_dismissed
+		ON "announcement_user_states" ("user_id", "dismissed_until")
+		WHERE "dismissed_until" IS NOT NULL`,
+		`CREATE INDEX IF NOT EXISTS idx_announcement_user_states_user_closed
+		ON "announcement_user_states" ("user_id", "closed_at")
+		WHERE "closed_at" IS NOT NULL`,
 	}
 
 	for _, statement := range statements {

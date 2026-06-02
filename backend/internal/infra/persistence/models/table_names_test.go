@@ -53,6 +53,8 @@ func TestTableNamesUseRestructuredDomains(t *testing.T) {
 		UserMemory{},
 		AuditLog{},
 		SystemEvent{},
+		Announcement{},
+		AnnouncementUserState{},
 		SystemSetting{},
 		UserSetting{},
 	}

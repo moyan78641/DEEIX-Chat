@@ -1,15 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
-import { enUS, zhCN } from "date-fns/locale";
-import { CalendarIcon, Check, CircleAlert, Copy, Download, Pencil, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { Check, CircleAlert, Copy, Download, Pencil, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -24,7 +21,6 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -35,7 +31,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { SpinnerLabel } from "@/components/ui/spinner";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { ADMIN_DATE_PICKER_TRIGGER_CLASSNAME } from "@/features/admin/components/admin-date-range-filter";
+import { AdminDateTimePicker, adminDateTimeFormValue, adminDateTimeValueToISOString } from "@/features/admin/components/admin-date-time-picker";
 import { AdminBulkConfirmDialog } from "@/features/admin/components/bulk-confirm-dialog";
 import { PlanBillingDialog, PricingBillingDialog } from "@/features/admin/components/sections/billing/billing-dialogs";
 import { PeriodBillingTable, PricingUnitCell } from "@/features/admin/components/sections/billing/billing-tables";
@@ -218,58 +214,11 @@ function redemptionFormFromCode(item: AdminRedemptionCodeDTO): RedemptionFormSta
 }
 
 function redemptionExpiresFormValue(value: string | null | undefined): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${format(date, "yyyy-MM-dd")}T${format(date, "HH:mm:ss")}`;
+  return adminDateTimeFormValue(value);
 }
 
 function datetimeLocalToISOString(value: string): string | null | undefined {
-  const text = value.trim();
-  if (!text) return null;
-  const date = new Date(text);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
-}
-
-function parseRedemptionExpiresDate(value: string): Date | undefined {
-  const [dateText] = value.trim().split("T");
-  if (!dateText) return undefined;
-  const [year, month, day] = dateText.split("-").map((part) => Number.parseInt(part, 10));
-  if (!year || !month || !day) return undefined;
-  const date = new Date(year, month - 1, day);
-  return Number.isNaN(date.getTime()) ? undefined : date;
-}
-
-function redemptionExpiresTimeValue(value: string): string {
-  const trimmed = value.trim();
-  if (/^\d{2}:\d{2}:\d{2}$/.test(trimmed)) return trimmed;
-  if (/^\d{2}:\d{2}$/.test(trimmed)) return `${trimmed}:59`;
-  const [, timeText = ""] = value.trim().split("T");
-  if (/^\d{2}:\d{2}:\d{2}$/.test(timeText)) return timeText;
-  if (/^\d{2}:\d{2}$/.test(timeText)) return `${timeText}:59`;
-  return "23:59:59";
-}
-
-function redemptionExpiresValue(date: Date, time: string): string {
-  const normalizedTime = /^\d{2}:\d{2}:\d{2}$/.test(time)
-    ? time
-    : /^\d{2}:\d{2}$/.test(time)
-      ? `${time}:59`
-      : "23:59:59";
-  return `${format(date, "yyyy-MM-dd")}T${normalizedTime}`;
-}
-
-function redemptionTimePart(value: string, index: number): string {
-  return redemptionExpiresTimeValue(value).split(":")[index] || "00";
-}
-
-function updateRedemptionTimePart(value: string, index: number, nextPart: string): string {
-  const parts = redemptionExpiresTimeValue(value).split(":");
-  const max = index === 0 ? 23 : 59;
-  const parsed = Number.parseInt(nextPart, 10);
-  const normalized = String(Number.isFinite(parsed) ? Math.min(Math.max(parsed, 0), max) : 0).padStart(2, "0");
-  parts[index] = normalized;
-  return parts.join(":");
+  return adminDateTimeValueToISOString(value);
 }
 
 function parseOptionalPositiveInt(value: string): number | null | undefined {
@@ -288,107 +237,6 @@ function parseRequiredPositiveInt(value: string): number | undefined {
 function isRedemptionCodeFormatValid(value: string): boolean {
   const text = value.trim();
   return !text || /^[A-Za-z0-9_-]{3,64}$/.test(text);
-}
-
-function RedemptionExpiresAtPicker({
-  value,
-  disabled,
-  onChange,
-  label,
-  placeholder,
-}: {
-  value: string;
-  disabled: boolean;
-  onChange: (value: string) => void;
-  label: string;
-  placeholder: string;
-}) {
-  const locale = useLocale();
-  const tDateRange = useTranslations("common.dateRange");
-  const selectedDate = parseRedemptionExpiresDate(value);
-  const timeValue = selectedDate ? redemptionExpiresTimeValue(value) : "";
-  const updateTimePart = (index: number, nextPart: string) => {
-    if (!selectedDate) return;
-    onChange(redemptionExpiresValue(selectedDate, updateRedemptionTimePart(timeValue, index, nextPart)));
-  };
-
-  return (
-    <div className="space-y-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="grid gap-5 md:grid-cols-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className={cn(
-                ADMIN_DATE_PICKER_TRIGGER_CLASSNAME,
-                "h-8 justify-between",
-                !selectedDate && "text-muted-foreground",
-              )}
-              disabled={disabled}
-            >
-              <span className="min-w-0 truncate">
-                {selectedDate ? format(selectedDate, "yyyy-MM-dd") : placeholder}
-              </span>
-              <CalendarIcon className="size-3.5 opacity-70" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              locale={locale === "zh-CN" ? zhCN : enUS}
-              onSelect={(date) => onChange(date ? redemptionExpiresValue(date, redemptionExpiresTimeValue(value)) : "")}
-              autoFocus
-            />
-          </PopoverContent>
-        </Popover>
-        <div className="grid grid-cols-4 gap-2">
-          <Input
-            type="number"
-            min={0}
-            max={23}
-            value={selectedDate ? redemptionTimePart(timeValue, 0) : ""}
-            placeholder="HH"
-            disabled={disabled || !selectedDate}
-            className="px-2 text-center tabular-nums"
-            onChange={(event) => updateTimePart(0, event.target.value)}
-          />
-          <Input
-            type="number"
-            min={0}
-            max={59}
-            value={selectedDate ? redemptionTimePart(timeValue, 1) : ""}
-            placeholder="MM"
-            disabled={disabled || !selectedDate}
-            className="px-2 text-center tabular-nums"
-            onChange={(event) => updateTimePart(1, event.target.value)}
-          />
-          <Input
-            type="number"
-            min={0}
-            max={59}
-            value={selectedDate ? redemptionTimePart(timeValue, 2) : ""}
-            placeholder="SS"
-            disabled={disabled || !selectedDate}
-            className="px-2 text-center tabular-nums"
-            onChange={(event) => updateTimePart(2, event.target.value)}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            className="h-8 w-full px-0 text-xs text-muted-foreground"
-            disabled={disabled || !selectedDate}
-            onClick={() => onChange("")}
-            aria-label={tDateRange("clear")}
-          >
-            {tDateRange("clear")}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export function AdminBillingPage() {
@@ -2434,7 +2282,7 @@ export function AdminBillingPage() {
                 </div>
               </div>
 
-              <RedemptionExpiresAtPicker
+              <AdminDateTimePicker
                 value={redemptionForm.expiresAt}
                 disabled={redemptionSaving}
                 label={t("redemption.expiresAt")}

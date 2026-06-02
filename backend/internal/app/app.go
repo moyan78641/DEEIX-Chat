@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/admin"
+	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/announcement"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/audit"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/auth"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/billing"
@@ -37,6 +38,7 @@ import (
 	platformlogger "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/observability/logger"
 	platformtracing "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/observability/tracing"
 	platformdb "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/persistence/postgres"
+	announcementrepo "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/persistence/postgres/announcement"
 	auditrepo "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/persistence/postgres/audit"
 	billingrepo "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/persistence/postgres/billing"
 	channelrepo "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/persistence/postgres/channel"
@@ -50,6 +52,7 @@ import (
 	platformruntime "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/runtime"
 	platformhttp "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/transport/http"
 	adminhttp "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/transport/http/admin"
+	announcementhttp "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/transport/http/announcement"
 	authhttp "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/transport/http/auth"
 	billinghttp "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/transport/http/billing"
 	channelhttp "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/transport/http/channel"
@@ -230,6 +233,10 @@ func NewApp() (*App, error) {
 	userSettingsService := usersettings.NewService(userSettingsRepo)
 	userSettingsHandler := usersettingshttp.NewHandler(userSettingsService)
 	userSettingsModule := usersettingshttp.NewModule(userSettingsHandler)
+	announcementRepo := announcementrepo.NewRepo(db)
+	announcementService := announcement.NewService(announcementRepo)
+	announcementHandler := announcementhttp.NewHandler(announcementService)
+	announcementModule := announcementhttp.NewModule(announcementHandler)
 
 	hc := newHealthChecker(db, redisClient)
 	rateLimiter := platformcache.NewRateLimiter(redisClient)
@@ -242,6 +249,7 @@ func NewApp() (*App, error) {
 		Memory:       memoryModule,
 		Billing:      billingModule,
 		Admin:        adminModule,
+		Announcement: announcementModule,
 		Settings:     settingsModule,
 		UserSettings: userSettingsModule,
 	}, hc, rateLimiter)
