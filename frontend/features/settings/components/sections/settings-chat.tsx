@@ -541,6 +541,19 @@ export function SettingsChat() {
               />
             </SettingsFieldRow>
           </div>
+          <div className="pt-4">
+            <SettingsFieldRow
+              title={t("input.deleteFilesDefaultTitle")}
+              description={t("input.deleteFilesDefaultDescription")}
+            >
+              <Switch
+                checked={settings.deleteFilesByDefault}
+                onCheckedChange={handleBool("chat.delete_conversation_files_by_default", "deleteFilesByDefault")}
+                disabled={loading}
+                aria-label={t("input.deleteFilesDefaultTitle")}
+              />
+            </SettingsFieldRow>
+          </div>
         </SettingsFieldList>
       </SettingsSection>
 

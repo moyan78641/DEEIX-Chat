@@ -55,6 +55,7 @@ import {
 } from "@/features/chat/components/sections/conversation-share-dialog"
 import { useConversationExportAction } from "@/features/chat/hooks/use-conversation-export-action"
 import { DeleteFilesOption } from "@/features/recent/components/delete-files-option"
+import { useChatPreferences } from "@/features/settings/hooks/use-chat-preferences"
 import { useActiveSidebarConversation } from "@/features/layouts/hooks/use-active-sidebar-conversation"
 import { SidebarConversationItem } from "@/features/layouts/components/navigation/sidebar-conversation-item"
 import type {
@@ -203,6 +204,7 @@ export function NavProjects() {
   const searchParams = useSearchParams()
   const activeProjectID = searchParams.get("project") ?? ""
   const activeConversationID = useActiveSidebarConversation()
+  const { deleteFilesByDefault: deleteConversationFilesByDefault } = useChatPreferences()
   const {
     items,
     projects,
@@ -282,8 +284,9 @@ export function NavProjects() {
   )
 
   const onDeleteConversation = React.useCallback((publicID: string, title: string) => {
+    setDeleteConversationFiles(deleteConversationFilesByDefault)
     setConversationDeleteTarget({ publicID, title })
-  }, [])
+  }, [deleteConversationFilesByDefault])
 
   const confirmDeleteConversation = React.useCallback(async () => {
     if (!conversationDeleteTarget) {

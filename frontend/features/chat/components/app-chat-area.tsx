@@ -25,6 +25,7 @@ import {
   sharePatchFromDTO,
 } from "@/features/chat/components/sections/conversation-share-dialog";
 import { DeleteFilesOption } from "@/features/recent/components/delete-files-option";
+import { useChatPreferences } from "@/features/settings/hooks/use-chat-preferences";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -148,6 +149,7 @@ export function AppChatArea() {
     router.push("/chat");
   }, [requestNewConversation, router]);
   const activeGenerationRunsRef = React.useRef<Set<string>>(new Set());
+  const { deleteFilesByDefault } = useChatPreferences();
   const {
     items,
     projects,
@@ -496,8 +498,9 @@ export function AppChatArea() {
     if (!canOperateConversation) {
       return;
     }
+    setDeleteFiles(deleteFilesByDefault);
     setDeleteDialogOpen(true);
-  }, [canOperateConversation]);
+  }, [canOperateConversation, deleteFilesByDefault]);
 
   const onConfirmDeleteActiveConversation = React.useCallback(async () => {
     if (!canOperateConversation) {
