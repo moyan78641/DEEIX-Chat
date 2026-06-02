@@ -1205,47 +1205,23 @@
     th,
     ul,
     ol
-  ):not(pre *):not(code):not(code *) {
+  ):not(pre *):not(code):not(code *):not(.katex):not(.katex *) {
     font-family: var(--font-chat);
     font-weight: var(--font-chat-weight);
   }
 
-  .chat-font-content[data-chat-markdown-scope] :where(strong, strong *, b, b *):not(pre *):not(code):not(code *) {
+  .chat-font-content[data-chat-markdown-scope] :where(strong, strong *, b, b *):not(pre *):not(code):not(code *):not(.katex):not(.katex *) {
     font-weight: var(--font-chat-strong-weight);
   }
 
   .chat-font-content .katex,
-  .chat-font-content .katex
-    :where(
-      .mathnormal,
-      .mathit,
-      .mathrm,
-      .mathbf,
-      .boldsymbol,
-      .textrm,
-      .mainrm,
-      .textbf,
-      .textit,
-      .mord,
-      .mop,
-      .mbin,
-      .mrel,
-      .mopen,
-      .mclose,
-      .mpunct,
-      .minner
-    ) {
-    font-family: "Times New Roman", Times, serif !important;
+  .chat-font-content .katex * {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
   }
 
-  .chat-font-content .katex,
-  .chat-font-content .katex :where(.base, .strut, .mord, .mop, .mbin, .mrel, .mopen, .mclose, .mpunct, .minner) {
-    font-weight: 400 !important;
-  }
-
-  .chat-font-content .katex
-    :where(.textbf, .mathbf, .boldsymbol, .mathboldfrak, .textboldfrak, .mathboldsf, .textboldsf) {
-    font-weight: 700 !important;
+  .chat-font-content .katex {
+    white-space: nowrap !important;
   }
 
   .from-bg-200\/5 {
