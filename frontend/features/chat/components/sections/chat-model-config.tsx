@@ -32,17 +32,23 @@ import {
   sanitizeConversationOptions,
 } from "@/features/chat/model/conversation-options";
 import { cn } from "@/lib/utils";
+import type { ModelOptionControl } from "@/features/chat/types/chat-runtime";
 import type { ConversationOptions } from "@/shared/api/conversation.types";
 import { JsonCodeEditor } from "@/shared/components/json-code-editor";
 import type { ModelOptionPolicy } from "@/shared/lib/model-option-policy";
 import { isModelOptionPathFiltered, isNativeToolTypeAllowed } from "@/shared/lib/model-option-policy";
 
 type EditableOptionValue = string | number | boolean | null;
+type VisualOptionKind = "boolean" | "number" | "select" | "text";
 
 type VisualOption = {
   key: string;
   path: string[];
   value: EditableOptionValue;
+  label?: string;
+  kind?: VisualOptionKind;
+  selectValues?: string[];
+  placeholder?: string;
 };
 
 type FilteredOption = {
@@ -63,6 +69,7 @@ type ChatModelConfigProps = {
   disabled: boolean;
   options: ConversationOptions;
   defaultOptions: ConversationOptions;
+  optionControls: ModelOptionControl[];
   modelOptionPolicy: ModelOptionPolicy | null;
   selectedProtocol: string;
   selectedModelName: string;
@@ -574,6 +581,67 @@ function visualOptionsFromOptions(options: ConversationOptions): VisualOption[] 
   return deduped.sort((left, right) => compareOptionKeys(left.key, right.key));
 }
 
+function optionPathFromControl(path: string): string[] {
+  return path
+    .split(".")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function resolveControlEditableValue(options: ConversationOptions, defaultOptions: ConversationOptions, path: string[]): EditableOptionValue {
+  const currentValue = getOptionAtPath(options, path);
+  if (isEditableOptionValue(currentValue)) {
+    return currentValue;
+  }
+  const defaultValue = getOptionAtPath(defaultOptions, path);
+  if (isEditableOptionValue(defaultValue)) {
+    return defaultValue;
+  }
+  return null;
+}
+
+function normalizeControlSelectValues(values: string[] | undefined): string[] {
+  if (!values) {
+    return [];
+  }
+  return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
+}
+
+function resolveControlKind(control: ModelOptionControl): VisualOptionKind | undefined {
+  if (control.type) {
+    return control.type;
+  }
+  if (normalizeControlSelectValues(control.options).length > 0) {
+    return "select";
+  }
+  return undefined;
+}
+
+function visualOptionsFromControls(
+  controls: ModelOptionControl[],
+  options: ConversationOptions,
+  defaultOptions: ConversationOptions,
+): VisualOption[] {
+  return controls.flatMap((control): VisualOption[] => {
+    const path = optionPathFromControl(control.path);
+    if (path.length === 0 || isReservedConversationOptionKey(path[0] ?? "")) {
+      return [];
+    }
+    const key = optionPathKey(path);
+    const value = resolveControlEditableValue(options, defaultOptions, path);
+    const selectValues = normalizeControlSelectValues(control.options);
+    return [{
+      key,
+      path,
+      value,
+      label: control.label,
+      kind: resolveControlKind(control),
+      selectValues,
+      placeholder: control.placeholder,
+    }];
+  });
+}
+
 function resolveOptionTitle(key: string, translate: (key: string) => string): string {
   if (OPTION_LABEL_KEYS.has(key)) {
     try {
@@ -614,8 +682,9 @@ function resolveOptionKind(key: string, value: EditableOptionValue): "boolean" |
   return "text";
 }
 
-function resolveSelectValues(key: string): string[] {
-  return Array.from(new Set((OPTION_SELECT_VALUES[key] ?? []).map((item) => item.trim()).filter(Boolean)));
+function resolveSelectValues(key: string, configuredValues?: string[]): string[] {
+  const sourceValues = configuredValues === undefined ? OPTION_SELECT_VALUES[key] : configuredValues;
+  return Array.from(new Set((sourceValues ?? []).map((item) => item.trim()).filter(Boolean)));
 }
 
 function resolveModelOptionFilterStatus(
@@ -670,6 +739,7 @@ export function ChatModelConfig({
   disabled,
   options,
   defaultOptions,
+  optionControls,
   modelOptionPolicy,
   selectedProtocol,
   selectedModelName,
@@ -690,7 +760,18 @@ export function ChatModelConfig({
   const [mobileView, setMobileView] = React.useState<"json" | "visual">("json");
   const optionsObjectRef = React.useRef<ConversationOptions>({});
   const selectedProtocolLabel = selectedProtocol ? resolveProtocolLabel(selectedProtocol) : "";
-  const editableOptions = React.useMemo(() => visualOptionsFromOptions(optionsObject), [optionsObject]);
+  const configuredOptions = React.useMemo(
+    () => visualOptionsFromControls(optionControls, optionsObject, defaultOptions),
+    [defaultOptions, optionControls, optionsObject],
+  );
+  const configuredOptionKeys = React.useMemo(
+    () => new Set(configuredOptions.map((item) => item.key)),
+    [configuredOptions],
+  );
+  const editableOptions = React.useMemo(
+    () => visualOptionsFromOptions(optionsObject).filter((item) => !configuredOptionKeys.has(item.key)),
+    [configuredOptionKeys, optionsObject],
+  );
   const nativeToolGroup = React.useMemo(() => {
     if (isMediaMode) {
       return null;
@@ -715,7 +796,11 @@ export function ChatModelConfig({
     }
     return null;
   }, [isMediaMode, selectedProtocol, tComposer]);
-  const hasRecognizedOptions = Boolean(nativeToolGroup) || editableOptions.length > 0 || filteredOptions.length > 0;
+  const visibleOptions = React.useMemo(
+    () => [...configuredOptions, ...editableOptions],
+    [configuredOptions, editableOptions],
+  );
+  const hasRecognizedOptions = Boolean(nativeToolGroup) || visibleOptions.length > 0 || filteredOptions.length > 0;
 
   React.useEffect(() => {
     optionsObjectRef.current = optionsObject;
@@ -928,10 +1013,12 @@ export function ChatModelConfig({
                 </div>
               </div>
             ) : null}
-            {editableOptions.map(({ key, path, value }) => {
-              const kind = resolveOptionKind(key, value);
-              const selectValues = resolveSelectValues(key);
-              const title = resolveOptionTitle(key, tOptionLabels);
+            {visibleOptions.map(({ key, path, value, label, kind: configuredKind, selectValues: configuredSelectValues, placeholder }) => {
+              const selectValues = resolveSelectValues(key, configuredSelectValues);
+              const kind = configuredKind === "select" && selectValues.length === 0
+                ? "text"
+                : (configuredKind ?? resolveOptionKind(key, value));
+              const title = label ?? resolveOptionTitle(key, tOptionLabels);
               const filterStatus = resolveModelOptionFilterStatus(modelOptionPolicy, selectedProtocol, key);
               const ignored = filterStatus === "filtered";
 
@@ -981,9 +1068,12 @@ export function ChatModelConfig({
                       </SelectContent>
                     </Select>
                   ) : kind === "select" ? (
-                    <Select value={String(value)} onValueChange={(nextValue) => updateOptionValue(path, nextValue)}>
+                    <Select
+                      value={typeof value === "string" && value.trim() ? value : undefined}
+                      onValueChange={(nextValue) => updateOptionValue(path, nextValue)}
+                    >
                       <SelectTrigger size="sm">
-                        <SelectValue />
+                        <SelectValue placeholder={placeholder ?? key} />
                       </SelectTrigger>
                       <SelectContent>
                         {selectValues.map((item) => (
@@ -997,7 +1087,7 @@ export function ChatModelConfig({
                     <Input
                       value={value === null ? "" : String(value)}
                       inputMode={kind === "number" ? "decimal" : undefined}
-                      placeholder={kind === "number" ? "0.7" : key}
+                      placeholder={placeholder ?? (kind === "number" ? "0.7" : key)}
                       onChange={(event) => {
                         const nextValue = event.target.value;
                         if (kind === "number") {
@@ -1016,7 +1106,7 @@ export function ChatModelConfig({
               );
             })}
             {filteredOptions.length > 0 ? (
-              <div className={cn("space-y-2", editableOptions.length > 0 ? "pt-1" : "")}>
+              <div className={cn("space-y-2", visibleOptions.length > 0 ? "pt-1" : "")}>
                 {filteredOptions.map((item) => (
                   <div
                     key={item.key}
