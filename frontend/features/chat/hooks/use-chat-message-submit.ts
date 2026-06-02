@@ -24,7 +24,12 @@ import {
   resolveErrorSummary,
   toConversationPatch,
 } from "@/features/chat/utils/chat-runtime";
-import { buildChildrenIndex, toBranchKey } from "@/features/chat/model/chat-thread";
+import {
+  applyBranchSelectionPath,
+  buildChildrenIndex,
+  resolveBranchSelectionPath,
+  toBranchKey,
+} from "@/features/chat/model/chat-thread";
 import { sanitizeConversationOptions } from "@/features/chat/model/conversation-options";
 import { buildMediaImagePreviewMarkdown } from "@/features/chat/model/media-image-preview";
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
@@ -283,6 +288,16 @@ export function useChatMessageSubmit({
     const userPublicID = pendingExchange.userPublicID || pendingExchange.tempUserPublicID;
     const assistantPublicID = pendingExchange.assistantPublicID || pendingExchange.tempAssistantPublicID;
     if (serverMessagePublicIDs.has(userPublicID) && serverMessagePublicIDs.has(assistantPublicID)) {
+      const serverPath = resolveBranchSelectionPath(combinedMessages, assistantPublicID);
+      if (serverPath.length > 0) {
+        setBranchSelections((prev) =>
+          applyBranchSelectionPath(
+            prev,
+            serverPath,
+            [pendingExchange.tempUserPublicID, pendingExchange.tempAssistantPublicID],
+          ),
+        );
+      }
       setPendingExchange(null);
       return;
     }
@@ -295,15 +310,26 @@ export function useChatMessageSubmit({
       (item) =>
         item.role === "assistant" &&
         item.runID === pendingRunID &&
+        serverMessagePublicIDs.has(item.publicID) &&
         resolvePersistedPublicID(item.publicID) &&
         !item.isPending &&
         !item.isStreaming &&
         item.status !== "pending",
     );
     if (serverAssistant) {
+      const serverPath = resolveBranchSelectionPath(combinedMessages, serverAssistant.publicID);
+      if (serverPath.length > 0) {
+        setBranchSelections((prev) =>
+          applyBranchSelectionPath(
+            prev,
+            serverPath,
+            [pendingExchange.tempUserPublicID, pendingExchange.tempAssistantPublicID],
+          ),
+        );
+      }
       setPendingExchange(null);
     }
-  }, [combinedMessages, pendingExchange, serverMessagePublicIDs, setPendingExchange]);
+  }, [combinedMessages, pendingExchange, serverMessagePublicIDs, setBranchSelections, setPendingExchange]);
 
   const submitMessage = React.useCallback(
     async ({
@@ -640,13 +666,22 @@ export function useChatMessageSubmit({
                 : completed.assistantMessage.content,
           };
         });
-        setBranchSelections((prev) => {
-          const next = { ...prev };
-          next[toBranchKey(resolvedParentPublicID)] = completed.userMessage.publicID;
-          delete next[tempUserPublicID];
-          next[completed.userMessage.publicID] = completed.assistantMessage.publicID;
-          return next;
-        });
+        setBranchSelections((prev) =>
+          applyBranchSelectionPath(
+            prev,
+            [
+              {
+                parentPublicID: completed.userMessage.parentPublicID || resolvedParentPublicID,
+                publicID: completed.userMessage.publicID,
+              },
+              {
+                parentPublicID: completed.userMessage.publicID,
+                publicID: completed.assistantMessage.publicID,
+              },
+            ],
+            [tempUserPublicID, tempAssistantPublicID],
+          ),
+        );
         touchByPublicID(
           targetConversationID,
           toConversationPatch(targetConversation, requestPlatformModelName),

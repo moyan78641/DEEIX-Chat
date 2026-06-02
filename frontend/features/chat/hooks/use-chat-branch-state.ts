@@ -6,11 +6,22 @@ import { useTranslations } from "next-intl";
 import type { ChatAreaMessage, MessageAttachment } from "@/features/chat/types/messages";
 import type { PendingExchange } from "@/features/chat/types/chat-runtime";
 import {
+  applyBranchSelectionPath,
   buildVisibleMessages,
   mapServerMessage,
   reconcileBranchSelections,
+  resolveBranchSelectionPath,
 } from "@/features/chat/model/chat-thread";
+import type { BranchSelectionPathItem } from "@/features/chat/model/chat-thread";
 import type { MessageDTO } from "@/shared/api/conversation.types";
+
+type PendingBranchSelectionInput = {
+  parentPublicID: string | null;
+  userPublicID?: string;
+  assistantPublicID?: string;
+  tempUserPublicID: string;
+  tempAssistantPublicID: string;
+};
 
 function buildPendingMessages({
   conversationID,
@@ -160,6 +171,44 @@ function mergePendingAssistantState(messages: ChatAreaMessage[], pendingExchange
   });
 }
 
+function resolvePendingBranchSelectionPath(
+  messages: ChatAreaMessage[],
+  pendingExchange: PendingBranchSelectionInput | null,
+): BranchSelectionPathItem[] {
+  if (!pendingExchange) {
+    return [];
+  }
+
+  const assistantPublicID = pendingExchange.assistantPublicID || pendingExchange.tempAssistantPublicID;
+  const resolvedPath = resolveBranchSelectionPath(messages, assistantPublicID);
+  if (resolvedPath.length > 0) {
+    return resolvedPath;
+  }
+
+  const userPublicID = pendingExchange.userPublicID || pendingExchange.tempUserPublicID;
+  return [
+    { parentPublicID: pendingExchange.parentPublicID, publicID: userPublicID },
+    { parentPublicID: userPublicID, publicID: assistantPublicID },
+  ];
+}
+
+function serializeBranchSelectionPath(path: BranchSelectionPathItem[]): string {
+  return path.map((item) => `${item.parentPublicID?.trim() || ""}>${item.publicID?.trim() || ""}`).join("|");
+}
+
+function branchSelectionPathResolvedByServer(
+  path: BranchSelectionPathItem[],
+  serverMessagePublicIDs: Set<string>,
+): boolean {
+  if (path.length === 0) {
+    return false;
+  }
+  return path.every((item) => {
+    const publicID = item.publicID?.trim() || "";
+    return Boolean(publicID && serverMessagePublicIDs.has(publicID));
+  });
+}
+
 export function useChatBranchState({
   conversationID,
   resetToken,
@@ -175,9 +224,11 @@ export function useChatBranchState({
 }) {
   const t = useTranslations("chat.messages");
   const [branchSelections, setBranchSelections] = React.useState<Record<string, string>>({});
+  const [submittedBranchSelectionPath, setSubmittedBranchSelectionPath] = React.useState<BranchSelectionPathItem[]>([]);
 
   React.useEffect(() => {
     setBranchSelections({});
+    setSubmittedBranchSelectionPath([]);
   }, [conversationID, resetToken]);
 
   const serverTreeMessages = React.useMemo(
@@ -214,6 +265,72 @@ export function useChatBranchState({
   React.useEffect(() => {
     combinedMessagesRef.current = combinedMessages;
   }, [combinedMessages]);
+  const pendingParentPublicID = pendingExchange?.parentPublicID ?? null;
+  const pendingUserPublicID = pendingExchange?.userPublicID;
+  const pendingAssistantPublicID = pendingExchange?.assistantPublicID;
+  const pendingTempUserPublicID = pendingExchange?.tempUserPublicID;
+  const pendingTempAssistantPublicID = pendingExchange?.tempAssistantPublicID;
+  const pendingBranchSelectionInput = React.useMemo<PendingBranchSelectionInput | null>(
+    () =>
+      pendingTempUserPublicID && pendingTempAssistantPublicID
+        ? {
+            parentPublicID: pendingParentPublicID,
+            userPublicID: pendingUserPublicID,
+            assistantPublicID: pendingAssistantPublicID,
+            tempUserPublicID: pendingTempUserPublicID,
+            tempAssistantPublicID: pendingTempAssistantPublicID,
+          }
+        : null,
+    [
+      pendingAssistantPublicID,
+      pendingParentPublicID,
+      pendingTempAssistantPublicID,
+      pendingTempUserPublicID,
+      pendingUserPublicID,
+    ],
+  );
+  const pendingBranchSelectionPath = React.useMemo(
+    () => resolvePendingBranchSelectionPath(combinedMessages, pendingBranchSelectionInput),
+    [combinedMessages, pendingBranchSelectionInput],
+  );
+  const pendingBranchSelectionKey = React.useMemo(
+    () => serializeBranchSelectionPath(pendingBranchSelectionPath),
+    [pendingBranchSelectionPath],
+  );
+  React.useEffect(() => {
+    if (pendingBranchSelectionPath.length === 0) {
+      return;
+    }
+    setSubmittedBranchSelectionPath((prev) =>
+      serializeBranchSelectionPath(prev) === pendingBranchSelectionKey ? prev : pendingBranchSelectionPath,
+    );
+  }, [pendingBranchSelectionKey, pendingBranchSelectionPath]);
+  const submittedBranchSelectionKey = React.useMemo(
+    () => serializeBranchSelectionPath(submittedBranchSelectionPath),
+    [submittedBranchSelectionPath],
+  );
+  const activeBranchSelectionPath = pendingBranchSelectionPath.length > 0
+    ? pendingBranchSelectionPath
+    : submittedBranchSelectionPath;
+  const activeBranchSelectionKey = pendingBranchSelectionPath.length > 0
+    ? pendingBranchSelectionKey
+    : submittedBranchSelectionKey;
+  const pendingBranchSelectionPathRef = React.useRef(pendingBranchSelectionPath);
+  React.useEffect(() => {
+    pendingBranchSelectionPathRef.current = activeBranchSelectionPath;
+  }, [activeBranchSelectionPath, activeBranchSelectionKey]);
+  const pendingObsoletePublicIDs = React.useMemo(
+    () => [pendingTempUserPublicID, pendingTempAssistantPublicID],
+    [pendingTempAssistantPublicID, pendingTempUserPublicID],
+  );
+  const pendingObsoletePublicIDKey = React.useMemo(
+    () => pendingObsoletePublicIDs.map((item) => item?.trim() || "").join("|"),
+    [pendingObsoletePublicIDs],
+  );
+  const pendingObsoletePublicIDsRef = React.useRef(pendingObsoletePublicIDs);
+  React.useEffect(() => {
+    pendingObsoletePublicIDsRef.current = pendingObsoletePublicIDs;
+  }, [pendingObsoletePublicIDs]);
   const messageStructureKey = React.useMemo(
     () =>
       combinedMessages
@@ -223,8 +340,26 @@ export function useChatBranchState({
   );
 
   React.useEffect(() => {
-    setBranchSelections((prev) => reconcileBranchSelections(combinedMessagesRef.current, prev));
-  }, [messageStructureKey]);
+    setBranchSelections((prev) => {
+      const reconciled = reconcileBranchSelections(combinedMessagesRef.current, prev);
+      const targetPath = pendingBranchSelectionPathRef.current;
+      if (targetPath.length === 0) {
+        return reconciled;
+      }
+      return applyBranchSelectionPath(reconciled, targetPath, pendingObsoletePublicIDsRef.current);
+    });
+  }, [activeBranchSelectionKey, messageStructureKey, pendingObsoletePublicIDKey]);
+
+  React.useEffect(() => {
+    if (pendingBranchSelectionPath.length > 0 || submittedBranchSelectionPath.length === 0) {
+      return;
+    }
+    if (!branchSelectionPathResolvedByServer(submittedBranchSelectionPath, serverMessagePublicIDs)) {
+      return;
+    }
+    setBranchSelections((prev) => applyBranchSelectionPath(prev, submittedBranchSelectionPath));
+    setSubmittedBranchSelectionPath([]);
+  }, [pendingBranchSelectionPath.length, serverMessagePublicIDs, submittedBranchSelectionKey, submittedBranchSelectionPath]);
 
   const visibleMessages = React.useMemo(
     () => buildVisibleMessages(combinedMessages, branchSelections),
