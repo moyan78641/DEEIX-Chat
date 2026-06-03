@@ -23,6 +23,7 @@ import {
   SettingsFieldList,
   SettingsPage,
   SettingsSection,
+  SettingsSectionSeparator,
 } from "@/shared/components/settings-layout";
 import { getAdminReferenceData, listAdminSettings, patchAdminSettings } from "@/features/admin/api";
 import {
@@ -502,6 +503,8 @@ export function AdminConversationSettingsPage() {
           {conversationFields.map(renderField)}
         </SettingsFieldList>
       </SettingsSection>
+
+      <SettingsSectionSeparator />
 
       <SettingsSection title={t("sections.optionPassthrough")} actions={modelOptionActions}>
         <SettingsFieldList>
