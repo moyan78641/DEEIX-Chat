@@ -319,10 +319,39 @@ export function resolveBranchSelectionPath(
 export function reconcileBranchSelections(messages: ChatAreaMessage[], previous: Record<string, string>) {
   const next: Record<string, string> = {};
   const children = buildChildrenIndex(messages);
+  const messagesByPublicID = new Map<string, ChatAreaMessage>();
+  let latestPublicID = "";
+
+  for (const item of messages) {
+    const publicID = item.publicID.trim();
+    if (publicID) {
+      messagesByPublicID.set(publicID, item);
+      latestPublicID = publicID;
+    }
+  }
+
+  const visited = new Set<string>();
+  let current = latestPublicID ? messagesByPublicID.get(latestPublicID) ?? null : null;
+
+  while (current) {
+    const publicID = current.publicID.trim();
+    if (!publicID || visited.has(publicID)) {
+      break;
+    }
+    visited.add(publicID);
+    next[toBranchKey(current.parentPublicID)] = publicID;
+
+    const parentPublicID = current.parentPublicID?.trim() || "";
+    current = parentPublicID ? messagesByPublicID.get(parentPublicID) ?? null : null;
+  }
+
   for (const [parentKey, siblings] of children.entries()) {
     const existing = previous[parentKey];
     if (existing && siblings.some((item) => item.publicID === existing)) {
       next[parentKey] = existing;
+      continue;
+    }
+    if (next[parentKey]) {
       continue;
     }
     const latest = siblings[siblings.length - 1];
@@ -338,6 +367,7 @@ export function buildVisibleMessages(
   selections: Record<string, string>,
 ): ChatAreaMessage[] {
   const children = buildChildrenIndex(messages);
+  const reconciledSelections = reconcileBranchSelections(messages, selections);
   let visible: ChatAreaMessage[] = [];
   const visited = new Set<string>();
   let parentKey = ROOT_BRANCH_KEY;
@@ -348,7 +378,7 @@ export function buildVisibleMessages(
       break;
     }
 
-    const selectedPublicID = selections[parentKey] || siblings[siblings.length - 1]?.publicID;
+    const selectedPublicID = reconciledSelections[parentKey] || siblings[siblings.length - 1]?.publicID;
     const selected = siblings.find((item) => item.publicID === selectedPublicID) ?? siblings[siblings.length - 1];
     if (!selected || visited.has(selected.publicID)) {
       break;
