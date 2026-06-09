@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Copy, MoreHorizontal, Unlink } from "lucide-react";
+import { MoreHorizontal, Unlink } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -37,6 +37,7 @@ import {
 import type { ActiveSessionDTO, SecurityVerificationMethod } from "@/shared/api/auth.types";
 import { IdentityProviderIcon } from "@/shared/components/identity-provider-icon";
 import { useAppLocale } from "@/i18n/app-i18n-provider";
+import { CopyActionButton } from "@/shared/components/copy-action";
 import {
   SettingsPage,
   SettingsSection,
@@ -119,7 +120,6 @@ export function SettingsAccount() {
     setEmailDialogOpen,
     setCurrentEmailVerificationDialogOpen,
     setDeleteDialogOpen,
-    handleCopyPublicID,
     handleSendPasswordCode,
     handleChangePassword,
     handleSendEmailBootstrapCode,
@@ -286,17 +286,20 @@ export function SettingsAccount() {
           title={t("publicID")}
           value={viewer?.publicID || "-"}
           action={
-            <Button
+            <CopyActionButton
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => void handleCopyPublicID()}
+              value={viewer?.publicID || ""}
+              messages={{
+                copied: t("toasts.publicIDCopied"),
+                failed: t("toasts.copyFailed"),
+                failedDescription: t("toasts.retryLater"),
+              }}
               disabled={!viewer?.publicID}
               aria-label={t("copyPublicID")}
               className="size-4 p-3"
-            >
-              <Copy className="size-3.5" />
-            </Button>
+            />
           }
         />
       </SettingsSection>

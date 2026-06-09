@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Copy, CornerDownRight } from "lucide-react";
+import { CornerDownRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +25,7 @@ import {
 } from "@/components/ui/table";
 import { AdminDateRangeFilter, ADMIN_DATE_PICKER_TRIGGER_CLASSNAME } from "@/features/admin/components/admin-date-range-filter";
 import { TablePagination, TableToolbar } from "@/components/ui/table-tools";
+import { CopyActionButton } from "@/shared/components/copy-action";
 import type { AdminAuditLogDTO, AdminSystemEventDTO, AdminUsageLogDTO, AdminUserAuthEventDTO } from "@/features/admin/api/admin.types";
 import {
   AUDIT_LOG_SORT_OPTIONS,
@@ -559,18 +559,6 @@ function UsageLogModelFilter({
   );
 }
 
-async function copyText(value: string, label: string, copiedMessage: (label: string) => string, failedMessage: string) {
-  if (!value.trim()) {
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(value);
-    toast.success(copiedMessage(label));
-  } catch {
-    toast.error(failedMessage);
-  }
-}
-
 function DetailRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 border-b border-border/50 py-2.5 last:border-b-0">
@@ -593,6 +581,10 @@ function LogDetailSheet({ detail, onClose }: { detail: LogDetail | null; onClose
   const locale = useLocale();
   const t = useTranslations("adminLogs.detail");
   const usageLabels = useUsageBillingLabels();
+  const copyMessages = React.useMemo(() => ({
+    copied: t("copied", { label: "" }).trim(),
+    failed: t("copyFailed"),
+  }), [t]);
   const resultLabel = React.useCallback(
     (value: string) => {
       switch (value) {
@@ -735,15 +727,29 @@ function LogDetailSheet({ detail, onClose }: { detail: LogDetail | null; onClose
               <h4 className="text-xs font-medium text-foreground/88">{t("jsonTitle")}</h4>
               <div className="flex items-center gap-1">
                 {requestID ? (
-                  <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs shadow-none" onClick={() => void copyText(requestID, t("fields.requestID"), (label) => t("copied", { label }), t("copyFailed"))}>
-                    <Copy className="size-3.5" />
+                  <CopyActionButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs shadow-none"
+                    value={requestID}
+                    messages={copyMessages}
+                    copyOptions={{ copied: t("copied", { label: t("fields.requestID") }) }}
+                  >
                     {t("fields.requestID")}
-                  </Button>
+                  </CopyActionButton>
                 ) : null}
-                <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs shadow-none" onClick={() => void copyText(formattedJSON, t("jsonTitle"), (label) => t("copied", { label }), t("copyFailed"))}>
-                  <Copy className="size-3.5" />
+                <CopyActionButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs shadow-none"
+                  value={formattedJSON}
+                  messages={copyMessages}
+                  copyOptions={{ copied: t("copied", { label: t("jsonTitle") }) }}
+                >
                   JSON
-                </Button>
+                </CopyActionButton>
               </div>
             </div>
             <pre className="max-h-[320px] overflow-auto rounded-lg border border-border/60 bg-muted/35 p-3 text-xs leading-5 text-foreground/86">

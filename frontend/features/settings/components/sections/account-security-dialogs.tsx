@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Copy } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -13,6 +12,7 @@ import { formatDateTime } from "@/features/settings/model/account-page";
 import { useAppLocale } from "@/i18n/app-i18n-provider";
 import type { SecurityVerificationMethod } from "@/shared/api/auth.types";
 import { PASSWORD_MIN_LENGTH, isPasswordPolicyValid } from "@/shared/auth/account-policy";
+import { CopyActionButton } from "@/shared/components/copy-action";
 import { createQRCodeSVG } from "@/shared/lib/qr-code";
 
 function sanitizeVerificationCode(method: SecurityVerificationMethod, value: string) {
@@ -701,15 +701,11 @@ export function TwoFactorDialog({
     : displayMode === "manage"
       ? t("description.manage")
       : t("description.recovery");
-  const copyText = React.useCallback(async (value: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success(common("copiedLabel", { label }));
-    } catch {
-      toast.error(common("copyFailed"), { description: common("copyManually") });
-    }
-  }, [common]);
-
+  const copyMessages = React.useMemo(() => ({
+    copied: common("copiedLabel", { label: "" }).trim(),
+    failed: common("copyFailed"),
+    failedDescription: common("copyManually"),
+  }), [common]);
   React.useEffect(() => {
     if (open && !previousOpenRef.current) {
       setClosingSnapshot(null);
@@ -841,34 +837,34 @@ export function TwoFactorDialog({
                     <p className="text-xs text-muted-foreground">{t("secret")}</p>
                     <div className="flex gap-2">
                       <Input value={displaySetupSecret} readOnly className="min-w-0" />
-                      <Button
+                      <CopyActionButton
                         type="button"
                         variant="ghost"
                         size="icon"
                         className="size-9 shrink-0 text-muted-foreground shadow-none"
-                        onClick={() => void copyText(displaySetupSecret, t("secret"))}
+                        value={displaySetupSecret}
+                        messages={copyMessages}
+                        copyOptions={{ copied: common("copiedLabel", { label: t("secret") }) }}
                         aria-label={t("copySecret")}
                         title={t("copySecret")}
-                      >
-                        <Copy className="size-3.5" />
-                      </Button>
+                      />
                     </div>
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">{t("otpAuthUri")}</p>
                     <div className="flex gap-2">
                       <Input value={displaySetupURL} readOnly className="min-w-0" />
-                      <Button
+                      <CopyActionButton
                         type="button"
                         variant="ghost"
                         size="icon"
                         className="size-9 shrink-0 text-muted-foreground shadow-none"
-                        onClick={() => void copyText(displaySetupURL, t("otpAuthUri"))}
+                        value={displaySetupURL}
+                        messages={copyMessages}
+                        copyOptions={{ copied: common("copiedLabel", { label: t("otpAuthUri") }) }}
                         aria-label={t("copyOtpUri")}
                         title={t("copyOtpUri")}
-                      >
-                        <Copy className="size-3.5" />
-                      </Button>
+                      />
                     </div>
                   </div>
                 </div>
@@ -927,17 +923,17 @@ export function TwoFactorDialog({
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">{t("recoveryCodes")}</p>
-                <Button
+                <CopyActionButton
                   type="button"
                   variant="ghost"
                   size="icon"
                   className="size-7 text-muted-foreground shadow-none"
-                  onClick={() => void copyText(displayRecoveryCodes.join("\n"), t("recoveryCodes"))}
+                  value={displayRecoveryCodes.join("\n")}
+                  messages={copyMessages}
+                  copyOptions={{ copied: common("copiedLabel", { label: t("recoveryCodes") }) }}
                   aria-label={t("copyRecoveryCodes")}
                   title={t("copyRecoveryCodes")}
-                >
-                  <Copy className="size-3.5" />
-                </Button>
+                />
               </div>
               <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/35 p-3 text-xs text-muted-foreground">
                 {displayRecoveryCodes.map((item) => (
