@@ -9,11 +9,11 @@ import { useTranslations } from "next-intl";
 import { AudioLines } from "@/components/animate-ui/icons/audio-lines";
 import { Blocks } from "@/components/animate-ui/icons/blocks";
 import { Pause } from "@/components/animate-ui/icons/pause";
-import { Plus } from "@/components/animate-ui/icons/plus";
 import { Send } from "@/components/animate-ui/icons/send";
 import { Link as LinkIcon } from "@/components/animate-ui/icons/link";
 import { Crop } from "@/components/animate-ui/icons/crop";
 import { X as XIcon } from "@/components/animate-ui/icons/x";
+import { PlusIcon } from "@/components/ui/plus";
 import type {
   ChatModelOption,
   PendingAttachment,
@@ -245,7 +245,6 @@ function ChatInputComponent({
   const tChat = useTranslations("chat");
   const tComposer = useTranslations("chat.composer");
   const tFileStatus = useTranslations("files.status");
-  const [isPlusHovered, setIsPlusHovered] = React.useState(false);
   const [isBlocksHovered, setIsBlocksHovered] = React.useState(false);
   const [isVoiceHovered, setIsVoiceHovered] = React.useState(false);
   const speechInput = useSpeechInput({ draft, onDraftChange });
@@ -533,13 +532,10 @@ function ChatInputComponent({
                   className="size-7 rounded-md text-muted-foreground hover:text-foreground sm:size-8"
                   disabled={sending || loading || uploading}
                   aria-label={tComposer("openTools")}
-                  onMouseEnter={() => setIsPlusHovered(true)}
-                  onMouseLeave={() => setIsPlusHovered(false)}
                 >
-                  <Plus
+                  <PlusIcon
                     size={20}
                     strokeWidth={1.4}
-                    animate={isPlusHovered ? "default" : undefined}
                   />
                 </InputGroupButton>
               </DropdownMenuTrigger>
