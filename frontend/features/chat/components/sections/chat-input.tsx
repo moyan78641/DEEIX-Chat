@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
-import { Image, ImageOff, ImagePlus } from "lucide-react";
+import { Check, Image, ImageOff, ImagePlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { AudioLines } from "@/components/animate-ui/icons/audio-lines";
@@ -19,6 +20,7 @@ import type {
   UploadingAttachment,
 } from "@/features/chat/types/chat-runtime";
 import { useSpeechInput } from "@/features/chat/hooks/use-speech-input";
+import { useModelShortcutMenu } from "@/features/chat/hooks/use-model-shortcut-menu";
 import { ChatMCP } from "@/features/chat/components/sections/chat-mcp";
 import { ChatModelPicker } from "@/features/chat/components/sections/chat-model-picker";
 import { ChatModelConfig } from "@/features/chat/components/sections/chat-model-config";
@@ -41,6 +43,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { resolveFileProcessingBadge, resolveFileProcessingToneClass } from "@/shared/lib/file-processing";
 import { cn } from "@/lib/utils";
+import { LobeHubIcon } from "@/shared/components/lobehub-icon";
+import { resolveLobeHubIconURL, resolveModelIdentity } from "@/shared/lib/model-identity";
 import type { ConversationOptions } from "@/shared/api/conversation.types";
 import type { MCPToolDTO } from "@/shared/api/mcp.types";
 import type { ModelOptionPolicy } from "@/shared/lib/model-option-policy";
@@ -98,6 +102,50 @@ type ComposerModeIndicator = {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   tone: "default" | "warning";
 };
+
+function ModelShortcutMenuItem({
+  model,
+  active,
+  selected,
+  onSelect,
+}: {
+  model: ChatModelOption;
+  active: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const platformModelName = model.platformModelName.trim();
+  const identity = React.useMemo(
+    () =>
+      resolveModelIdentity({
+        code: model.platformModelName,
+        vendor: model.vendor,
+        icon: model.icon,
+      }),
+    [model.icon, model.platformModelName, model.vendor],
+  );
+  const iconURL = React.useMemo(() => resolveLobeHubIconURL(identity.modelIcon), [identity.modelIcon]);
+
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={active}
+      data-active={active}
+      className="flex h-7 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-[11px] font-medium text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+      onMouseDown={(event) => {
+        event.preventDefault();
+        onSelect();
+      }}
+    >
+      <LobeHubIcon iconUrl={iconURL} label={platformModelName} />
+      <span className="min-w-0 flex-1 truncate">{platformModelName}</span>
+      <span className="flex size-3.5 shrink-0 items-center justify-center">
+        {selected ? <Check className="size-3.5 text-current" strokeWidth={1.8} /> : null}
+      </span>
+    </button>
+  );
+}
 
 function resolveComposerModeIndicator(
   decision: ChatSubmitDecision,
@@ -205,6 +253,7 @@ function ChatInputComponent({
   const [ragWarnDismissed, setRagWarnDismissed] = React.useState(false);
   const [previewAttachment, setPreviewAttachment] = React.useState<PendingAttachment | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const composingRef = React.useRef(false);
   const hasDraftText = draft.trim().length > 0;
   const canSend = (draft.trim().length > 0 || attachments.length > 0) && !sending && !loading && !uploading;
@@ -239,6 +288,27 @@ function ChatInputComponent({
   const modelOptionPolicyDisabled = modelOptionPolicy?.mode?.trim() === "disabled";
   const showMCPToolsButton = availableTools.length > 0 && !isMediaMode;
   const showHTMLVisualPromptButton = !isMediaMode;
+  const {
+    activeIndex: modelShortcutActiveIndex,
+    handleBlur: handleModelShortcutBlur,
+    handleChange: handleModelShortcutChange,
+    handleFocus: handleModelShortcutFocus,
+    handleKeyDown: handleModelShortcutKeyDown,
+    menuID: modelShortcutMenuID,
+    menuRef: modelShortcutMenuRef,
+    menuStyle: modelShortcutMenuStyle,
+    open: showModelShortcutMenu,
+    options: modelShortcutOptions,
+    select: selectModelShortcut,
+  } = useModelShortcutMenu({
+    disabled: sending || loading || uploading || modelLoading || modelDisabled,
+    draft,
+    modelOptions,
+    onDraftChange,
+    onModelChange,
+    selectedPlatformModelName,
+    textareaRef,
+  });
   const onSelectUploadTool = React.useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -375,19 +445,47 @@ function ChatInputComponent({
           </div>
         ) : null}
 
+        {showModelShortcutMenu && typeof document !== "undefined" ? createPortal(
+          <div
+            ref={modelShortcutMenuRef}
+            id={modelShortcutMenuID}
+            role="listbox"
+            className="fixed z-[60] overflow-y-auto rounded-xl border-[0.5px] border-border bg-popover p-1.5 text-popover-foreground shadow-lg"
+            style={modelShortcutMenuStyle}
+          >
+            <div className="flex flex-col gap-0.5">
+              {modelShortcutOptions.map((model, index) => (
+                <ModelShortcutMenuItem
+                  key={model.platformModelName}
+                  model={model}
+                  active={index === modelShortcutActiveIndex}
+                  selected={model.platformModelName === selectedPlatformModelName}
+                  onSelect={() => selectModelShortcut(model)}
+                />
+              ))}
+            </div>
+          </div>,
+          document.body,
+        ) : null}
+
         <InputGroupTextarea
+          ref={textareaRef}
           value={draft}
           disabled={sending || loading || uploading}
           readOnly={speechInput.active}
           placeholder={dropActive ? tChat("attachments.dropTitle") : speechInput.placeholder}
           rows={1}
+          aria-controls={showModelShortcutMenu ? modelShortcutMenuID : undefined}
+          aria-expanded={showModelShortcutMenu ? true : undefined}
           style={{ fontFamily: "var(--font-chat)", fontWeight: "var(--font-chat-weight)" }}
           className={cn(
             "rounded-3xl min-h-12 overflow-y-auto px-5 pt-4 text-[15px] leading-6 placeholder:text-muted-foreground placeholder:font-[inherit] placeholder:leading-[inherit]",
             inputHeightClassName,
             speechInput.active ? "placeholder:font-normal placeholder:text-muted-foreground" : "",
           )}
-          onChange={(event) => onDraftChange(event.target.value)}
+          onFocus={handleModelShortcutFocus}
+          onBlur={handleModelShortcutBlur}
+          onChange={(event) => handleModelShortcutChange(event.target.value)}
           onPaste={(event) => {
             const files = clipboardFilesFromPaste(event);
             if (files.length === 0) {
@@ -409,6 +507,10 @@ function ChatInputComponent({
               return;
             }
             const shouldSend = isSendShortcutEvent(sendShortcut, event);
+
+            if (handleModelShortcutKeyDown(event)) {
+              return;
+            }
 
             if (shouldSend) {
               event.preventDefault();
