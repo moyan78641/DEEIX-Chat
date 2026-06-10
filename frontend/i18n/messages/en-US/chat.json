@@ -308,6 +308,8 @@
     "uploadFile": "Upload file",
     "screenshot": "Screenshot",
     "openTools": "Open tools",
+    "inputPlaceholder": "Message, or type @ to add models, files, and tools",
+    "voiceListeningPlaceholder": "Receiving voice input…",
     "modelOptions": "Parameters",
     "mcpTools": "MCP tools",
     "mcpToolsSelected": "{count} tools enabled",

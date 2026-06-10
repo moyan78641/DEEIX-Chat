@@ -335,7 +335,12 @@ function ChatInputComponent({
   const tFileStatus = useTranslations("files.status");
   const [isBlocksHovered, setIsBlocksHovered] = React.useState(false);
   const [isVoiceHovered, setIsVoiceHovered] = React.useState(false);
-  const speechInput = useSpeechInput({ draft, onDraftChange });
+  const speechInput = useSpeechInput({
+    draft,
+    listeningPlaceholder: tComposer("voiceListeningPlaceholder"),
+    onDraftChange,
+    placeholder: tComposer("inputPlaceholder"),
+  });
   const [hoveredTool, setHoveredTool] = React.useState<"upload" | "screenshot" | null>(null);
   const [ragWarnDismissed, setRagWarnDismissed] = React.useState(false);
   const [previewAttachment, setPreviewAttachment] = React.useState<PendingAttachment | null>(null);
@@ -479,7 +484,7 @@ function ChatInputComponent({
                 {attachments.map((item) => (
                   <div
                     key={item.fileID}
-                    className="bg-pure group relative flex h-14 w-full shrink-0 items-center gap-1.5 rounded-lg border border-border/50 bg-background/95 px-2 text-left shadow-[0_1px_2px_rgba(0,0,0,0.025)] transition-colors hover:border-border hover:bg-accent/30 sm:w-[228px] sm:px-2.5"
+                    className="group relative flex h-14 w-full shrink-0 items-center gap-1.5 rounded-lg bg-muted/35 px-2 text-left transition-colors hover:bg-muted/50 dark:bg-white/[0.06] dark:hover:bg-white/[0.09] sm:w-[228px] sm:px-2.5"
                   >
                     <button
                       type="button"
@@ -539,7 +544,7 @@ function ChatInputComponent({
                 {uploadingAttachments.map((item) => (
                   <div
                     key={item.tempID}
-                    className="bg-pure relative flex h-14 w-full shrink-0 items-center gap-2.5 rounded-lg border border-border/50 bg-background/95 px-2.5 sm:w-[228px]"
+                    className="relative flex h-14 w-full shrink-0 items-center gap-2.5 rounded-lg bg-muted/35 px-2.5 dark:bg-white/[0.06] sm:w-[228px]"
                     aria-label={tComposer("uploadingAttachment", { name: item.fileName })}
                   >
                     <Skeleton className="size-5 shrink-0 rounded-sm" />

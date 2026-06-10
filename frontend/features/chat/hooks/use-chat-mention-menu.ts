@@ -24,31 +24,37 @@ const MENTION_MENU_FILE_QUERY_DELAY_MS = 180;
 
 export type ChatMentionMenuKind = "file" | "tool" | "model";
 
+type ChatMentionFileMenuItem = {
+  id: string;
+  kind: "file";
+  label: string;
+  description: string;
+  file: FileObjectDTO;
+  selected: boolean;
+};
+
+type ChatMentionToolMenuItem = {
+  id: string;
+  kind: "tool";
+  label: string;
+  description: string;
+  tool: MCPToolDTO;
+  selected: boolean;
+};
+
+type ChatMentionModelMenuItem = {
+  id: string;
+  kind: "model";
+  label: string;
+  description: string;
+  model: ChatModelOption;
+  selected: boolean;
+};
+
 export type ChatMentionMenuItem =
-  | {
-      id: string;
-      kind: "file";
-      label: string;
-      description: string;
-      file: FileObjectDTO;
-      selected: boolean;
-    }
-  | {
-      id: string;
-      kind: "tool";
-      label: string;
-      description: string;
-      tool: MCPToolDTO;
-      selected: boolean;
-    }
-  | {
-      id: string;
-      kind: "model";
-      label: string;
-      description: string;
-      model: ChatModelOption;
-      selected: boolean;
-    };
+  | ChatMentionFileMenuItem
+  | ChatMentionToolMenuItem
+  | ChatMentionModelMenuItem;
 
 export type ChatMentionMenuSection = {
   kind: ChatMentionMenuKind;
@@ -115,7 +121,7 @@ function resolveToolDescription(tool: MCPToolDTO): string {
   return [serverName, description].filter(Boolean).join(" - ");
 }
 
-function filterModels(modelOptions: ChatModelOption[], query: string): ChatMentionMenuItem[] {
+function filterModels(modelOptions: ChatModelOption[], query: string): ChatMentionModelMenuItem[] {
   return modelOptions
     .filter((model) =>
       itemMatchesQuery([model.platformModelName, model.vendor], query),
@@ -134,7 +140,7 @@ function filterTools(
   availableTools: MCPToolDTO[],
   query: string,
   selectedToolIDs: number[],
-): ChatMentionMenuItem[] {
+): ChatMentionToolMenuItem[] {
   const selectedIDs = new Set(selectedToolIDs);
   return availableTools
     .filter((tool) =>
@@ -154,7 +160,7 @@ function filesToItems(
   files: FileObjectDTO[],
   attachments: PendingAttachment[],
   defaultFileLabel: string,
-): ChatMentionMenuItem[] {
+): ChatMentionFileMenuItem[] {
   const attachedIDs = new Set(attachments.map((item) => item.fileID));
   return files.map((file) => ({
     id: `file:${file.fileID}`,
