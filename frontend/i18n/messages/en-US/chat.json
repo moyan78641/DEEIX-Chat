@@ -308,6 +308,8 @@
     "uploadFile": "Upload file",
     "screenshot": "Screenshot",
     "openTools": "Open tools",
+    "inputPlaceholder": "Message, or type @ to add models, files, and tools",
+    "voiceListeningPlaceholder": "Receiving voice input…",
     "modelOptions": "Parameters",
     "mcpTools": "MCP tools",
     "mcpToolsSelected": "{count} tools enabled",
@@ -370,6 +372,14 @@
     "booleanOn": "On",
     "booleanOff": "Off",
     "tool": "Tool {id}",
+    "mention": {
+      "fileFallback": "File",
+      "sections": {
+        "file": "Files",
+        "tool": "MCP",
+        "model": "Models"
+      }
+    },
     "mediaMode": {
       "imageGeneration": "Image generation",
       "imageGenerationIntro": "Image generation mode is active.",

@@ -308,6 +308,8 @@
     "uploadFile": "上传文件",
     "screenshot": "屏幕截图",
     "openTools": "打开工具菜单",
+    "inputPlaceholder": "输入消息，或用 @ 添加模型、文件和工具",
+    "voiceListeningPlaceholder": "正在接收语音…",
     "modelOptions": "模型配置",
     "mcpTools": "MCP 工具",
     "mcpToolsSelected": "已启用 {count} 个工具",
@@ -370,6 +372,14 @@
     "booleanOn": "开启",
     "booleanOff": "关闭",
     "tool": "工具 {id}",
+    "mention": {
+      "fileFallback": "文件",
+      "sections": {
+        "file": "文件",
+        "tool": "MCP",
+        "model": "模型"
+      }
+    },
     "mediaMode": {
       "imageGeneration": "图像生成",
       "imageGenerationIntro": "当前为图像生成模式。",
