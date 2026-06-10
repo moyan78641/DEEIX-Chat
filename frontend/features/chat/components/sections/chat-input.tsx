@@ -3,8 +3,10 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
-import { Check, Image, ImageOff, ImagePlus } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Check, FileText, Image, ImageOff, ImagePlus, Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import { AudioLines } from "@/components/animate-ui/icons/audio-lines";
 import { Blocks } from "@/components/animate-ui/icons/blocks";
@@ -20,7 +22,13 @@ import type {
   UploadingAttachment,
 } from "@/features/chat/types/chat-runtime";
 import { useSpeechInput } from "@/features/chat/hooks/use-speech-input";
-import { useModelShortcutMenu } from "@/features/chat/hooks/use-model-shortcut-menu";
+import {
+  useChatMentionMenu,
+  type ChatMentionMenuItem,
+  type ChatMentionMenuKind,
+  type ChatMentionMenuLayout,
+  type ChatMentionMenuSection,
+} from "@/features/chat/hooks/use-chat-mention-menu";
 import { ChatMCP } from "@/features/chat/components/sections/chat-mcp";
 import { ChatModelPicker } from "@/features/chat/components/sections/chat-model-picker";
 import { ChatModelConfig } from "@/features/chat/components/sections/chat-model-config";
@@ -46,6 +54,7 @@ import { cn } from "@/lib/utils";
 import { LobeHubIcon } from "@/shared/components/lobehub-icon";
 import { resolveLobeHubIconURL, resolveModelIdentity } from "@/shared/lib/model-identity";
 import type { ConversationOptions } from "@/shared/api/conversation.types";
+import type { FileObjectDTO } from "@/shared/api/file.types";
 import type { MCPToolDTO } from "@/shared/api/mcp.types";
 import type { ModelOptionPolicy } from "@/shared/lib/model-option-policy";
 import type { SendShortcut } from "@/features/settings/types/settings";
@@ -90,6 +99,7 @@ type ChatInputProps = {
   onOptionsChange: React.Dispatch<React.SetStateAction<ConversationOptions>>;
   onOptionsReset: (defaults?: ConversationOptions) => void;
   onOptionsDefaultRestore: () => Promise<ConversationOptions | null>;
+  onAttachExistingFile: (file: FileObjectDTO) => void | Promise<void>;
   onUploadFiles: (files: File[]) => void | Promise<void>;
   onCaptureScreenshot: () => void | Promise<void>;
   onRemoveAttachment: (fileID: string) => void;
@@ -105,28 +115,27 @@ type ComposerModeIndicator = {
   tone: "default" | "warning";
 };
 
-function ModelShortcutMenuItem({
-  model,
+function MentionMenuItem({
+  item,
   active,
-  selected,
   onSelect,
 }: {
-  model: ChatModelOption;
+  item: ChatMentionMenuItem;
   active: boolean;
-  selected: boolean;
   onSelect: () => void;
 }) {
-  const platformModelName = model.platformModelName.trim();
-  const identity = React.useMemo(
-    () =>
-      resolveModelIdentity({
-        code: model.platformModelName,
-        vendor: model.vendor,
-        icon: model.icon,
-      }),
-    [model.icon, model.platformModelName, model.vendor],
-  );
-  const iconURL = React.useMemo(() => resolveLobeHubIconURL(identity.modelIcon), [identity.modelIcon]);
+  const platformModelName = item.kind === "model" ? item.model.platformModelName.trim() : "";
+  const identity = React.useMemo(() => {
+    if (item.kind !== "model") {
+      return null;
+    }
+    return resolveModelIdentity({
+      code: item.model.platformModelName,
+      vendor: item.model.vendor,
+      icon: item.model.icon,
+    });
+  }, [item]);
+  const iconURL = React.useMemo(() => identity ? resolveLobeHubIconURL(identity.modelIcon) : "", [identity]);
 
   return (
     <button
@@ -134,19 +143,92 @@ function ModelShortcutMenuItem({
       role="option"
       aria-selected={active}
       data-active={active}
-      className="flex h-7 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-[11px] font-medium text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+      className="flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-[11px] font-medium text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
       onMouseDown={(event) => {
         event.preventDefault();
         onSelect();
       }}
     >
-      <LobeHubIcon iconUrl={iconURL} label={platformModelName} />
-      <span className="min-w-0 flex-1 truncate">{platformModelName}</span>
+      {item.kind === "model" ? (
+        <LobeHubIcon iconUrl={iconURL} label={platformModelName} />
+      ) : item.kind === "file" ? (
+        <span className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground">
+          <FileText className="size-3.5" strokeWidth={1.7} />
+        </span>
+      ) : (
+        <span className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground">
+          <Wrench className="size-3.5" strokeWidth={1.7} />
+        </span>
+      )}
+      <span className="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden">
+        <span
+          className={cn(
+            "text-foreground/90",
+            item.kind === "tool" ? "shrink-0 whitespace-nowrap" : "min-w-0 truncate",
+          )}
+        >
+          {item.label}
+        </span>
+        {item.description ? (
+          <span className="min-w-0 truncate font-normal text-muted-foreground/80">{item.description}</span>
+        ) : null}
+      </span>
       <span className="flex size-3.5 shrink-0 items-center justify-center">
-        {selected ? <Check className="size-3.5 text-current" strokeWidth={1.8} /> : null}
+        {item.selected ? <Check className="size-3.5 text-current" strokeWidth={1.8} /> : null}
       </span>
     </button>
   );
+}
+
+const MentionMenuContent = React.memo(function MentionMenuContent({
+  activeIndex,
+  sectionOffsets,
+  sections,
+  t,
+  onSelect,
+}: {
+  activeIndex: number;
+  sectionOffsets: Map<ChatMentionMenuKind, number>;
+  sections: ChatMentionMenuSection[];
+  t: (key: string) => string;
+  onSelect: (item: ChatMentionMenuItem) => void;
+}) {
+  return (
+    <>
+      {sections.map((section) => {
+        const sectionOffset = sectionOffsets.get(section.kind) ?? 0;
+        return (
+          <div key={section.kind} className="space-y-0.5">
+            <div className="px-2 pb-1 pt-1.5 text-[11px] font-semibold text-muted-foreground">
+              {t(`mention.sections.${section.kind}`)}
+            </div>
+            {section.items.map((item, index) => (
+              <MentionMenuItem
+                key={item.id}
+                item={item}
+                active={sectionOffset + index === activeIndex}
+                onSelect={() => onSelect(item)}
+              />
+            ))}
+          </div>
+        );
+      })}
+    </>
+  );
+});
+
+function resolveMentionMenuMotionStyle(layout: ChatMentionMenuLayout | null): React.CSSProperties | undefined {
+  if (!layout) {
+    return undefined;
+  }
+  return {
+    left: layout.left,
+    top: layout.top,
+    width: layout.width,
+    contain: "layout paint",
+    transformOrigin: layout.placement === "bottom" ? "top center" : "bottom center",
+    willChange: "height, opacity, transform",
+  };
 }
 
 function resolveComposerModeIndicator(
@@ -240,6 +322,7 @@ function ChatInputComponent({
   onOptionsChange,
   onOptionsReset,
   onOptionsDefaultRestore,
+  onAttachExistingFile,
   onUploadFiles,
   onCaptureScreenshot,
   onRemoveAttachment,
@@ -256,6 +339,7 @@ function ChatInputComponent({
   const [ragWarnDismissed, setRagWarnDismissed] = React.useState(false);
   const [previewAttachment, setPreviewAttachment] = React.useState<PendingAttachment | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const inputGroupRef = React.useRef<HTMLDivElement | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const composingRef = React.useRef(false);
   const hasDraftText = draft.trim().length > 0;
@@ -292,26 +376,56 @@ function ChatInputComponent({
   const showMCPToolsButton = availableTools.length > 0 && !isMediaMode;
   const showHTMLVisualPromptButton = !isMediaMode;
   const {
-    activeIndex: modelShortcutActiveIndex,
-    handleBlur: handleModelShortcutBlur,
-    handleChange: handleModelShortcutChange,
-    handleFocus: handleModelShortcutFocus,
-    handleKeyDown: handleModelShortcutKeyDown,
-    menuID: modelShortcutMenuID,
-    menuRef: modelShortcutMenuRef,
-    menuStyle: modelShortcutMenuStyle,
-    open: showModelShortcutMenu,
-    options: modelShortcutOptions,
-    select: selectModelShortcut,
-  } = useModelShortcutMenu({
+    activeIndex: mentionActiveIndex,
+    handleBlur: handleMentionBlur,
+    handleChange: handleMentionChange,
+    handleFocus: handleMentionFocus,
+    handleKeyDown: handleMentionKeyDown,
+    menuID: mentionMenuID,
+    menuLayout: mentionMenuLayout,
+    menuRef: mentionMenuRef,
+    menuReady: mentionMenuReady,
+    open: showMentionMenu,
+    sections: mentionSections,
+    select: selectMentionItem,
+  } = useChatMentionMenu({
+    attachments,
+    availableTools,
+    defaultFileLabel: tComposer("mention.fileFallback"),
     disabled: sending || loading || uploading || modelLoading || modelDisabled,
     draft,
+    maxSelectedTools,
     modelOptions,
-    onDraftChange,
-    onModelChange,
     selectedPlatformModelName,
+    selectedToolIDs,
+    anchorRef: inputGroupRef,
     textareaRef,
+    toolsDisabled: isMediaMode,
+    onDraftChange,
+    onFileSelect: onAttachExistingFile,
+    onModelChange,
+    onSelectedToolsChange,
+    onToolLimitReached: () => {
+      toast.error(tComposer("mcpToolLimitTitle"), {
+        description: tComposer("mcpToolLimitDescription", { limit: maxSelectedTools }),
+      });
+    },
   });
+  const mentionSectionOffsets = React.useMemo(() => {
+    const offsets = new Map<ChatMentionMenuKind, number>();
+    let offset = 0;
+    for (const section of mentionSections) {
+      offsets.set(section.kind, offset);
+      offset += section.items.length;
+    }
+    return offsets;
+  }, [mentionSections]);
+  const mentionMenuMotionStyle = React.useMemo(
+    () => resolveMentionMenuMotionStyle(mentionMenuLayout),
+    [mentionMenuLayout],
+  );
+  const mentionMenuHeight = mentionMenuLayout?.height ?? 0;
+  const shouldRenderMentionMenu = showMentionMenu && mentionMenuReady && mentionMenuMotionStyle !== undefined;
   const onSelectUploadTool = React.useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -337,6 +451,7 @@ function ChatInputComponent({
       />
 
       <InputGroup
+        ref={inputGroupRef}
         className={cn(
           "bg-pure rounded-3xl border-[0.5px] border-border/70 shadow-xs has-[[data-slot=input-group-control]:focus-visible]:ring-0 has-[[data-slot=input-group-control]:focus-visible]:border-border",
           dropActive && "border-dashed border-foreground/30 bg-muted/20 shadow-none",
@@ -448,26 +563,48 @@ function ChatInputComponent({
           </div>
         ) : null}
 
-        {showModelShortcutMenu && typeof document !== "undefined" ? createPortal(
-          <div
-            ref={modelShortcutMenuRef}
-            id={modelShortcutMenuID}
-            role="listbox"
-            className="fixed z-[60] overflow-y-auto rounded-xl border-[0.5px] border-border bg-popover p-1.5 text-popover-foreground shadow-lg"
-            style={modelShortcutMenuStyle}
-          >
-            <div className="flex flex-col gap-0.5">
-              {modelShortcutOptions.map((model, index) => (
-                <ModelShortcutMenuItem
-                  key={model.platformModelName}
-                  model={model}
-                  active={index === modelShortcutActiveIndex}
-                  selected={model.platformModelName === selectedPlatformModelName}
-                  onSelect={() => selectModelShortcut(model)}
-                />
-              ))}
-            </div>
-          </div>,
+        {typeof document !== "undefined" ? createPortal(
+          <AnimatePresence initial={false}>
+            {shouldRenderMentionMenu ? (
+              <motion.div
+                ref={mentionMenuRef}
+                id={mentionMenuID}
+                key="chat-mention-menu"
+                role="listbox"
+                className="bg-pure fixed z-[60] overflow-hidden rounded-xl border-[0.5px] border-border/70 text-popover-foreground shadow-xs"
+                style={mentionMenuMotionStyle}
+                initial={{
+                  height: Math.min(mentionMenuHeight, 12),
+                  opacity: 0,
+                  scale: 0.99,
+                  y: mentionMenuLayout?.placement === "top" ? 4 : -4,
+                }}
+                animate={{ height: mentionMenuHeight, opacity: 1, scale: 1, y: 0 }}
+                exit={{
+                  height: Math.min(mentionMenuHeight, 12),
+                  opacity: 0,
+                  scale: 0.99,
+                  y: mentionMenuLayout?.placement === "top" ? 4 : -4,
+                }}
+                transition={{
+                  height: { type: "spring", stiffness: 520, damping: 42, mass: 0.75 },
+                  opacity: { duration: 0.1, ease: "easeOut" },
+                  scale: { duration: 0.12, ease: "easeOut" },
+                  y: { duration: 0.12, ease: "easeOut" },
+                }}
+              >
+                <div data-mention-menu-scroll className="h-full overflow-y-auto p-1.5">
+                  <MentionMenuContent
+                    activeIndex={mentionActiveIndex}
+                    sectionOffsets={mentionSectionOffsets}
+                    sections={mentionSections}
+                    t={tComposer}
+                    onSelect={selectMentionItem}
+                  />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>,
           document.body,
         ) : null}
 
@@ -478,17 +615,17 @@ function ChatInputComponent({
           readOnly={speechInput.active}
           placeholder={dropActive ? tChat("attachments.dropTitle") : speechInput.placeholder}
           rows={1}
-          aria-controls={showModelShortcutMenu ? modelShortcutMenuID : undefined}
-          aria-expanded={showModelShortcutMenu ? true : undefined}
+          aria-controls={showMentionMenu ? mentionMenuID : undefined}
+          aria-expanded={showMentionMenu ? true : undefined}
           style={{ fontFamily: "var(--font-chat)", fontWeight: "var(--font-chat-weight)" }}
           className={cn(
             "rounded-3xl min-h-12 overflow-y-auto px-5 pt-4 text-[15px] leading-6 placeholder:text-muted-foreground placeholder:font-[inherit] placeholder:leading-[inherit]",
             inputHeightClassName,
             speechInput.active ? "placeholder:font-normal placeholder:text-muted-foreground" : "",
           )}
-          onFocus={handleModelShortcutFocus}
-          onBlur={handleModelShortcutBlur}
-          onChange={(event) => handleModelShortcutChange(event.target.value)}
+          onFocus={handleMentionFocus}
+          onBlur={handleMentionBlur}
+          onChange={(event) => handleMentionChange(event.target.value)}
           onPaste={(event) => {
             const files = clipboardFilesFromPaste(event);
             if (files.length === 0) {
@@ -511,7 +648,7 @@ function ChatInputComponent({
             }
             const shouldSend = isSendShortcutEvent(sendShortcut, event);
 
-            if (handleModelShortcutKeyDown(event)) {
+            if (handleMentionKeyDown(event)) {
               return;
             }
 

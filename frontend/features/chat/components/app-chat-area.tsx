@@ -49,6 +49,7 @@ import { listAvailableMCPTools } from "@/shared/api/mcp";
 import { getUserSettings, patchUserSettings } from "@/shared/api/user-settings";
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
 import type { ConversationDTO, ConversationOptions } from "@/shared/api/conversation.types";
+import type { FileObjectDTO } from "@/shared/api/file.types";
 import type { MCPToolDTO } from "@/shared/api/mcp.types";
 import { useTheme } from "@/shared/components/theme-provider";
 import { cn } from "@/lib/utils";
@@ -614,6 +615,49 @@ export function AppChatArea() {
     ],
   );
 
+  const onAttachExistingFile = React.useCallback(
+    (file: FileObjectDTO) => {
+      const alreadyAttached = attachments.some((item) => item.fileID === file.fileID);
+      if (alreadyAttached) {
+        return;
+      }
+      if (maxFilesPerMessage > 0 && attachments.length >= maxFilesPerMessage) {
+        toast.error(t("attachments.limitReached"), {
+          description: t("attachments.maxUploadFiles", { count: maxFilesPerMessage }),
+        });
+        return;
+      }
+      setAttachments((previous) => {
+        if (previous.some((item) => item.fileID === file.fileID)) {
+          return previous;
+        }
+        return [
+          ...previous,
+          {
+            fileID: file.fileID,
+            fileName: file.fileName,
+            mimeType: file.mimeType,
+            detectedMime: file.detectedMIME,
+            fileCategory: file.fileCategory,
+            sizeBytes: file.sizeBytes,
+            processingStatus: file.processingStatus,
+            processingReady: file.processingReady,
+            processingErrorCode: file.processingErrorCode,
+            processingErrorMessage: file.processingErrorMessage,
+            extractStatus: file.extractStatus,
+            embedStatus: file.embedStatus,
+            ragReady: false,
+            ragReason: "",
+            ocrUsed: false,
+            ragOptOut: file.ragOptOut,
+          },
+        ];
+      });
+      window.requestAnimationFrame(onScrollToLatest);
+    },
+    [attachments, maxFilesPerMessage, onScrollToLatest, setAttachments, t],
+  );
+
   React.useEffect(() => {
     setManualConversationTitle("");
   }, [conversationID]);
@@ -920,6 +964,7 @@ export function AppChatArea() {
     onOptionsChange: setModelOptions,
     onOptionsReset: resetModelOptions,
     onOptionsDefaultRestore: restoreBackendDefaultModelOptions,
+    onAttachExistingFile,
     onUploadFiles,
     onCaptureScreenshot,
     onRemoveAttachment,

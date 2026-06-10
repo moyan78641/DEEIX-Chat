@@ -370,6 +370,14 @@
     "booleanOn": "开启",
     "booleanOff": "关闭",
     "tool": "工具 {id}",
+    "mention": {
+      "fileFallback": "文件",
+      "sections": {
+        "file": "文件",
+        "tool": "MCP",
+        "model": "模型"
+      }
+    },
     "mediaMode": {
       "imageGeneration": "图像生成",
       "imageGenerationIntro": "当前为图像生成模式。",
