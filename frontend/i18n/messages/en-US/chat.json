@@ -80,6 +80,8 @@
     "rename": "Rename",
     "renameDescription": "Enter a new conversation name.",
     "renamePlaceholder": "Enter a new conversation name",
+    "autoRename": "Auto rename",
+    "autoRenameFailed": "Auto rename failed",
     "moveToProject": "Move",
     "unassignedProject": "Default",
     "shareAndExport": "Share & Export",

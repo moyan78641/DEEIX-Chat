@@ -210,6 +210,7 @@ export function AppChatArea() {
     prependNewConversation,
     touchByPublicID,
     renameByPublicID,
+    regenerateTitleByPublicID,
     setStarByPublicID,
     setProjectByPublicID,
     deleteByPublicID,
@@ -728,6 +729,21 @@ export function AppChatArea() {
     [actionConversationID, canOperateConversation, renameByPublicID],
   );
 
+  const onAutoRenameActiveConversation = React.useCallback(async () => {
+    if (!canOperateConversation) {
+      return;
+    }
+    try {
+      const updated = await regenerateTitleByPublicID(actionConversationID);
+      if (updated?.title?.trim()) {
+        setManualConversationTitle(updated.title.trim());
+      }
+    } catch (error) {
+      toast.error(t("labelMenu.autoRenameFailed"));
+      throw error;
+    }
+  }, [actionConversationID, canOperateConversation, regenerateTitleByPublicID, t]);
+
   const onRequestDeleteActiveConversation = React.useCallback(() => {
     if (!canOperateConversation) {
       return;
@@ -1057,6 +1073,7 @@ export function AppChatArea() {
                   onCycleMessageBranch={onCycleMessageBranch}
                   onToggleStar={onToggleActiveConversationStar}
                   onRename={onRenameActiveConversation}
+                  onAutoRename={onAutoRenameActiveConversation}
                   projectMenu={{
                     label: t("labelMenu.moveToProject"),
                     unassignedLabel: t("labelMenu.unassignedProject"),

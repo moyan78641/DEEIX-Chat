@@ -538,6 +538,20 @@ export async function renameConversation(
   );
 }
 
+export async function regenerateConversationTitle(
+  accessToken: string,
+  conversationPublicID: string,
+): Promise<ConversationDTO> {
+  return authedRequest<ConversationDTO>(
+    `/api/v1/conversations/${pathParam(conversationPublicID)}/title/regenerate`,
+    {
+      method: "POST",
+      accessToken,
+    },
+    true,
+  );
+}
+
 export async function setConversationStar(
   accessToken: string,
   conversationPublicID: string,

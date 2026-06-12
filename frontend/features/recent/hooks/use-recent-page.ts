@@ -101,6 +101,7 @@ export function useRecentPage() {
   const {
     prependNewConversation,
     renameByPublicID,
+    regenerateTitleByPublicID,
     setStarByPublicID,
     archiveByPublicID,
     deleteByPublicID,
@@ -126,6 +127,7 @@ export function useRecentPage() {
   const [selectedConversationIDs, setSelectedConversationIDs] = React.useState<string[]>([]);
   const [renameTarget, setRenameTarget] = React.useState<ConversationDTO | null>(null);
   const [renameValue, setRenameValue] = React.useState("");
+  const [renamingAutomatically, setRenamingAutomatically] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<RecentDeleteTarget>(null);
   const [deleteFiles, setDeleteFiles] = React.useState(false);
   const { deleteFilesByDefault } = useChatPreferences();
@@ -487,6 +489,28 @@ export function useRecentPage() {
     setRenameValue("");
   }, [renameByPublicID, renameTarget, renameValue]);
 
+  const onAutoRename = React.useCallback(async () => {
+    if (!renameTarget || renamingAutomatically) {
+      return;
+    }
+
+    setRenamingAutomatically(true);
+    try {
+      const updated = await regenerateTitleByPublicID(renameTarget.publicID);
+      if (updated) {
+        setItems((current) => upsertByPublicID(current, updated));
+        setRenameTarget(null);
+        setRenameValue("");
+      }
+    } catch (error) {
+      toast.error(t("dialogs.autoRenameFailed"), {
+        description: resolveErrorMessage(error, t("dialogs.autoRenameFailed")),
+      });
+    } finally {
+      setRenamingAutomatically(false);
+    }
+  }, [regenerateTitleByPublicID, renameTarget, renamingAutomatically, resolveErrorMessage, t]);
+
   const confirmDelete = React.useCallback(async () => {
     if (!deleteTarget) {
       return;
@@ -695,6 +719,7 @@ export function useRecentPage() {
     hoveredConversationID,
     renameTarget,
     renameValue,
+    renamingAutomatically,
     deleteTarget,
     deleteFiles,
     shareTarget,
@@ -721,6 +746,7 @@ export function useRecentPage() {
     onDelete,
     setRenameValue,
     onRenameCommit,
+    onAutoRename,
     closeRenameDialog: () => {
       setRenameTarget(null);
       setRenameValue("");

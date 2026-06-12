@@ -6,7 +6,9 @@ import { Archive, PencilLine, Trash } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { Ellipsis } from "@/components/animate-ui/icons/ellipsis"
+import { Sparkles } from "@/components/animate-ui/icons/sparkles"
 import { AnimatedText } from "@/components/ui/animated-text"
+import { Spinner } from "@/components/ui/spinner"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +43,8 @@ type SidebarConversationItemProps = {
   onRenameCommit: (publicID: string, currentTitle: string) => void
   onRenameCancel: () => void
   onRename: (publicID: string, currentTitle: string) => void
+  onAutoRename?: (publicID: string) => void | Promise<void>
+  isAutoRenaming?: boolean
   onArchive: (publicID: string) => void
   onShare?: (publicID: string, title: string) => void
   onExport?: (publicID: string) => void | Promise<void>
@@ -63,6 +67,8 @@ export function SidebarConversationItem({
   onRenameCommit,
   onRenameCancel,
   onRename,
+  onAutoRename,
+  isAutoRenaming = false,
   onArchive,
   onShare,
   onExport,
@@ -86,7 +92,7 @@ export function SidebarConversationItem({
           <input
             autoFocus
             value={renameValue}
-            className="h-8 w-full bg-transparent pl-2 pr-2 outline-none"
+            className={cn("h-8 w-full bg-transparent pl-2 outline-none", onAutoRename ? "pr-8" : "pr-2")}
             onChange={(event) => onRenameValueChange(event.target.value)}
             onClick={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
@@ -102,6 +108,30 @@ export function SidebarConversationItem({
             }}
             onBlur={() => onRenameCommit(item.publicID, item.title)}
           />
+          {onAutoRename ? (
+            <button
+              type="button"
+              className="absolute right-1 flex size-6 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-60"
+              aria-label={t("autoRename")}
+              title={t("autoRename")}
+              disabled={isAutoRenaming}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+              }}
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                void onAutoRename(item.publicID)
+              }}
+            >
+              {isAutoRenaming ? (
+                <Spinner className="size-3.5" />
+              ) : (
+                <Sparkles size={14} strokeWidth={1.5} animateOnHover="default" />
+              )}
+            </button>
+          ) : null}
         </div>
       ) : (
         <div

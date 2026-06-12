@@ -217,6 +217,51 @@ func (h *Handler) RenameConversation(c *gin.Context) {
 	response.Success(c, toConversationResponse(item))
 }
 
+// RegenerateConversationTitle godoc
+// @Summary 自动重新命名会话
+// @Description 根据指定会话已有内容重新生成标题
+// @Tags chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "会话 public_id"
+// @Success 200 {object} ConversationUpdateResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 404 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /conversations/{id}/title/regenerate [post]
+func (h *Handler) RegenerateConversationTitle(c *gin.Context) {
+	userID := middleware.MustUserID(c)
+	publicID, err := stringParam(c, "id")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid conversation id")
+		return
+	}
+
+	item, err := h.service.RegenerateConversationTitle(c.Request.Context(), userID, publicID)
+	if err != nil {
+		switch {
+		case errors.Is(err, appconversation.ErrInvalidConversationTitle):
+			response.Error(c, http.StatusBadRequest, "conversation has no titleable content")
+			return
+		case errors.Is(err, appconversation.ErrConversationNotFound):
+			response.Error(c, http.StatusNotFound, "conversation not found")
+			return
+		default:
+			response.Error(c, http.StatusInternalServerError, "regenerate conversation title failed")
+			return
+		}
+	}
+
+	h.recordAudit(c, "regenerate_conversation_title",
+		"conversation",
+		item.PublicID,
+		map[string]string{"title": item.Title},
+	)
+
+	response.Success(c, toConversationResponse(item))
+}
+
 // SetConversationStar godoc
 // @Summary 设置会话星标
 // @Description 设置指定会话是否星标

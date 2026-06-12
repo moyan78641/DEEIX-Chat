@@ -80,6 +80,8 @@
     "rename": "重新命名",
     "renameDescription": "请输入新的会话名称",
     "renamePlaceholder": "请输入新的会话名称",
+    "autoRename": "自动命名",
+    "autoRenameFailed": "自动命名失败",
     "moveToProject": "移至项目",
     "unassignedProject": "默认",
     "shareAndExport": "分享 & 导出",
