@@ -15,6 +15,10 @@
     "inactive": "Disabled",
     "circuitOpen": "Circuit open"
   },
+  "availability": {
+    "notEnabled": "Not enabled",
+    "noSource": "No upstream"
+  },
   "accessScope": {
     "public": "Platform-wide",
     "internal": "Internal tasks"
@@ -233,7 +237,6 @@
     "vendorHeader": "Vendors",
     "modelHeader": "Models",
     "itemCount": "{count}",
-    "inactive": "Inactive",
     "dragVendor": "Drag to reorder vendor {name}",
     "dragModel": "Drag to reorder model {name}"
   },
