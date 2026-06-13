@@ -4,7 +4,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, FileText, Image, ImageOff, ImagePlus, Wrench } from "lucide-react";
+import { Check, FileText, Image, ImageOff, ImagePlus, ScrollText, Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -156,9 +156,13 @@ function MentionMenuItem({
         <span className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground">
           <FileText className="size-3.5" strokeWidth={1.7} />
         </span>
-      ) : (
+      ) : item.kind === "tool" ? (
         <span className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground">
           <Wrench className="size-3.5" strokeWidth={1.7} />
+        </span>
+      ) : (
+        <span className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground">
+          <ScrollText className="size-3.5" strokeWidth={1.7} />
         </span>
       )}
       <span className="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden">

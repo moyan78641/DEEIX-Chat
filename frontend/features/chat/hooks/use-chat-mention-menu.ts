@@ -9,6 +9,8 @@ import {
 import type { ChatModelOption, PendingAttachment } from "@/features/chat/types/chat-runtime";
 import type { FileObjectDTO } from "@/shared/api/file.types";
 import type { MCPToolDTO } from "@/shared/api/mcp.types";
+import { listVisiblePromptPresets } from "@/shared/api/prompt-presets";
+import type { PromptPresetDTO } from "@/shared/api/prompt-presets.types";
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
 import { readSessionRevision } from "@/shared/auth/session";
 
@@ -21,8 +23,9 @@ const MENTION_MENU_CHROME_HEIGHT = 12;
 const MENTION_MENU_VIEWPORT_GUTTER = 16;
 const MENTION_MENU_OFFSET = 8;
 const MENTION_MENU_FILE_QUERY_DELAY_MS = 180;
+const MENTION_MENU_PROMPT_QUERY_DELAY_MS = 180;
 
-export type ChatMentionMenuKind = "file" | "tool" | "model";
+export type ChatMentionMenuKind = "file" | "tool" | "model" | "prompt";
 
 type ChatMentionFileMenuItem = {
   id: string;
@@ -51,10 +54,20 @@ type ChatMentionModelMenuItem = {
   selected: boolean;
 };
 
+type ChatMentionPromptMenuItem = {
+  id: string;
+  kind: "prompt";
+  label: string;
+  description: string;
+  prompt: PromptPresetDTO;
+  selected: boolean;
+};
+
 export type ChatMentionMenuItem =
   | ChatMentionFileMenuItem
   | ChatMentionToolMenuItem
-  | ChatMentionModelMenuItem;
+  | ChatMentionModelMenuItem
+  | ChatMentionPromptMenuItem;
 
 export type ChatMentionMenuSection = {
   kind: ChatMentionMenuKind;
@@ -101,8 +114,19 @@ function resolveMentionQuery(value: string): string | null {
   return value.slice(1).match(/^\S*/)?.[0]?.trim().toLowerCase() ?? "";
 }
 
+function resolvePromptQuery(value: string): string | null {
+  if (!value.startsWith("/")) {
+    return null;
+  }
+  return value.slice(1).match(/^\S*/)?.[0]?.trim().toLowerCase() ?? "";
+}
+
 function removeMentionTrigger(value: string): string {
   return value.replace(/^@\S*\s?/, "");
+}
+
+function replacePromptTrigger(value: string, content: string): string {
+  return value.replace(/^\/\S*/, content.trim());
 }
 
 function itemMatchesQuery(values: Array<string | undefined>, query: string): boolean {
@@ -138,6 +162,17 @@ function filterModels(modelOptions: ChatModelOption[], query: string): ChatMenti
       model,
       selected: false,
     }));
+}
+
+function promptsToItems(prompts: PromptPresetDTO[]): ChatMentionPromptMenuItem[] {
+  return prompts.map((prompt) => ({
+    id: `prompt:${prompt.id}`,
+    kind: "prompt" as const,
+    label: prompt.trigger || prompt.title,
+    description: prompt.description || prompt.content,
+    prompt,
+    selected: false,
+  }));
 }
 
 function filterTools(
@@ -183,8 +218,11 @@ function buildSections({
   files,
   filesQuery,
   fileLoading,
+  promptLoading,
   modelOptions,
+  prompts,
   query,
+  queryKind,
   selectedPlatformModelName,
   selectedToolIDs,
   toolsDisabled,
@@ -196,7 +234,10 @@ function buildSections({
   filesQuery: string;
   fileLoading: boolean;
   modelOptions: ChatModelOption[];
+  prompts: PromptPresetDTO[];
+  promptLoading: boolean;
   query: string | null;
+  queryKind: "mention" | "prompt" | null;
   selectedPlatformModelName: string;
   selectedToolIDs: number[];
   toolsDisabled: boolean;
@@ -206,6 +247,11 @@ function buildSections({
   }
 
   const normalizedQuery = query.trim().toLowerCase();
+  if (queryKind === "prompt") {
+    const promptItems = promptLoading ? [] : promptsToItems(prompts);
+    return promptItems.length > 0 ? [{ kind: "prompt" as const, items: promptItems }] : [];
+  }
+
   const fileItems = fileLoading || filesQuery !== normalizedQuery ? [] : filesToItems(files, attachments, defaultFileLabel);
   const toolItems = toolsDisabled ? [] : filterTools(availableTools, query, selectedToolIDs);
   const modelItems = filterModels(modelOptions, query).map((item) => ({
@@ -322,11 +368,16 @@ export function useChatMentionMenu({
   const [files, setFiles] = React.useState<FileObjectDTO[]>([]);
   const [filesLoading, setFilesLoading] = React.useState(false);
   const [filesQuery, setFilesQuery] = React.useState("");
+  const [prompts, setPrompts] = React.useState<PromptPresetDTO[]>([]);
+  const [promptsLoading, setPromptsLoading] = React.useState(false);
   const modelCatalogRefreshRequestedRef = React.useRef(false);
-  const query = resolveMentionQuery(draft);
+  const mentionQuery = resolveMentionQuery(draft);
+  const promptQuery = resolvePromptQuery(draft);
+  const query = mentionQuery ?? promptQuery;
+  const queryKind = mentionQuery !== null ? "mention" : promptQuery !== null ? "prompt" : null;
 
   React.useEffect(() => {
-    if (!inputFocused || query === null) {
+    if (!inputFocused || mentionQuery === null) {
       modelCatalogRefreshRequestedRef.current = false;
       return;
     }
@@ -336,10 +387,10 @@ export function useChatMentionMenu({
 
     modelCatalogRefreshRequestedRef.current = true;
     void Promise.resolve(onModelCatalogRefresh()).catch(() => undefined);
-  }, [disabled, inputFocused, onModelCatalogRefresh, query]);
+  }, [disabled, inputFocused, mentionQuery, onModelCatalogRefresh]);
 
   React.useEffect(() => {
-    if (query === null || disabled) {
+    if (mentionQuery === null || disabled) {
       setFiles([]);
       setFilesQuery("");
       setFilesLoading(false);
@@ -347,10 +398,10 @@ export function useChatMentionMenu({
     }
 
     const sessionRevision = readSessionRevision();
-    const cachedFiles = readMentionFileSearchCache(sessionRevision, query);
+    const cachedFiles = readMentionFileSearchCache(sessionRevision, mentionQuery);
     if (cachedFiles) {
       setFiles(cachedFiles);
-      setFilesQuery(query);
+      setFilesQuery(mentionQuery);
       setFilesLoading(false);
       return;
     }
@@ -366,12 +417,12 @@ export function useChatMentionMenu({
           }
           const results = await searchMentionFiles({
             accessToken: token,
-            query,
+            query: mentionQuery,
             sessionRevision,
           });
           if (!controller.signal.aborted) {
             setFiles(results);
-            setFilesQuery(query);
+            setFilesQuery(mentionQuery);
           }
         } catch {
           if (!controller.signal.aborted) {
@@ -389,7 +440,45 @@ export function useChatMentionMenu({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [disabled, query]);
+  }, [disabled, mentionQuery]);
+
+  React.useEffect(() => {
+    if (promptQuery === null || disabled) {
+      setPrompts([]);
+      setPromptsLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setPromptsLoading(true);
+      void (async () => {
+        try {
+          const token = await resolveAccessToken();
+          if (!token || controller.signal.aborted) {
+            return;
+          }
+          const data = await listVisiblePromptPresets(token, { query: promptQuery, page: 1, pageSize: 50 });
+          if (!controller.signal.aborted) {
+            setPrompts(data.results);
+          }
+        } catch {
+          if (!controller.signal.aborted) {
+            setPrompts([]);
+          }
+        } finally {
+          if (!controller.signal.aborted) {
+            setPromptsLoading(false);
+          }
+        }
+      })();
+    }, MENTION_MENU_PROMPT_QUERY_DELAY_MS);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [disabled, promptQuery]);
 
   const sections = React.useMemo(
     () =>
@@ -401,7 +490,10 @@ export function useChatMentionMenu({
         filesQuery,
         fileLoading: filesLoading,
         modelOptions,
+        prompts,
+        promptLoading: promptsLoading,
         query,
+        queryKind,
         selectedPlatformModelName,
         selectedToolIDs,
         toolsDisabled,
@@ -414,7 +506,10 @@ export function useChatMentionMenu({
       filesQuery,
       filesLoading,
       modelOptions,
+      prompts,
+      promptsLoading,
       query,
+      queryKind,
       selectedPlatformModelName,
       selectedToolIDs,
       toolsDisabled,
@@ -499,6 +594,15 @@ export function useChatMentionMenu({
         return;
       }
 
+      if (item.kind === "prompt") {
+        onDraftChange(replacePromptTrigger(draft, item.prompt.content));
+        setDismissedDraft(null);
+        window.requestAnimationFrame(() => {
+          textareaRef.current?.focus();
+        });
+        return;
+      }
+
       if (item.kind === "tool") {
         const alreadySelected = selectedToolIDs.includes(item.tool.id);
         if (!alreadySelected && selectedToolIDs.length >= maxSelectedTools) {
@@ -521,10 +625,13 @@ export function useChatMentionMenu({
       finishSelection,
       maxSelectedTools,
       onFileSelect,
+      onDraftChange,
       onModelChange,
       onSelectedToolsChange,
       onToolLimitReached,
       selectedToolIDs,
+      draft,
+      textareaRef,
     ],
   );
 
