@@ -3309,13 +3309,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PromptPresetPageResponseDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetPageResponseDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     }
                 }
@@ -3343,7 +3343,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.WritePromptPresetRequest"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.WritePromptPresetRequest"
                         }
                     }
                 ],
@@ -3351,25 +3351,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PromptPresetResponseDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     }
                 }
@@ -3405,25 +3405,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PromptPresetDeleteResponseDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetDeleteResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     }
                 }
@@ -3458,7 +3458,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PatchPromptPresetRequest"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PatchPromptPresetRequest"
                         }
                     }
                 ],
@@ -3466,31 +3466,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PromptPresetResponseDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     }
                 }
@@ -4836,6 +4836,98 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/password/reset/complete": {
+            "post": {
+                "description": "使用邮箱、验证码和新密码完成密码重置；失败时返回通用错误，避免暴露账号状态",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "完成密码重置",
+                "parameters": [
+                    {
+                        "description": "密码重置完成请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.PasswordResetCompleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.PasswordResetCompleteResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.ErrorDoc"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/password/reset/start": {
+            "post": {
+                "description": "SMTP 配置可用时，向已验证邮箱发送密码重置验证码；失败时返回通用错误，避免暴露账号状态",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "发送密码重置验证码",
+                "parameters": [
+                    {
+                        "description": "密码重置验证码请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.PasswordResetStartRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.PasswordResetStartResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_transport_http_auth.ErrorDoc"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/internal_transport_http_auth.ErrorDoc"
                         }
@@ -8135,13 +8227,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PromptPresetPageResponseDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetPageResponseDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     }
                 }
@@ -8195,13 +8287,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PromptPresetPageResponseDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetPageResponseDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     }
                 }
@@ -8229,7 +8321,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.WritePromptPresetRequest"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.WritePromptPresetRequest"
                         }
                     }
                 ],
@@ -8237,25 +8329,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PromptPresetResponseDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     }
                 }
@@ -8291,25 +8383,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PromptPresetDeleteResponseDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetDeleteResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     }
                 }
@@ -8344,7 +8436,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PatchPromptPresetRequest"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PatchPromptPresetRequest"
                         }
                     }
                 ],
@@ -8352,31 +8444,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.PromptPresetResponseDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/promptpreset.ErrorDoc"
+                            "$ref": "#/definitions/internal_transport_http_promptpreset.ErrorDoc"
                         }
                     }
                 }
@@ -10283,6 +10375,9 @@ const docTemplate = `{
                 "emailVerificationEnabled": {
                     "type": "boolean"
                 },
+                "passwordResetEnabled": {
+                    "type": "boolean"
+                },
                 "providers": {
                     "type": "array",
                     "items": {
@@ -10405,6 +10500,81 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/internal_transport_http_auth.MeResponse"
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_auth.PasswordResetCompleteRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "email",
+                "newPassword"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "newPassword": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 8
+                }
+            }
+        },
+        "internal_transport_http_auth.PasswordResetCompleteResponse": {
+            "type": "object",
+            "properties": {
+                "changed": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_transport_http_auth.PasswordResetCompleteResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_auth.PasswordResetCompleteResponse"
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_auth.PasswordResetStartRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "maxLength": 128
+                }
+            }
+        },
+        "internal_transport_http_auth.PasswordResetStartResponse": {
+            "type": "object",
+            "properties": {
+                "expiresAt": {
+                    "type": "string"
+                },
+                "sent": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_transport_http_auth.PasswordResetStartResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_auth.PasswordResetStartResponse"
                 },
                 "errorMsg": {
                     "type": "string"
@@ -15261,6 +15431,174 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_transport_http_promptpreset.ErrorDoc": {
+            "type": "object",
+            "properties": {
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_promptpreset.PatchPromptPresetRequest": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "maxLength": 16384
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 16
+                },
+                "trigger": {
+                    "type": "string",
+                    "maxLength": 16
+                }
+            }
+        },
+        "internal_transport_http_promptpreset.PromptPresetDataResponse": {
+            "type": "object",
+            "properties": {
+                "promptPreset": {
+                    "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetResponse"
+                }
+            }
+        },
+        "internal_transport_http_promptpreset.PromptPresetDeleteDataResponse": {
+            "type": "object",
+            "properties": {
+                "deleted": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_transport_http_promptpreset.PromptPresetDeleteResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetDeleteDataResponse"
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_promptpreset.PromptPresetPageResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "results": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetResponse"
+                            }
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_promptpreset.PromptPresetResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "createdByUserID": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "trigger": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "updatedByUserID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_transport_http_promptpreset.PromptPresetResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_transport_http_promptpreset.PromptPresetDataResponse"
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_transport_http_promptpreset.WritePromptPresetRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "title",
+                "trigger"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "maxLength": 16384
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 16
+                },
+                "trigger": {
+                    "type": "string",
+                    "maxLength": 16
+                }
+            }
+        },
         "internal_transport_http_settings.PatchItem": {
             "type": "object",
             "required": [
@@ -15330,174 +15668,6 @@ const docTemplate = `{
                 },
                 "errorMsg": {
                     "type": "string"
-                }
-            }
-        },
-        "promptpreset.ErrorDoc": {
-            "type": "object",
-            "properties": {
-                "errorMsg": {
-                    "type": "string"
-                }
-            }
-        },
-        "promptpreset.PatchPromptPresetRequest": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "type": "string",
-                    "maxLength": 16384
-                },
-                "description": {
-                    "type": "string",
-                    "maxLength": 64
-                },
-                "enabled": {
-                    "type": "boolean"
-                },
-                "sortOrder": {
-                    "type": "integer"
-                },
-                "title": {
-                    "type": "string",
-                    "maxLength": 16
-                },
-                "trigger": {
-                    "type": "string",
-                    "maxLength": 16
-                }
-            }
-        },
-        "promptpreset.PromptPresetDataResponse": {
-            "type": "object",
-            "properties": {
-                "promptPreset": {
-                    "$ref": "#/definitions/promptpreset.PromptPresetResponse"
-                }
-            }
-        },
-        "promptpreset.PromptPresetDeleteDataResponse": {
-            "type": "object",
-            "properties": {
-                "deleted": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "promptpreset.PromptPresetDeleteResponseDoc": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/promptpreset.PromptPresetDeleteDataResponse"
-                },
-                "errorMsg": {
-                    "type": "string"
-                }
-            }
-        },
-        "promptpreset.PromptPresetPageResponseDoc": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "object",
-                    "properties": {
-                        "results": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/promptpreset.PromptPresetResponse"
-                            }
-                        },
-                        "total": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "errorMsg": {
-                    "type": "string"
-                }
-            }
-        },
-        "promptpreset.PromptPresetResponse": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "createdByUserID": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "enabled": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "sortOrder": {
-                    "type": "integer"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "trigger": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "updatedByUserID": {
-                    "type": "integer"
-                }
-            }
-        },
-        "promptpreset.PromptPresetResponseDoc": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/promptpreset.PromptPresetDataResponse"
-                },
-                "errorMsg": {
-                    "type": "string"
-                }
-            }
-        },
-        "promptpreset.WritePromptPresetRequest": {
-            "type": "object",
-            "required": [
-                "content",
-                "title",
-                "trigger"
-            ],
-            "properties": {
-                "content": {
-                    "type": "string",
-                    "maxLength": 16384
-                },
-                "description": {
-                    "type": "string",
-                    "maxLength": 64
-                },
-                "enabled": {
-                    "type": "boolean"
-                },
-                "sortOrder": {
-                    "type": "integer"
-                },
-                "title": {
-                    "type": "string",
-                    "maxLength": 16
-                },
-                "trigger": {
-                    "type": "string",
-                    "maxLength": 16
                 }
             }
         }

@@ -1044,6 +1044,8 @@ definitions:
         type: boolean
       emailVerificationEnabled:
         type: boolean
+      passwordResetEnabled:
+        type: boolean
       providers:
         items:
           $ref: '#/definitions/internal_transport_http_auth.IdentityProviderResponse'
@@ -1125,6 +1127,56 @@ definitions:
     properties:
       data:
         $ref: '#/definitions/internal_transport_http_auth.MeResponse'
+      errorMsg:
+        type: string
+    type: object
+  internal_transport_http_auth.PasswordResetCompleteRequest:
+    properties:
+      code:
+        type: string
+      email:
+        maxLength: 128
+        type: string
+      newPassword:
+        maxLength: 128
+        minLength: 8
+        type: string
+    required:
+    - code
+    - email
+    - newPassword
+    type: object
+  internal_transport_http_auth.PasswordResetCompleteResponse:
+    properties:
+      changed:
+        type: boolean
+    type: object
+  internal_transport_http_auth.PasswordResetCompleteResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_auth.PasswordResetCompleteResponse'
+      errorMsg:
+        type: string
+    type: object
+  internal_transport_http_auth.PasswordResetStartRequest:
+    properties:
+      email:
+        maxLength: 128
+        type: string
+    required:
+    - email
+    type: object
+  internal_transport_http_auth.PasswordResetStartResponse:
+    properties:
+      expiresAt:
+        type: string
+      sent:
+        type: boolean
+    type: object
+  internal_transport_http_auth.PasswordResetStartResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_auth.PasswordResetStartResponse'
       errorMsg:
         type: string
     type: object
@@ -4362,6 +4414,118 @@ definitions:
       value:
         type: string
     type: object
+  internal_transport_http_promptpreset.ErrorDoc:
+    properties:
+      errorMsg:
+        type: string
+    type: object
+  internal_transport_http_promptpreset.PatchPromptPresetRequest:
+    properties:
+      content:
+        maxLength: 16384
+        type: string
+      description:
+        maxLength: 64
+        type: string
+      enabled:
+        type: boolean
+      sortOrder:
+        type: integer
+      title:
+        maxLength: 16
+        type: string
+      trigger:
+        maxLength: 16
+        type: string
+    type: object
+  internal_transport_http_promptpreset.PromptPresetDataResponse:
+    properties:
+      promptPreset:
+        $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetResponse'
+    type: object
+  internal_transport_http_promptpreset.PromptPresetDeleteDataResponse:
+    properties:
+      deleted:
+        type: boolean
+    type: object
+  internal_transport_http_promptpreset.PromptPresetDeleteResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetDeleteDataResponse'
+      errorMsg:
+        type: string
+    type: object
+  internal_transport_http_promptpreset.PromptPresetPageResponseDoc:
+    properties:
+      data:
+        properties:
+          results:
+            items:
+              $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetResponse'
+            type: array
+          total:
+            type: integer
+        type: object
+      errorMsg:
+        type: string
+    type: object
+  internal_transport_http_promptpreset.PromptPresetResponse:
+    properties:
+      content:
+        type: string
+      createdAt:
+        type: string
+      createdByUserID:
+        type: integer
+      description:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: integer
+      scope:
+        type: string
+      sortOrder:
+        type: integer
+      title:
+        type: string
+      trigger:
+        type: string
+      updatedAt:
+        type: string
+      updatedByUserID:
+        type: integer
+    type: object
+  internal_transport_http_promptpreset.PromptPresetResponseDoc:
+    properties:
+      data:
+        $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetDataResponse'
+      errorMsg:
+        type: string
+    type: object
+  internal_transport_http_promptpreset.WritePromptPresetRequest:
+    properties:
+      content:
+        maxLength: 16384
+        type: string
+      description:
+        maxLength: 64
+        type: string
+      enabled:
+        type: boolean
+      sortOrder:
+        type: integer
+      title:
+        maxLength: 16
+        type: string
+      trigger:
+        maxLength: 16
+        type: string
+    required:
+    - content
+    - title
+    - trigger
+    type: object
   internal_transport_http_settings.PatchItem:
     properties:
       clear:
@@ -4409,123 +4573,11 @@ definitions:
       errorMsg:
         type: string
     type: object
-  promptpreset.ErrorDoc:
-    properties:
-      errorMsg:
-        type: string
-    type: object
-  promptpreset.PatchPromptPresetRequest:
-    properties:
-      content:
-        maxLength: 16384
-        type: string
-      description:
-        maxLength: 64
-        type: string
-      enabled:
-        type: boolean
-      sortOrder:
-        type: integer
-      title:
-        maxLength: 16
-        type: string
-      trigger:
-        maxLength: 16
-        type: string
-    type: object
-  promptpreset.PromptPresetDataResponse:
-    properties:
-      promptPreset:
-        $ref: '#/definitions/promptpreset.PromptPresetResponse'
-    type: object
-  promptpreset.PromptPresetDeleteDataResponse:
-    properties:
-      deleted:
-        type: boolean
-    type: object
-  promptpreset.PromptPresetDeleteResponseDoc:
-    properties:
-      data:
-        $ref: '#/definitions/promptpreset.PromptPresetDeleteDataResponse'
-      errorMsg:
-        type: string
-    type: object
-  promptpreset.PromptPresetPageResponseDoc:
-    properties:
-      data:
-        properties:
-          results:
-            items:
-              $ref: '#/definitions/promptpreset.PromptPresetResponse'
-            type: array
-          total:
-            type: integer
-        type: object
-      errorMsg:
-        type: string
-    type: object
-  promptpreset.PromptPresetResponse:
-    properties:
-      content:
-        type: string
-      createdAt:
-        type: string
-      createdByUserID:
-        type: integer
-      description:
-        type: string
-      enabled:
-        type: boolean
-      id:
-        type: integer
-      scope:
-        type: string
-      sortOrder:
-        type: integer
-      title:
-        type: string
-      trigger:
-        type: string
-      updatedAt:
-        type: string
-      updatedByUserID:
-        type: integer
-    type: object
-  promptpreset.PromptPresetResponseDoc:
-    properties:
-      data:
-        $ref: '#/definitions/promptpreset.PromptPresetDataResponse'
-      errorMsg:
-        type: string
-    type: object
-  promptpreset.WritePromptPresetRequest:
-    properties:
-      content:
-        maxLength: 16384
-        type: string
-      description:
-        maxLength: 64
-        type: string
-      enabled:
-        type: boolean
-      sortOrder:
-        type: integer
-      title:
-        maxLength: 16
-        type: string
-      trigger:
-        maxLength: 16
-        type: string
-    required:
-    - content
-    - title
-    - trigger
-    type: object
 info:
   contact: {}
   description: DEEIX Chat 后端 API 文档
   title: DEEIX Chat API
-  version: "0.2.5"
+  version: 0.2.5
 paths:
   /admin/announcements:
     get:
@@ -6631,11 +6683,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/promptpreset.PromptPresetPageResponseDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetPageResponseDoc'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
       security:
       - BearerAuth: []
       summary: 管理员查询内置提示词
@@ -6650,26 +6702,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/promptpreset.WritePromptPresetRequest'
+          $ref: '#/definitions/internal_transport_http_promptpreset.WritePromptPresetRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/promptpreset.PromptPresetResponseDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetResponseDoc'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
       security:
       - BearerAuth: []
       summary: 管理员创建内置提示词
@@ -6691,19 +6743,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/promptpreset.PromptPresetDeleteResponseDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetDeleteResponseDoc'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
       security:
       - BearerAuth: []
       summary: 管理员删除内置提示词
@@ -6723,30 +6775,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/promptpreset.PatchPromptPresetRequest'
+          $ref: '#/definitions/internal_transport_http_promptpreset.PatchPromptPresetRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/promptpreset.PromptPresetResponseDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetResponseDoc'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
       security:
       - BearerAuth: []
       summary: 管理员更新内置提示词
@@ -7590,6 +7642,66 @@ paths:
       security:
       - BearerAuth: []
       summary: 登出全部会话
+      tags:
+      - auth
+  /auth/password/reset/complete:
+    post:
+      consumes:
+      - application/json
+      description: 使用邮箱、验证码和新密码完成密码重置；失败时返回通用错误，避免暴露账号状态
+      parameters:
+      - description: 密码重置完成请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_transport_http_auth.PasswordResetCompleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.PasswordResetCompleteResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.ErrorDoc'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.ErrorDoc'
+      summary: 完成密码重置
+      tags:
+      - auth
+  /auth/password/reset/start:
+    post:
+      consumes:
+      - application/json
+      description: SMTP 配置可用时，向已验证邮箱发送密码重置验证码；失败时返回通用错误，避免暴露账号状态
+      parameters:
+      - description: 密码重置验证码请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_transport_http_auth.PasswordResetStartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.PasswordResetStartResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.ErrorDoc'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/internal_transport_http_auth.ErrorDoc'
+      summary: 发送密码重置验证码
       tags:
       - auth
   /auth/refresh:
@@ -9682,11 +9794,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/promptpreset.PromptPresetPageResponseDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetPageResponseDoc'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
       security:
       - BearerAuth: []
       summary: 查询当前用户可用预制提示词
@@ -9720,11 +9832,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/promptpreset.PromptPresetPageResponseDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetPageResponseDoc'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
       security:
       - BearerAuth: []
       summary: 查询我的自定义提示词
@@ -9739,26 +9851,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/promptpreset.WritePromptPresetRequest'
+          $ref: '#/definitions/internal_transport_http_promptpreset.WritePromptPresetRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/promptpreset.PromptPresetResponseDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetResponseDoc'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
       security:
       - BearerAuth: []
       summary: 创建我的自定义提示词
@@ -9780,19 +9892,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/promptpreset.PromptPresetDeleteResponseDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetDeleteResponseDoc'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
       security:
       - BearerAuth: []
       summary: 删除我的自定义提示词
@@ -9812,30 +9924,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/promptpreset.PatchPromptPresetRequest'
+          $ref: '#/definitions/internal_transport_http_promptpreset.PatchPromptPresetRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/promptpreset.PromptPresetResponseDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.PromptPresetResponseDoc'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/promptpreset.ErrorDoc'
+            $ref: '#/definitions/internal_transport_http_promptpreset.ErrorDoc'
       security:
       - BearerAuth: []
       summary: 更新我的自定义提示词
