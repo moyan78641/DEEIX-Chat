@@ -331,13 +331,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.AuditLogListResponseDoc"
+                            "$ref": "#/definitions/admin.AuditLogListResponseDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -1055,19 +1055,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.UsageLogListResponseDoc"
+                            "$ref": "#/definitions/admin.UsageLogListResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -1163,19 +1163,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ConversationEventListResponseDoc"
+                            "$ref": "#/definitions/admin.ConversationEventListResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -3244,19 +3244,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.PaymentOrderListResponseDoc"
+                            "$ref": "#/definitions/admin.PaymentOrderListResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -4006,19 +4006,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.SystemEventListResponseDoc"
+                            "$ref": "#/definitions/admin.SystemEventListResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -4078,19 +4078,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.UserAuthEventListResponseDoc"
+                            "$ref": "#/definitions/admin.UserAuthEventListResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -4132,13 +4132,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.UserListResponseDoc"
+                            "$ref": "#/definitions/admin.UserListResponseDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -4167,7 +4167,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.CreateUserRequest"
+                            "$ref": "#/definitions/admin.CreateUserRequest"
                         }
                     }
                 ],
@@ -4175,25 +4175,82 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.CreateUserResponseDoc"
+                            "$ref": "#/definitions/admin.CreateUserResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/import/openwebui": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "从 OpenWebUI SQLite 或 PostgreSQL 数据库读取用户，按 email 去重导入；已存在用户不会修改",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "管理员导入 OpenWebUI 用户",
+                "parameters": [
+                    {
+                        "description": "OpenWebUI 导入参数",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.ImportOpenWebUIUsersRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/admin.ImportOpenWebUIUsersResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/admin.ErrorDoc"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/admin.ErrorDoc"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -4230,31 +4287,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.DeleteUserResponseDoc"
+                            "$ref": "#/definitions/admin.DeleteUserResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -4290,7 +4347,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.PatchUserRequest"
+                            "$ref": "#/definitions/admin.PatchUserRequest"
                         }
                     }
                 ],
@@ -4298,31 +4355,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.UpdateUserStatusResponseDoc"
+                            "$ref": "#/definitions/admin.UpdateUserStatusResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -4360,7 +4417,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ResetUserPasswordRequest"
+                            "$ref": "#/definitions/admin.ResetUserPasswordRequest"
                         }
                     }
                 ],
@@ -4368,31 +4425,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ResetUserPasswordResponseDoc"
+                            "$ref": "#/definitions/admin.ResetUserPasswordResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -4429,25 +4486,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.RevokeUserSessionsResponseDoc"
+                            "$ref": "#/definitions/admin.RevokeUserSessionsResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -4485,7 +4542,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.UpdateUserStatusRequest"
+                            "$ref": "#/definitions/admin.UpdateUserStatusRequest"
                         }
                     }
                 ],
@@ -4493,31 +4550,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.UpdateUserStatusResponseDoc"
+                            "$ref": "#/definitions/admin.UpdateUserStatusResponseDoc"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_transport_http_admin.ErrorDoc"
+                            "$ref": "#/definitions/admin.ErrorDoc"
                         }
                     }
                 }
@@ -8812,42 +8869,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_DEEIX-AI_DEEIX-Chat_backend_internal_shared_response.Envelope": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "details": {},
-                "errorCode": {
-                    "type": "string"
-                },
-                "errorMsg": {
-                    "type": "string"
-                },
-                "requestId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_DEEIX-AI_DEEIX-Chat_backend_internal_shared_response.SuccessDoc": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "details": {},
-                "errorCode": {
-                    "type": "string",
-                    "example": ""
-                },
-                "errorMsg": {
-                    "type": "string",
-                    "example": ""
-                },
-                "requestId": {
-                    "type": "string",
-                    "example": ""
-                }
-            }
-        },
-        "internal_transport_http_admin.AuditLogListResponseDoc": {
+        "admin.AuditLogListResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
@@ -8856,7 +8878,7 @@ const docTemplate = `{
                         "results": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_transport_http_admin.AuditLogResponse"
+                                "$ref": "#/definitions/admin.AuditLogResponse"
                             }
                         },
                         "total": {
@@ -8869,7 +8891,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.AuditLogResponse": {
+        "admin.AuditLogResponse": {
             "type": "object",
             "properties": {
                 "action": {
@@ -8916,7 +8938,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.AuthEventResponse": {
+        "admin.AuthEventResponse": {
             "type": "object",
             "properties": {
                 "clientIP": {
@@ -8966,7 +8988,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.ConversationEventListResponseDoc": {
+        "admin.ConversationEventListResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
@@ -8975,7 +8997,7 @@ const docTemplate = `{
                         "results": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_transport_http_admin.ConversationEventResponse"
+                                "$ref": "#/definitions/admin.ConversationEventResponse"
                             }
                         },
                         "total": {
@@ -8988,7 +9010,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.ConversationEventResponse": {
+        "admin.ConversationEventResponse": {
             "type": "object",
             "properties": {
                 "contentMarkdown": {
@@ -9086,7 +9108,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.CreateUserRequest": {
+        "admin.CreateUserRequest": {
             "type": "object",
             "required": [
                 "password",
@@ -9137,18 +9159,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.CreateUserResponseDoc": {
+        "admin.CreateUserResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/internal_transport_http_admin.UserDataResponse"
+                    "$ref": "#/definitions/admin.UserDataResponse"
                 },
                 "errorMsg": {
                     "type": "string"
                 }
             }
         },
-        "internal_transport_http_admin.DeleteUserResponse": {
+        "admin.DeleteUserResponse": {
             "type": "object",
             "properties": {
                 "deleted": {
@@ -9156,18 +9178,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.DeleteUserResponseDoc": {
+        "admin.DeleteUserResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/internal_transport_http_admin.DeleteUserResponse"
+                    "$ref": "#/definitions/admin.DeleteUserResponse"
                 },
                 "errorMsg": {
                     "type": "string"
                 }
             }
         },
-        "internal_transport_http_admin.ErrorDoc": {
+        "admin.ErrorDoc": {
             "type": "object",
             "properties": {
                 "data": {},
@@ -9183,7 +9205,69 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.PatchUserRequest": {
+        "admin.ImportOpenWebUIUsersRequest": {
+            "type": "object",
+            "required": [
+                "creditMultiplier",
+                "dsn"
+            ],
+            "properties": {
+                "creditMultiplier": {
+                    "type": "number"
+                },
+                "dryRun": {
+                    "type": "boolean"
+                },
+                "dsn": {
+                    "type": "string",
+                    "maxLength": 2048
+                }
+            }
+        },
+        "admin.ImportOpenWebUIUsersResponse": {
+            "type": "object",
+            "properties": {
+                "dedupeField": {
+                    "type": "string"
+                },
+                "dedupeRule": {
+                    "type": "string"
+                },
+                "imported": {
+                    "type": "integer"
+                },
+                "scanned": {
+                    "type": "integer"
+                },
+                "skippedDuplicateSourceEmail": {
+                    "type": "integer"
+                },
+                "skippedExistingEmail": {
+                    "type": "integer"
+                },
+                "skippedInvalidEmail": {
+                    "type": "integer"
+                },
+                "skippedInvalidRow": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.ImportOpenWebUIUsersResponseDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/admin.ImportOpenWebUIUsersResponse"
+                },
+                "errorMsg": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin.PatchUserRequest": {
             "type": "object",
             "properties": {
                 "avatarURL": {
@@ -9236,7 +9320,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.PaymentOrderListResponseDoc": {
+        "admin.PaymentOrderListResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
@@ -9245,7 +9329,7 @@ const docTemplate = `{
                         "results": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_transport_http_admin.PaymentOrderResponse"
+                                "$ref": "#/definitions/admin.PaymentOrderResponse"
                             }
                         },
                         "total": {
@@ -9258,7 +9342,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.PaymentOrderResponse": {
+        "admin.PaymentOrderResponse": {
             "type": "object",
             "properties": {
                 "baseAmountCents": {
@@ -9344,7 +9428,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.ResetUserPasswordRequest": {
+        "admin.ResetUserPasswordRequest": {
             "type": "object",
             "required": [
                 "newPassword"
@@ -9360,7 +9444,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.ResetUserPasswordResponse": {
+        "admin.ResetUserPasswordResponse": {
             "type": "object",
             "properties": {
                 "reset": {
@@ -9368,18 +9452,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.ResetUserPasswordResponseDoc": {
+        "admin.ResetUserPasswordResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/internal_transport_http_admin.ResetUserPasswordResponse"
+                    "$ref": "#/definitions/admin.ResetUserPasswordResponse"
                 },
                 "errorMsg": {
                     "type": "string"
                 }
             }
         },
-        "internal_transport_http_admin.RevokeUserSessionsResponse": {
+        "admin.RevokeUserSessionsResponse": {
             "type": "object",
             "properties": {
                 "revoked": {
@@ -9387,18 +9471,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.RevokeUserSessionsResponseDoc": {
+        "admin.RevokeUserSessionsResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/internal_transport_http_admin.RevokeUserSessionsResponse"
+                    "$ref": "#/definitions/admin.RevokeUserSessionsResponse"
                 },
                 "errorMsg": {
                     "type": "string"
                 }
             }
         },
-        "internal_transport_http_admin.SystemEventListResponseDoc": {
+        "admin.SystemEventListResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
@@ -9407,7 +9491,7 @@ const docTemplate = `{
                         "results": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_transport_http_admin.SystemEventResponse"
+                                "$ref": "#/definitions/admin.SystemEventResponse"
                             }
                         },
                         "total": {
@@ -9420,7 +9504,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.SystemEventResponse": {
+        "admin.SystemEventResponse": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -9461,7 +9545,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.UpdateUserStatusRequest": {
+        "admin.UpdateUserStatusRequest": {
             "type": "object",
             "required": [
                 "status"
@@ -9477,18 +9561,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.UpdateUserStatusResponseDoc": {
+        "admin.UpdateUserStatusResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/internal_transport_http_admin.UserDataResponse"
+                    "$ref": "#/definitions/admin.UserDataResponse"
                 },
                 "errorMsg": {
                     "type": "string"
                 }
             }
         },
-        "internal_transport_http_admin.UsageLogListResponseDoc": {
+        "admin.UsageLogListResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
@@ -9497,7 +9581,7 @@ const docTemplate = `{
                         "results": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_transport_http_admin.UsageLogResponse"
+                                "$ref": "#/definitions/admin.UsageLogResponse"
                             }
                         },
                         "total": {
@@ -9510,7 +9594,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.UsageLogResponse": {
+        "admin.UsageLogResponse": {
             "type": "object",
             "properties": {
                 "billedCurrency": {
@@ -9608,7 +9692,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.UserAuthEventListResponseDoc": {
+        "admin.UserAuthEventListResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
@@ -9617,7 +9701,7 @@ const docTemplate = `{
                         "results": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_transport_http_admin.AuthEventResponse"
+                                "$ref": "#/definitions/admin.AuthEventResponse"
                             }
                         },
                         "total": {
@@ -9630,15 +9714,15 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.UserDataResponse": {
+        "admin.UserDataResponse": {
             "type": "object",
             "properties": {
                 "user": {
-                    "$ref": "#/definitions/internal_transport_http_admin.UserResponse"
+                    "$ref": "#/definitions/admin.UserResponse"
                 }
             }
         },
-        "internal_transport_http_admin.UserListResponseDoc": {
+        "admin.UserListResponseDoc": {
             "type": "object",
             "properties": {
                 "data": {
@@ -9647,7 +9731,7 @@ const docTemplate = `{
                         "results": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_transport_http_admin.UserResponse"
+                                "$ref": "#/definitions/admin.UserResponse"
                             }
                         },
                         "total": {
@@ -9660,7 +9744,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_transport_http_admin.UserResponse": {
+        "admin.UserResponse": {
             "type": "object",
             "properties": {
                 "appearancePreferences": {
@@ -9755,6 +9839,41 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_DEEIX-AI_DEEIX-Chat_backend_internal_shared_response.Envelope": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "details": {},
+                "errorCode": {
+                    "type": "string"
+                },
+                "errorMsg": {
+                    "type": "string"
+                },
+                "requestId": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_DEEIX-AI_DEEIX-Chat_backend_internal_shared_response.SuccessDoc": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "details": {},
+                "errorCode": {
+                    "type": "string",
+                    "example": ""
+                },
+                "errorMsg": {
+                    "type": "string",
+                    "example": ""
+                },
+                "requestId": {
+                    "type": "string",
+                    "example": ""
                 }
             }
         },
