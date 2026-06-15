@@ -610,7 +610,7 @@ export function ModelSheet({ open, mode, target, models, onClose, onSuccess }: M
         vendor: form.vendor || undefined,
         kindsJSON: kindsJson,
         icon: form.icon.trim(),
-        capabilitiesJSON: normalizeModelCapabilitiesJSON(form.capabilitiesJSON, nativeTools, routeProtocols) || undefined,
+        capabilitiesJSON: normalizeModelCapabilitiesJSON(form.capabilitiesJSON, nativeTools, routeProtocols),
         systemPrompt: form.systemPrompt.trim(),
         accessScope: form.accessScope,
         status: form.status,
