@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Star } from "lucide-react"
+import { ChevronDown, Star } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import {
@@ -15,6 +15,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Collapsible,
+  CollapsibleContent,
+} from "@/components/ui/collapsible"
 import { Spinner } from "@/components/ui/spinner"
 import {
   SidebarGroup,
@@ -43,6 +47,7 @@ import { useLoadMoreSentinel } from "@/shared/hooks/use-load-more-sentinel"
 import { cn } from "@/lib/utils"
 
 const RECENT_SKELETON_WIDTHS = ["74%", "61%", "69%", "57%", "72%"] as const
+const RECENTS_OPEN_STORAGE_KEY = "deeix.sidebar.recents.open"
 
 export function NavRecents() {
   const t = useTranslations("recent")
@@ -76,16 +81,46 @@ export function NavRecents() {
   const [shareTarget, setShareTarget] = React.useState<{ publicID: string; title: string } | null>(null)
   const [renameValue, setRenameValue] = React.useState("")
   const [autoRenamingPublicID, setAutoRenamingPublicID] = React.useState<string | null>(null)
+  const [recentsOpen, setRecentsOpen] = React.useState(true)
+  const [recentsOpenHydrated, setRecentsOpenHydrated] = React.useState(false)
   const loadMoreRef = React.useRef<HTMLLIElement | null>(null)
   const listContainerRef = React.useRef<HTMLDivElement | null>(null)
   const deleteFilesID = React.useId()
+  const recentsContentID = React.useId()
   const onExport = useChatConversationExport({
     successMessage: t("exported"),
     failureMessage: t("exportFailed"),
   })
 
+  React.useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(RECENTS_OPEN_STORAGE_KEY)
+      if (stored === "true") {
+        setRecentsOpen(true)
+      } else if (stored === "false") {
+        setRecentsOpen(false)
+      }
+    } catch {
+      // Keep the default open state when localStorage is unavailable.
+    } finally {
+      setRecentsOpenHydrated(true)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (!recentsOpenHydrated) {
+      return
+    }
+
+    try {
+      window.localStorage.setItem(RECENTS_OPEN_STORAGE_KEY, recentsOpen ? "true" : "false")
+    } catch {
+      // Ignore storage failures; the current in-memory state still controls the UI.
+    }
+  }, [recentsOpen, recentsOpenHydrated])
+
   useLoadMoreSentinel({
-    enabled: hasMore && !loadingInitial && !loadMoreFailed,
+    enabled: recentsOpenHydrated && recentsOpen && hasMore && !loadingInitial && !loadMoreFailed,
     targetRef: loadMoreRef,
     onLoadMore: loadMore,
   })
@@ -182,7 +217,7 @@ export function NavRecents() {
   )
 
   useLayoutSidebarListFlip(listContainerRef, {
-    enabled: Boolean(transferringStarPublicID),
+    enabled: recentsOpen && Boolean(transferringStarPublicID),
     signature: visibleItemsSignature,
     excludeKey: transferringStarPublicID,
   })
@@ -190,95 +225,118 @@ export function NavRecents() {
   return (
     <>
       <div className={cn("relative z-0 group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:opacity-0")}>
-        <SidebarGroup>
-          <SidebarGroupLabel>{t("title")}</SidebarGroupLabel>
-          <div ref={listContainerRef} className="relative">
-            <LoadingReveal
-              loading={showInitialSkeleton}
-              skeleton={<SidebarConversationSkeleton count={6} widths={RECENT_SKELETON_WIDTHS} prefix="sidebar-recent" />}
-              className="min-h-0"
+        <Collapsible open={recentsOpen} onOpenChange={setRecentsOpen}>
+          <SidebarGroup>
+            <SidebarGroupLabel
+              asChild
+              className="w-full cursor-pointer justify-start pr-2 transition-[background-color,color,margin,opacity] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
-              <SidebarMenu>
-                {visibleRecentItems.length === 0 ? (
-                  <li className="px-2 py-2 text-xs text-muted-foreground">
-                    {t("empty")}
-                  </li>
-                ) : null}
+              <button
+                type="button"
+                aria-controls={recentsContentID}
+                aria-expanded={recentsOpen}
+                aria-label={recentsOpen ? t("collapseSection") : t("expandSection")}
+                onClick={() => setRecentsOpen((open) => !open)}
+              >
+                <span className="min-w-0 flex-1 truncate text-left">{t("title")}</span>
+                <ChevronDown
+                  className={cn(
+                    "ml-auto size-4 stroke-1.5 transition-transform duration-200",
+                    !recentsOpen && "-rotate-90",
+                  )}
+                />
+              </button>
+            </SidebarGroupLabel>
+            <CollapsibleContent id={recentsContentID}>
+              <div ref={listContainerRef} className="relative">
+                <LoadingReveal
+                  loading={showInitialSkeleton}
+                  skeleton={<SidebarConversationSkeleton count={6} widths={RECENT_SKELETON_WIDTHS} prefix="sidebar-recent" />}
+                  className="min-h-0"
+                >
+                  <SidebarMenu>
+                    {visibleRecentItems.length === 0 ? (
+                      <li className="px-2 py-2 text-xs text-muted-foreground">
+                        {t("empty")}
+                      </li>
+                    ) : null}
 
-                {visibleRecentItems.map((item) => {
-                  const title = item.title || t("untitled")
-                  const publicID = item.publicID
+                    {visibleRecentItems.map((item) => {
+                      const title = item.title || t("untitled")
+                      const publicID = item.publicID
 
-                  return (
-                    <SidebarConversationItem
-                      key={publicID}
-                      active={activeConversationID === publicID}
-                      item={{
-                        publicID,
-                        title,
-                        url: `/chat?conversation_id=${publicID}`,
-                        starred: item.isStarred,
-                        shareActive: item.shareStatus === "active" && Boolean(item.shareID?.trim()),
-                      }}
-                      starAction={{
-                        label: item.isStarred ? t("row.unstar") : t("row.star"),
-                        icon: Star,
-                        onSelect: (targetPublicID) => onToggleStar(targetPublicID, !item.isStarred),
-                      }}
-                      projectMenu={{
-                        label: t("row.moveToProject"),
-                        unassignedLabel: t("projects.unassigned"),
-                        currentProjectID: item.projectID,
-                        projects,
-                        onSelect: (targetPublicID, projectID) => {
-                          void setProjectByPublicID(targetPublicID, projectID)
-                        },
-                      }}
-                      isTransferring={transferringStarPublicID === publicID}
-                      onRename={onRename}
-                      isRenaming={renameTarget?.publicID === publicID}
-                      renameValue={renameTarget?.publicID === publicID ? renameValue : title}
-                      onRenameValueChange={setRenameValue}
-                      onRenameCommit={onRenameCommit}
-                      onRenameCancel={onRenameCancel}
-                      onAutoRename={onAutoRename}
-                      isAutoRenaming={autoRenamingPublicID === publicID}
-                      onArchive={onArchive}
-                      onShare={onShare}
-                      onExport={onExport}
-                      onDelete={onDelete}
-                      onNavigate={isMobile ? () => setOpenMobile(false) : undefined}
-                      menuTriggerID={`recent-item-menu-trigger-${publicID}`}
-                    />
-                  )
-                })}
+                      return (
+                        <SidebarConversationItem
+                          key={publicID}
+                          active={activeConversationID === publicID}
+                          item={{
+                            publicID,
+                            title,
+                            url: `/chat?conversation_id=${publicID}`,
+                            starred: item.isStarred,
+                            shareActive: item.shareStatus === "active" && Boolean(item.shareID?.trim()),
+                          }}
+                          starAction={{
+                            label: item.isStarred ? t("row.unstar") : t("row.star"),
+                            icon: Star,
+                            onSelect: (targetPublicID) => onToggleStar(targetPublicID, !item.isStarred),
+                          }}
+                          projectMenu={{
+                            label: t("row.moveToProject"),
+                            unassignedLabel: t("projects.unassigned"),
+                            currentProjectID: item.projectID,
+                            projects,
+                            onSelect: (targetPublicID, projectID) => {
+                              void setProjectByPublicID(targetPublicID, projectID)
+                            },
+                          }}
+                          isTransferring={transferringStarPublicID === publicID}
+                          onRename={onRename}
+                          isRenaming={renameTarget?.publicID === publicID}
+                          renameValue={renameTarget?.publicID === publicID ? renameValue : title}
+                          onRenameValueChange={setRenameValue}
+                          onRenameCommit={onRenameCommit}
+                          onRenameCancel={onRenameCancel}
+                          onAutoRename={onAutoRename}
+                          isAutoRenaming={autoRenamingPublicID === publicID}
+                          onArchive={onArchive}
+                          onShare={onShare}
+                          onExport={onExport}
+                          onDelete={onDelete}
+                          onNavigate={isMobile ? () => setOpenMobile(false) : undefined}
+                          menuTriggerID={`recent-item-menu-trigger-${publicID}`}
+                        />
+                      )
+                    })}
 
-                {loadingMore ? (
-                  <li className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                    <Spinner className="size-3.5" />
-                    <span>{t("loadingMore")}</span>
-                  </li>
-                ) : null}
-                {hasMore && !loadMoreFailed ? (
-                  <li aria-hidden="true" className="h-4 list-none" ref={loadMoreRef} />
-                ) : null}
+                    {loadingMore ? (
+                      <li className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                        <Spinner className="size-3.5" />
+                        <span>{t("loadingMore")}</span>
+                      </li>
+                    ) : null}
+                    {hasMore && !loadMoreFailed ? (
+                      <li aria-hidden="true" className="h-4 list-none" ref={loadMoreRef} />
+                    ) : null}
 
-                {loadMoreFailed ? (
-                  <li className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-                    <span>{t("loadMoreFailed")}</span>
-                    <button
-                      type="button"
-                      className="underline underline-offset-4 transition-colors hover:text-foreground"
-                      onClick={() => void retryLoadMore()}
-                    >
-                      {t("retry")}
-                    </button>
-                  </li>
-                ) : null}
-              </SidebarMenu>
-            </LoadingReveal>
-          </div>
-        </SidebarGroup>
+                    {loadMoreFailed ? (
+                      <li className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                        <span>{t("loadMoreFailed")}</span>
+                        <button
+                          type="button"
+                          className="underline underline-offset-4 transition-colors hover:text-foreground"
+                          onClick={() => void retryLoadMore()}
+                        >
+                          {t("retry")}
+                        </button>
+                      </li>
+                    ) : null}
+                  </SidebarMenu>
+                </LoadingReveal>
+              </div>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
       </div>
 
       <AlertDialog

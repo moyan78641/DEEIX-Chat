@@ -1,5 +1,7 @@
 {
   "title": "Recent",
+  "collapseSection": "Collapse recent conversations",
+  "expandSection": "Expand recent conversations",
   "allConversations": "All conversations",
   "allConversationsDescription": "All DEEIX Chat conversations",
   "newChat": "New chat",
