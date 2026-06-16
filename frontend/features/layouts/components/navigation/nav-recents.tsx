@@ -229,7 +229,7 @@ export function NavRecents() {
           <SidebarGroup>
             <SidebarGroupLabel
               asChild
-              className="w-full cursor-pointer justify-start pr-2 transition-[background-color,color,margin,opacity] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="w-fit max-w-full self-start cursor-pointer gap-1 pr-1 transition-[color,margin,opacity] hover:text-sidebar-foreground"
             >
               <button
                 type="button"
@@ -238,10 +238,10 @@ export function NavRecents() {
                 aria-label={recentsOpen ? t("collapseSection") : t("expandSection")}
                 onClick={() => setRecentsOpen((open) => !open)}
               >
-                <span className="min-w-0 flex-1 truncate text-left">{t("title")}</span>
+                <span className="min-w-0 truncate text-left">{t("title")}</span>
                 <ChevronDown
                   className={cn(
-                    "ml-auto size-4 stroke-1.5 transition-transform duration-200",
+                    "!size-3 stroke-1.5 transition-transform duration-200",
                     !recentsOpen && "-rotate-90",
                   )}
                 />
