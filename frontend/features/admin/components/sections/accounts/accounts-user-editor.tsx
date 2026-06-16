@@ -630,22 +630,20 @@ export function EditUserSheet({
                   </DialogCollapsible>
                 </div>
               ) : null}
-              {billingMode !== "self" ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-normal text-muted-foreground">{t("editor.accountBalance")}</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.000001"
-                      value={editPayload.billingBalanceUSD}
-                      onChange={(event) => setEditPayload((current) => ({ ...current, billingBalanceUSD: event.target.value }))}
-                      disabled={pending}
-                    />
-                  </div>
-                  <ReadOnlyField label={t("editor.billingStatus")} value={resolveBillingAccountStatusLabel(editDialogTarget?.billingAccountStatus || "active")} />
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-normal text-muted-foreground">{t("editor.accountBalance")}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.000001"
+                    value={editPayload.billingBalanceUSD}
+                    onChange={(event) => setEditPayload((current) => ({ ...current, billingBalanceUSD: event.target.value }))}
+                    disabled={pending}
+                  />
                 </div>
-              ) : null}
+                <ReadOnlyField label={t("editor.billingStatus")} value={resolveBillingAccountStatusLabel(editDialogTarget?.billingAccountStatus || "active")} />
+              </div>
             </SheetSection>
           ) : null}
 
