@@ -144,23 +144,62 @@ type ChatMentionMenuAnchor = {
   width: number;
 };
 
-function resolveTriggerQuery(value: string, caretIndex: number): ChatMentionTriggerQuery | null {
-  const end = Math.min(Math.max(caretIndex, 0), value.length);
-  let start = end;
-  while (start > 0 && !/\s/.test(value[start - 1] ?? "")) {
-    start -= 1;
+type ChatMentionSelection = {
+  end: number;
+  start: number;
+};
+
+function canStartTrigger(value: string, triggerIndex: number, trigger: "@" | "/"): boolean {
+  if (triggerIndex === 0) {
+    return true;
   }
 
-  const token = value.slice(start, end);
-  const trigger = token[0];
+  const previous = value[triggerIndex - 1] ?? "";
+  if (/\s/.test(previous) || /[\u3400-\u9fff]/.test(previous)) {
+    return true;
+  }
+  if (/[[({<，。！？、：；,.!?;:]/.test(previous)) {
+    return true;
+  }
+  if (trigger === "@") {
+    return !/[A-Za-z0-9._-]/.test(previous);
+  }
+  return !/[A-Za-z0-9._~:/?#@!$&'()*+,;=%-]/.test(previous);
+}
+
+function resolveTriggerQuery(value: string, caretIndex: number): ChatMentionTriggerQuery | null {
+  const end = Math.min(Math.max(caretIndex, 0), value.length);
+  const prefix = value.slice(0, end);
+  const mentionIndex = prefix.lastIndexOf("@");
+  const promptIndex = prefix.lastIndexOf("/");
+  const triggerIndex = Math.max(mentionIndex, promptIndex);
+  const trigger = triggerIndex >= 0 ? prefix[triggerIndex] : "";
   if (trigger !== "@" && trigger !== "/") {
+    return null;
+  }
+  if (!canStartTrigger(value, triggerIndex, trigger)) {
+    return null;
+  }
+
+  const query = prefix.slice(triggerIndex + 1);
+  if (/\s/.test(query)) {
     return null;
   }
 
   return {
     kind: trigger === "@" ? "mention" : "prompt",
-    query: token.slice(1).toLowerCase(),
-    range: { start, end },
+    query: query.toLowerCase(),
+    range: { start: triggerIndex, end },
+  };
+}
+
+function readTextareaSelection(textarea: HTMLTextAreaElement | null, fallback: number): ChatMentionSelection {
+  if (!textarea) {
+    return { start: fallback, end: fallback };
+  }
+  return {
+    start: textarea.selectionStart,
+    end: textarea.selectionEnd,
   };
 }
 
@@ -559,7 +598,7 @@ export function useChatMentionMenu({
   const menuID = React.useId();
   const [inputFocused, setInputFocused] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(0);
-  const [dismissedDraft, setDismissedDraft] = React.useState<string | null>(null);
+  const [dismissedTriggerKey, setDismissedTriggerKey] = React.useState<string | null>(null);
   const [menuLayout, setMenuLayout] = React.useState<ChatMentionMenuLayout | null>(null);
   const [files, setFiles] = React.useState<FileObjectDTO[]>([]);
   const [filesLoading, setFilesLoading] = React.useState(false);
@@ -568,13 +607,33 @@ export function useChatMentionMenu({
   const [promptsLoading, setPromptsLoading] = React.useState(false);
   const [skills, setSkills] = React.useState<SkillSummaryDTO[]>([]);
   const [skillsLoading, setSkillsLoading] = React.useState(false);
+  const [selection, setSelection] = React.useState<ChatMentionSelection>(() => ({
+    end: draft.length,
+    start: draft.length,
+  }));
   const modelCatalogRefreshRequestedRef = React.useRef(false);
   const enabledKindSet = React.useMemo(() => new Set(enabledKinds), [enabledKinds]);
-  const triggerQuery = resolveTriggerQuery(draft, textareaRef.current?.selectionStart ?? draft.length);
+  const triggerQuery = selection.start === selection.end ? resolveTriggerQuery(draft, selection.start) : null;
   const mentionQuery = triggerQuery?.kind === "mention" ? triggerQuery.query : null;
   const promptQuery = triggerQuery?.kind === "prompt" ? triggerQuery.query : null;
   const query = mentionQuery ?? promptQuery;
   const queryKind = mentionQuery !== null ? "mention" : promptQuery !== null ? "prompt" : null;
+  const triggerKey = triggerQuery
+    ? `${draft}:${triggerQuery.kind}:${triggerQuery.range.start}:${triggerQuery.range.end}:${triggerQuery.query}`
+    : null;
+
+  const updateSelection = React.useCallback(() => {
+    const nextSelection = readTextareaSelection(textareaRef.current, draft.length);
+    setSelection((currentSelection) => (
+      currentSelection.start === nextSelection.start && currentSelection.end === nextSelection.end
+        ? currentSelection
+        : nextSelection
+    ));
+  }, [draft.length, textareaRef]);
+
+  React.useLayoutEffect(() => {
+    updateSelection();
+  }, [draft, updateSelection]);
 
   React.useEffect(() => {
     if (!inputFocused || mentionQuery === null || !enabledKindSet.has("model")) {
@@ -762,7 +821,7 @@ export function useChatMentionMenu({
     ],
   );
   const items = React.useMemo(() => flattenSections(sections), [sections]);
-  const open = inputFocused && query !== null && dismissedDraft !== draft && !disabled && items.length > 0;
+  const open = inputFocused && query !== null && dismissedTriggerKey !== triggerKey && !disabled && items.length > 0;
   const activeItem = open ? items[Math.min(activeIndex, items.length - 1)] : null;
 
   React.useEffect(() => {
@@ -843,7 +902,7 @@ export function useChatMentionMenu({
     }
     const nextDraft = removeTriggerRange(draft, triggerQuery.range);
     onDraftChange(nextDraft.value);
-    setDismissedDraft(null);
+    setDismissedTriggerKey(null);
     focusTextarea(nextDraft.caretIndex);
   }, [draft, focusTextarea, onDraftChange, triggerQuery]);
 
@@ -861,7 +920,7 @@ export function useChatMentionMenu({
         }
         const nextDraft = replaceTriggerRange(draft, triggerQuery.range, item.prompt.content);
         onDraftChange(nextDraft.value);
-        setDismissedDraft(null);
+        setDismissedTriggerKey(null);
         focusTextarea(nextDraft.caretIndex);
         return;
       }
@@ -920,13 +979,18 @@ export function useChatMentionMenu({
 
   const handleChange = React.useCallback(
     (value: string) => {
-      if (dismissedDraft !== null && value !== dismissedDraft) {
-        setDismissedDraft(null);
+      if (dismissedTriggerKey !== null) {
+        setDismissedTriggerKey(null);
       }
+      updateSelection();
       onDraftChange(value);
     },
-    [dismissedDraft, onDraftChange],
+    [dismissedTriggerKey, onDraftChange, updateSelection],
   );
+
+  const handleSelectionChange = React.useCallback(() => {
+    updateSelection();
+  }, [updateSelection]);
 
   const handleKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>): boolean => {
@@ -950,12 +1014,12 @@ export function useChatMentionMenu({
       }
       if (event.key === "Escape") {
         event.preventDefault();
-        setDismissedDraft(draft);
+        setDismissedTriggerKey(triggerKey);
         return true;
       }
       return false;
     },
-    [activeItem, draft, items.length, open, select],
+    [activeItem, items.length, open, select, triggerKey],
   );
 
   return {
@@ -963,8 +1027,12 @@ export function useChatMentionMenu({
     filesLoading,
     handleBlur: () => setInputFocused(false),
     handleChange,
-    handleFocus: () => setInputFocused(true),
+    handleFocus: () => {
+      setInputFocused(true);
+      updateSelection();
+    },
     handleKeyDown,
+    handleSelectionChange,
     menuID,
     menuRef,
     menuLayout,

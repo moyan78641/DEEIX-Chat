@@ -150,6 +150,7 @@ export function ChatMessageUser({
     handleChange: handleMentionChange,
     handleFocus: handleMentionFocus,
     handleKeyDown: handleMentionKeyDown,
+    handleSelectionChange: handleMentionSelectionChange,
     menuID: mentionMenuID,
     menuLayout: mentionMenuLayout,
     menuRef: mentionMenuRef,
@@ -220,7 +221,10 @@ export function ChatMessageUser({
               aria-expanded={showMentionMenu}
               onBlur={handleMentionBlur}
               onChange={(event) => handleMentionChange(event.target.value)}
+              onClick={handleMentionSelectionChange}
               onFocus={handleMentionFocus}
+              onKeyUp={handleMentionSelectionChange}
+              onSelect={handleMentionSelectionChange}
               onKeyDown={(event) => {
                 if (handleMentionKeyDown(event)) {
                   return;

@@ -319,6 +319,7 @@ function ChatInputComponent({
     handleChange: handleMentionChange,
     handleFocus: handleMentionFocus,
     handleKeyDown: handleMentionKeyDown,
+    handleSelectionChange: handleMentionSelectionChange,
     menuID: mentionMenuID,
     menuLayout: mentionMenuLayout,
     menuRef: mentionMenuRef,
@@ -587,6 +588,9 @@ function ChatInputComponent({
             onFocus={handleMentionFocus}
             onBlur={handleMentionBlur}
             onChange={(event) => handleMentionChange(event.target.value)}
+            onClick={handleMentionSelectionChange}
+            onKeyUp={handleMentionSelectionChange}
+            onSelect={handleMentionSelectionChange}
             onPaste={(event) => {
               const files = clipboardFilesFromPaste(event);
               if (files.length === 0) {
