@@ -126,8 +126,8 @@ type GenerateInput struct {
 	RequestID      string
 	ConversationID uint
 	Messages       []Message
-	// Instructions 映射 OpenAI Responses API 顶层 instructions 字段。
-	// 仅由确认支持该字段的 adapter 使用；普通兼容路由继续通过 messages 承载系统提示。
+	// Instructions 承载可映射到上游原生指令字段的系统/开发者指令。
+	// 不支持原生指令字段的 adapter 应继续通过 messages 承载系统提示。
 	Instructions string
 	Tools        []ToolDefinition
 	// DisableTools 表示本轮调用必须只生成文本，adapter 不再声明 MCP 或厂商原生工具。
