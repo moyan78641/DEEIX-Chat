@@ -321,7 +321,7 @@ func patchInputFromRequest(req PatchSkillRequest) appskill.PatchInput {
 }
 
 func idParam(c *gin.Context) (uint, bool) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	id, err := strconv.ParseUint(c.Param("id"), 10, strconv.IntSize)
 	if err != nil || id == 0 {
 		response.Error(c, http.StatusBadRequest, "invalid skill id")
 		return 0, false
