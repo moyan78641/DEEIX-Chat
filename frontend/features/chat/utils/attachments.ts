@@ -35,14 +35,40 @@ const TEXT_FILE_EXTENSIONS = [
   "conf",
 ] as const;
 
+const ACTIVE_FILE_EXTENSIONS = new Set(["html", "htm", "css", "js", "jsx", "mjs", "ts", "tsx", "xml", "xhtml", "svg"]);
+
+const ACTIVE_UPLOAD_MIMES = new Set([
+  "text/html",
+  "text/css",
+  "text/javascript",
+  "text/xml",
+  "application/javascript",
+  "application/ecmascript",
+  "application/x-javascript",
+  "application/typescript",
+  "application/xml",
+  "application/xhtml+xml",
+  "image/svg+xml",
+]);
+
 function resolveFileExtension(fileName: string): string {
   const normalizedName = fileName.trim().toLowerCase();
   return normalizedName.includes(".") ? normalizedName.split(".").pop() || "" : "";
 }
 
+function normalizeMimeValue(raw: string): string {
+  const value = raw.trim().toLowerCase();
+  const separatorIndex = value.indexOf(";");
+  return separatorIndex > 0 ? value.slice(0, separatorIndex).trim() : value;
+}
+
 function normalizeUploadMimeForPolicy(file: File): string {
-  const browserMime = file.type.trim().toLowerCase();
+  const browserMime = normalizeMimeValue(file.type);
   const ext = resolveFileExtension(file.name);
+
+  if (ACTIVE_FILE_EXTENSIONS.has(ext) || ACTIVE_UPLOAD_MIMES.has(browserMime)) {
+    return "text/plain";
+  }
 
   if (browserMime.startsWith("image/")) {
     return browserMime;
@@ -95,8 +121,12 @@ export function isAllowedUploadMime(file: File, policy: ChatFilePolicyDTO | null
 }
 
 export function inferUploadCategory(file: File): UploadCategory {
-  const mime = file.type.trim().toLowerCase();
+  const mime = normalizeMimeValue(file.type);
   const ext = resolveFileExtension(file.name);
+
+  if (ACTIVE_FILE_EXTENSIONS.has(ext) || ACTIVE_UPLOAD_MIMES.has(mime)) {
+    return "text";
+  }
 
   if (mime.startsWith("image/")) {
     return "image";
