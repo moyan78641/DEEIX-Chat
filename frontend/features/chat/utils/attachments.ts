@@ -12,6 +12,17 @@ const TEXT_FILE_EXTENSIONS = [
   "go",
   "rs",
   "java",
+  "c",
+  "cpp",
+  "h",
+  "hpp",
+  "cs",
+  "php",
+  "rb",
+  "swift",
+  "kt",
+  "bash",
+  "zsh",
   "sql",
   "yaml",
   "yml",
@@ -29,12 +40,12 @@ function resolveFileExtension(fileName: string): string {
   return normalizedName.includes(".") ? normalizedName.split(".").pop() || "" : "";
 }
 
-export function normalizeUploadMime(file: File): string {
-  const mime = file.type.trim().toLowerCase();
+function normalizeUploadMimeForPolicy(file: File): string {
+  const browserMime = file.type.trim().toLowerCase();
   const ext = resolveFileExtension(file.name);
 
-  if (mime.startsWith("image/")) {
-    return mime;
+  if (browserMime.startsWith("image/")) {
+    return browserMime;
   }
 
   switch (ext) {
@@ -55,19 +66,22 @@ export function normalizeUploadMime(file: File): string {
       return "text/markdown";
     case "json":
       return "application/json";
-    case "xml":
-      return "application/xml";
-  }
-
-  if (mime) {
-    return mime;
+    case "yaml":
+    case "yml":
+      return "text/yaml";
+    case "toml":
+      return "application/toml";
   }
 
   if (TEXT_FILE_EXTENSIONS.includes(ext as (typeof TEXT_FILE_EXTENSIONS)[number])) {
     return "text/plain";
   }
 
-  return "";
+  return browserMime;
+}
+
+export function normalizeUploadMime(file: File): string {
+  return normalizeUploadMimeForPolicy(file);
 }
 
 export function isAllowedUploadMime(file: File, policy: ChatFilePolicyDTO | null): boolean {
@@ -75,8 +89,9 @@ export function isAllowedUploadMime(file: File, policy: ChatFilePolicyDTO | null
     return true;
   }
 
-  const mime = normalizeUploadMime(file);
-  return Boolean(mime && policy.allowedMIMETypes.includes(mime));
+  const allowed = new Set(policy.allowedMIMETypes.map((item) => item.trim().toLowerCase()).filter(Boolean));
+  const mime = normalizeUploadMimeForPolicy(file);
+  return Boolean(mime && allowed.has(mime));
 }
 
 export function inferUploadCategory(file: File): UploadCategory {
