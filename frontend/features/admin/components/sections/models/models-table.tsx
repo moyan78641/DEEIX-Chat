@@ -980,7 +980,7 @@ export function ModelsTable({
       const token = await resolveAccessToken();
       if (!token) return;
 
-      const nextStatus = source.status === "active" ? "inactive" : "active";
+      const nextStatus: AdminLLMStatus = source.status === "active" ? "inactive" : "active";
       const modelStatus = items.find((item) => item.id === modelId)?.status ?? "inactive";
       const nextSource = { ...source, status: nextStatus };
       const previousAvailable = isAdminLLMSourceAvailable(source, modelStatus);
