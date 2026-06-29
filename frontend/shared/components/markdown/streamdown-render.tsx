@@ -3,7 +3,14 @@
 import * as React from "react";
 import { cjk } from "@streamdown/cjk";
 import { createMathPlugin } from "@streamdown/math";
-import { type AllowedTags, type Components, type PluginConfig, Streamdown } from "streamdown";
+import {
+  defaultRehypePlugins,
+  type AllowedTags,
+  type Components,
+  type PluginConfig,
+  Streamdown,
+  type StreamdownProps,
+} from "streamdown";
 import { useTranslations } from "next-intl";
 
 import { ChevronDown } from "@/components/animate-ui/icons/chevron-down";
@@ -52,6 +59,7 @@ import {
   containsMarkdownMath,
   type RenderSegment,
 } from "./streamdown-content";
+import { normalizeBareURLRehypePlugin } from "./streamdown-url-normalize";
 
 type StreamdownRenderProps = {
   content: unknown;
@@ -114,6 +122,36 @@ const STREAMDOWN_ALLOWED_HTML_TAGS = {
   span: ["style"],
   summary: ["style"],
 } satisfies AllowedTags;
+type RehypeSanitizeSchema = {
+  tagNames?: string[];
+  attributes?: Record<string, unknown>;
+};
+type StreamdownRehypePlugins = NonNullable<StreamdownProps["rehypePlugins"]>;
+type StreamdownRehypePlugin = StreamdownRehypePlugins[number];
+type RehypeSanitizePlugin = [StreamdownRehypePlugin, RehypeSanitizeSchema];
+function buildStreamdownRehypePlugins(): StreamdownRehypePlugins {
+  const [sanitizePlugin, sanitizeSchema] = defaultRehypePlugins.sanitize as RehypeSanitizePlugin;
+  const extraTagNames = Object.keys(STREAMDOWN_ALLOWED_HTML_TAGS);
+  const tagNames = Array.from(new Set([...(sanitizeSchema.tagNames ?? []), ...extraTagNames]));
+  const schema = {
+    ...sanitizeSchema,
+    tagNames,
+    attributes: {
+      ...sanitizeSchema.attributes,
+      ...STREAMDOWN_ALLOWED_HTML_TAGS,
+    },
+  };
+
+  const sanitizeWithAllowedTags = [sanitizePlugin, schema] as StreamdownRehypePlugin;
+
+  return [
+    defaultRehypePlugins.raw,
+    sanitizeWithAllowedTags,
+    normalizeBareURLRehypePlugin,
+    defaultRehypePlugins.harden,
+  ];
+}
+const STREAMDOWN_REHYPE_PLUGINS = buildStreamdownRehypePlugins();
 const FENCED_CODE_BLOCK_RE = /(?:^|\n)[ \t]*(?:```|~~~)(?!\s*(?:mermaid|mmd)\b)[^\n]*(?:\n|$)/i;
 const MERMAID_CODE_BLOCK_RE = /(?:^|\n)[ \t]*(?:```|~~~)\s*(?:mermaid|mmd)\b/i;
 
@@ -420,6 +458,7 @@ function ThinkingSegmentBlock({
               components={THINKING_STREAMDOWN_COMPONENTS}
               controls={STREAMDOWN_CONTROLS}
               plugins={plugins}
+              rehypePlugins={STREAMDOWN_REHYPE_PLUGINS}
               remend={STREAMDOWN_REMEND}
               mode={streaming ? "streaming" : "static"}
               parseIncompleteMarkdown={streaming || incomplete}
@@ -456,6 +495,7 @@ function HTMLMarkdownRenderProvider({
           components={components}
           controls={STREAMDOWN_CONTROLS}
           plugins={plugins}
+          rehypePlugins={STREAMDOWN_REHYPE_PLUGINS}
           remend={STREAMDOWN_REMEND}
           linkSafety={STREAMDOWN_LINK_SAFETY}
           mode="static"
@@ -553,6 +593,7 @@ export const StreamdownRender = React.memo(function StreamdownRender({
                 components={components}
                 controls={STREAMDOWN_CONTROLS}
                 plugins={plugins}
+                rehypePlugins={STREAMDOWN_REHYPE_PLUGINS}
                 remend={STREAMDOWN_REMEND}
                 linkSafety={STREAMDOWN_LINK_SAFETY}
                 caret={streaming ? STREAMDOWN_CARET : undefined}
