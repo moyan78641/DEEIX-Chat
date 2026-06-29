@@ -142,6 +142,7 @@ function PromptLibraryTable<T extends PromptLibraryRow>({
   const t = useTranslations("adminPrompts");
   const locale = useLocale();
   const initialLoading = loading && items.length === 0;
+  const showRows = items.length > 0;
   const virtualRows = useVirtualTableRows(items, {
     estimateSize: 40,
   });
@@ -167,10 +168,11 @@ function PromptLibraryTable<T extends PromptLibraryRow>({
 
         {items.length === 0 && !loading ? (
           <TableEmptyRow colSpan={PROMPT_PRESET_TABLE_COLUMN_COUNT}>{emptyLabel}</TableEmptyRow>
-        ) : (
-          <>
-            <VirtualTablePaddingRow colSpan={PROMPT_PRESET_TABLE_COLUMN_COUNT} height={virtualRows.paddingTop} />
-            {virtualRows.rows.map(({ item }) => {
+        ) : null}
+
+        {showRows ? <VirtualTablePaddingRow colSpan={PROMPT_PRESET_TABLE_COLUMN_COUNT} height={virtualRows.paddingTop} /> : null}
+        {showRows
+          ? virtualRows.rows.map(({ item }) => {
               const displayName = item.trigger || item.title;
               const summary = getSummary(item);
 
@@ -219,10 +221,9 @@ function PromptLibraryTable<T extends PromptLibraryRow>({
                   </TableCell>
                 </TableRow>
               );
-            })}
-            <VirtualTablePaddingRow colSpan={PROMPT_PRESET_TABLE_COLUMN_COUNT} height={virtualRows.paddingBottom} />
-          </>
-        )}
+            })
+          : null}
+        {showRows ? <VirtualTablePaddingRow colSpan={PROMPT_PRESET_TABLE_COLUMN_COUNT} height={virtualRows.paddingBottom} /> : null}
       </TableBody>
     </Table>
   );
