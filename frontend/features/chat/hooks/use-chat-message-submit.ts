@@ -163,7 +163,12 @@ function normalizeLabelsJSON(value: string | null | undefined): string {
 
 function isPlaceholderConversationTitle(title: string): boolean {
   const value = title.trim().toLowerCase();
-  return ["new chat", "新会话"].includes(value);
+  return ["new chat", "新对话"].includes(value);
+}
+
+function isFallbackConversationTitle(title: string, fallbackTitle: string): boolean {
+  const normalizedFallback = fallbackTitle.trim();
+  return normalizedFallback !== "" && title.trim() === normalizedFallback;
 }
 
 function conversationTitleFromFirstUserMessage(content: string): string {
@@ -174,10 +179,11 @@ function conversationTitleFromFirstUserMessage(content: string): string {
   return Array.from(value).slice(0, 16).join("").trim();
 }
 
-function hasPendingGeneratedConversationMetadata(item: ConversationDTO | null): boolean {
+function hasPendingGeneratedConversationMetadata(item: ConversationDTO | null, fallbackTitle = ""): boolean {
   return (
     !item ||
     isPlaceholderConversationTitle(item.title) ||
+    isFallbackConversationTitle(item.title, fallbackTitle) ||
     normalizeLabelsJSON(item.labelsJSON) === "[]"
   );
 }
@@ -197,8 +203,9 @@ function hasGeneratedConversationMetadataChanged(
 function shouldPollGeneratedConversationMetadata(
   item: ConversationDTO | null,
   result: SendMessageResult | null | undefined,
+  fallbackTitle = "",
 ): boolean {
-  if (!hasPendingGeneratedConversationMetadata(item)) {
+  if (!hasPendingGeneratedConversationMetadata(item, fallbackTitle)) {
     return false;
   }
   const hint = result?.metadataRefreshHint?.trim();
@@ -212,6 +219,7 @@ async function refreshGeneratedConversationMetadata(
   accessToken: string,
   conversationPublicID: string,
   previous: ConversationDTO | null,
+  fallbackTitle: string,
   touchByPublicID: (publicID: string, patch?: Partial<ConversationDTO>) => void,
 ): Promise<void> {
   let elapsedMS = 0;
@@ -232,7 +240,7 @@ async function refreshGeneratedConversationMetadata(
     if (hasGeneratedConversationMetadataChanged(current, latest)) {
       touchByPublicID(conversationPublicID, latest);
       current = latest;
-      if (!hasPendingGeneratedConversationMetadata(latest)) {
+      if (!hasPendingGeneratedConversationMetadata(latest, fallbackTitle)) {
         return;
       }
     }
@@ -558,11 +566,12 @@ export function useChatMessageSubmit({
             accessToken: token,
           };
         }
+        let metadataFallbackTitle = "";
         const startMetadataRefresh = (result?: SendMessageResult | null) => {
           if (
             !targetConversationID ||
             metadataRefreshInFlight ||
-            !shouldPollGeneratedConversationMetadata(targetConversation, result)
+            !shouldPollGeneratedConversationMetadata(targetConversation, result, metadataFallbackTitle)
           ) {
             return;
           }
@@ -571,6 +580,7 @@ export function useChatMessageSubmit({
             token,
             targetConversationID,
             targetConversation,
+            metadataFallbackTitle,
             touchByPublicID,
           )
             .catch(() => {
@@ -605,7 +615,8 @@ export function useChatMessageSubmit({
           window.history.replaceState(null, "", `/chat?conversation_id=${created.publicID}`);
           onConversationCreated?.(created.publicID);
         }
-        const optimisticTitle = conversationTitleFromFirstUserMessage(payloadContent);
+        metadataFallbackTitle = conversationTitleFromFirstUserMessage(payloadContent);
+        const optimisticTitle = metadataFallbackTitle;
         if (
           targetConversationID &&
           optimisticTitle &&

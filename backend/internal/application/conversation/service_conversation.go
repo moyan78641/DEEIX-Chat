@@ -37,7 +37,7 @@ type DeleteConversationResult struct {
 func (s *Service) CreateConversation(ctx context.Context, userID uint, title string, modelName string, projectPublicID string) (*model.Conversation, error) {
 	normalizedTitle := strings.TrimSpace(title)
 	if normalizedTitle == "" {
-		normalizedTitle = "新会话"
+		normalizedTitle = "新对话"
 	}
 
 	normalizedModel := strings.TrimSpace(modelName)
