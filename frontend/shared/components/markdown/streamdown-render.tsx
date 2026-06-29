@@ -19,7 +19,8 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/animate-ui/components/radix/accordion";
+} from "@/components/ui/accordion";
+import { Marker, MarkerContent } from "@/components/ui/marker";
 import { cn } from "@/lib/utils";
 import { useLatexCopy } from "./use-latex-copy";
 
@@ -424,19 +425,22 @@ function ThinkingSegmentBlock({
     >
       <AccordionItem value="thinking" className="border-b-0">
         <AccordionTrigger
-          showArrow={false}
-          className="group items-start gap-1.5 py-0 text-left no-underline hover:no-underline"
+          iconPosition="none"
+          className="group items-start justify-between gap-1.5 py-0 text-left no-underline hover:no-underline"
         >
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span
+              <Marker
+                render={<span />}
                 className={cn(
-                  "text-[13px] font-medium transition-colors",
-                  isActive ? "thinking-shimmer" : "text-muted-foreground group-hover:text-foreground",
+                  "inline-flex min-h-0 w-auto text-[13px] font-medium transition-colors",
+                  !isActive && "text-muted-foreground group-hover:text-foreground",
                 )}
               >
-                {isActive ? t("active") : t("done")}
-              </span>
+                <MarkerContent className={cn("min-w-0", isActive && "shimmer")}>
+                  {isActive ? t("active") : t("done")}
+                </MarkerContent>
+              </Marker>
             </div>
           </div>
           <ChevronDown
@@ -446,7 +450,7 @@ function ThinkingSegmentBlock({
             )}
           />
         </AccordionTrigger>
-        <AccordionContent className="pb-0 pt-1.5">
+        <AccordionContent className="px-0 pb-0 pt-1.5 duration-[350ms] ease-in-out">
           <HTMLMarkdownRenderProvider
             className={cn(THINKING_MARKDOWN_CLASSNAME, "text-[12px] leading-6 text-muted-foreground/84")}
             components={THINKING_STREAMDOWN_COMPONENTS}
