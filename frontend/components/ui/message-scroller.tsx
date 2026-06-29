@@ -17,6 +17,7 @@ function MessageScrollerProvider(props: React.ComponentProps<typeof MessageScrol
 
 function MessageScroller({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof MessageScrollerPrimitive.Root>) {
   return (
@@ -27,7 +28,17 @@ function MessageScroller({
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-12 bg-gradient-to-b from-background from-0% to-transparent to-100%"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-12 bg-gradient-to-t from-background from-0% to-transparent to-100%"
+      />
+    </MessageScrollerPrimitive.Root>
   );
 }
 
@@ -39,7 +50,7 @@ function MessageScrollerViewport({
     <MessageScrollerPrimitive.Viewport
       data-slot="message-scroller-viewport"
       className={cn(
-        "size-full min-h-0 min-w-0 scroll-fade-y scroll-fade-12 scrollbar-thin scrollbar-gutter-stable overflow-y-auto overscroll-contain contain-content data-autoscrolling:scrollbar-none",
+        "size-full min-h-0 min-w-0 scrollbar-thin scrollbar-gutter-stable overflow-y-auto overscroll-contain contain-content data-autoscrolling:scrollbar-none",
         className,
       )}
       {...props}
