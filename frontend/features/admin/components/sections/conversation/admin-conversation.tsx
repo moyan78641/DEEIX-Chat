@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CircleHelp, Save } from "lucide-react";
+import { CircleHelp, Download, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -25,11 +25,12 @@ import {
   SettingsFieldInset,
   SettingsFieldItem,
   SettingsFieldList,
+  SettingsFieldRow,
   SettingsPage,
   SettingsSection,
   SettingsSectionSeparator,
 } from "@/shared/components/settings-layout";
-import { getAdminReferenceData, listAdminSettings, patchAdminSettings } from "@/features/admin/api";
+import { exportAllConversations, getAdminReferenceData, listAdminSettings, patchAdminSettings } from "@/features/admin/api";
 import {
   applyConversationDefaults,
   buildConversationSettingsFields,
@@ -349,6 +350,29 @@ export function AdminConversationSettingsPage() {
       followValue: CONVERSATION_TASK_MODEL_FOLLOW,
     }),
   );
+  const [exporting, setExporting] = React.useState(false);
+
+  const handleExportConversations = React.useCallback(async () => {
+    setExporting(true);
+    try {
+      const token = await resolveAccessToken();
+      if (!token) return;
+      const { blob, fileName } = await exportAllConversations(token);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(t("dataExport.failed"));
+    } finally {
+      setExporting(false);
+    }
+  }, [t]);
 
   const loadSettings = React.useCallback(async () => {
     setLoading(true);
@@ -559,6 +583,29 @@ export function AdminConversationSettingsPage() {
               animateLayout: false,
             })
             : null}
+        </SettingsFieldList>
+      </SettingsSection>
+
+      <SettingsSectionSeparator />
+
+      <SettingsSection title={t("sections.dataExport")}>
+        <SettingsFieldList>
+          <SettingsFieldItem>
+            <SettingsFieldRow
+              title={t("dataExport.title")}
+              description={t("dataExport.description")}
+            >
+              <Button
+                variant="default"
+                size="sm"
+                disabled={exporting}
+                onClick={handleExportConversations}
+              >
+                <Download className="size-3.5" />
+                {t("dataExport.exportButton")}
+              </Button>
+            </SettingsFieldRow>
+          </SettingsFieldItem>
         </SettingsFieldList>
       </SettingsSection>
     </SettingsPage>
