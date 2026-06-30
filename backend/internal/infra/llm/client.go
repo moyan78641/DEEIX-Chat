@@ -737,6 +737,7 @@ func NewClientWithEnv(env string, ssrfProtectionEnabled bool) *Client {
 	}
 	client.adapters = map[string]transportAdapter{
 		AdapterOpenAIResponses:        &openAIResponsesAdapter{client: client},
+		AdapterOpenRouterChat:         &openRouterChatCompletionsAdapter{client: client},
 		AdapterOpenRouterResponses:    &openRouterResponsesAdapter{client: client},
 		AdapterOpenAIChatCompletions:  &openAIChatCompletionsAdapter{client: client},
 		AdapterOpenAIImageGenerations: &openAIImageGenerationsAdapter{client: client},

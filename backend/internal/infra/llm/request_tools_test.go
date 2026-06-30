@@ -67,6 +67,31 @@ func TestBuildChatCompletionsToolMessages(t *testing.T) {
 	}
 }
 
+func TestBuildOpenRouterChatCompletionsToolMessagesUsesReasoningField(t *testing.T) {
+	payload := mustBuildRequestBody(t, AdapterOpenRouterChat, "openai/gpt-oss-120b:free", EndpointChatCompletions, GenerateInput{
+		Messages: []Message{
+			{
+				Role:             "assistant",
+				ReasoningContent: "need live news",
+				ToolCalls:        []ToolCall{{ToolCallID: "call_1", ToolType: "function", ToolName: "search_web", ArgumentsJSON: `{"query":"today news China"}`}},
+			},
+			{Role: "tool", ToolResults: []ToolResult{{ToolCallID: "call_1", ToolName: "search_web", OutputJSON: `{"items":[]}`, Status: "success"}}},
+		},
+	}, false)
+
+	messages := payload["messages"].([]map[string]interface{})
+	assistant := messages[0]
+	if assistant["reasoning"] != "need live news" {
+		t.Fatalf("expected OpenRouter reasoning passback, got %#v", assistant)
+	}
+	if _, ok := assistant["reasoning_content"]; ok {
+		t.Fatalf("expected no DeepSeek reasoning_content alias for OpenRouter, got %#v", assistant)
+	}
+	if payload["stream"] != false {
+		t.Fatalf("expected chat completions request body, got %#v", payload)
+	}
+}
+
 func TestParseChatCompletionsOutputSeparatesReasoningContentParts(t *testing.T) {
 	result := &GenerateOutput{}
 	parseChatCompletionsOutput(AdapterOpenAIChatCompletions, map[string]interface{}{
