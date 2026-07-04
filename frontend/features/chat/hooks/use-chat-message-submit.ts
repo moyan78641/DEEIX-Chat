@@ -18,6 +18,7 @@ import {
   toPendingAttachments,
   toPendingProcessTrace,
 } from "@/features/chat/model/message-submit";
+import { readLiveUpstreamThinkTrace } from "@/features/chat/model/upstream-think-store";
 import {
   resolveErrorDetails,
   resolveErrorMessage,
@@ -286,8 +287,10 @@ export function useChatMessageSubmit({
   visibleMessages,
   combinedMessages,
   serverMessagePublicIDs,
+  enqueueUpstreamThinkDelta,
   enqueueStreamText,
   flushStreamTextNow,
+  flushUpstreamThinkNow,
   resetStreamBuffer,
   startStream,
   activeGenerationRunsRef,
@@ -327,10 +330,12 @@ export function useChatMessageSubmit({
   visibleMessages: ChatAreaMessage[];
   combinedMessages: ChatAreaMessage[];
   serverMessagePublicIDs: Set<string>;
+  enqueueUpstreamThinkDelta: (event: Extract<StreamMessageEvent, { type: "upstream_think_delta" }>) => void;
   enqueueStreamText: (delta: string) => void;
   flushStreamTextNow: () => void;
+  flushUpstreamThinkNow: () => void;
   resetStreamBuffer: () => void;
-  startStream: (exchangeKey: string) => void;
+  startStream: (exchangeKey: string, runID?: string) => void;
   activeGenerationRunsRef?: React.RefObject<Set<string>>;
   failedGenerationRunsRef?: React.RefObject<Set<string>>;
   resumeGenerationActive?: boolean;
@@ -524,7 +529,7 @@ export function useChatMessageSubmit({
         setDraft("");
         setAttachments([]);
       }
-      startStream(exchangeKey);
+      startStream(exchangeKey, clientRunID);
       setPendingExchange({
         key: exchangeKey,
         conversationPublicID: targetConversationID?.trim() || null,
@@ -710,14 +715,7 @@ export function useChatMessageSubmit({
             );
           },
           onUpstreamThinkDelta: (event) => {
-            setPendingExchange((prev) =>
-              prev && prev.key === exchangeKey
-                ? {
-                    ...prev,
-                    assistantProcessTrace: event.trace ? toPendingProcessTrace(event.trace) : prev.assistantProcessTrace,
-                  }
-                : prev,
-            );
+            enqueueUpstreamThinkDelta(event);
           },
           onDelta: (delta) => {
             // Always clear assistantFileProc so batched React updates cannot keep the file_proc spinner alive.
@@ -773,6 +771,7 @@ export function useChatMessageSubmit({
         sentSuccessfully = true;
         lastCompletedAssistantPublicIDRef.current = completed.assistantMessage.publicID;
         flushStreamTextNow();
+        flushUpstreamThinkNow();
         resetStreamBuffer();
         const assistantMessageStatus = completed.assistantMessage.status || "success";
         const assistantMessageSucceeded = assistantMessageStatus === "success";
@@ -885,6 +884,7 @@ export function useChatMessageSubmit({
         reload();
       } catch (error) {
         flushStreamTextNow();
+        flushUpstreamThinkNow();
         resetStreamBuffer();
         if (streamAbortController.signal.aborted) {
           shouldKeepConversationLayout = true;
@@ -897,6 +897,7 @@ export function useChatMessageSubmit({
                   assistantStreaming: false,
                   assistantFileProc: false,
                   assistantActivityLabel: undefined,
+                  assistantProcessTrace: readLiveUpstreamThinkTrace(clientRunID) ?? prev.assistantProcessTrace,
                   assistantInlineAlert: undefined,
                 }
               : prev,
@@ -920,6 +921,7 @@ export function useChatMessageSubmit({
                 assistantStreaming: false,
                 assistantFileProc: false,
                 assistantActivityLabel: undefined,
+                assistantProcessTrace: readLiveUpstreamThinkTrace(clientRunID) ?? prev.assistantProcessTrace,
                 assistantStatus: "error",
                 assistantErrorMessage: errorMessage,
                 assistantInlineAlert: {
@@ -950,8 +952,10 @@ export function useChatMessageSubmit({
     [
       activeGenerationRunsRef,
       failedGenerationRunsRef,
+      enqueueUpstreamThinkDelta,
       enqueueStreamText,
       flushStreamTextNow,
+      flushUpstreamThinkNow,
       options,
       onConversationCreated,
       prependNewConversation,

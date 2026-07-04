@@ -452,6 +452,14 @@ export type StreamMessageEvent =
       type: "upstream_think_delta";
       seq?: number;
       status: string;
+      title?: string;
+      summary?: string;
+      stage?: string;
+      roundID?: string;
+      eventID?: string;
+      kind?: ReasoningDeltaDTO["kind"] | string;
+      delta?: string;
+      contentMarkdown?: string;
       block?: TraceBlockDTO;
       trace?: MessageProcessTraceDTO;
       reasoning?: ReasoningDeltaDTO;

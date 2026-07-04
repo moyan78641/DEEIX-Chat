@@ -49,8 +49,10 @@ const (
 )
 
 const (
-	upstreamThinkFlushInterval = 250 * time.Millisecond
-	upstreamThinkFlushBytes    = 512
+	upstreamThinkLiveFlushInterval = 80 * time.Millisecond
+	upstreamThinkLiveFlushBytes    = 1024
+	upstreamThinkPersistInterval   = 2 * time.Second
+	upstreamThinkLiveReplaceBytes  = 16 * 1024
 )
 
 type messageTraceDraft struct {
@@ -86,8 +88,13 @@ type messageTraceRecorder struct {
 	eventCounters map[string]int
 	events        []model.MessageTraceEvent
 
-	upstreamThinkLastFlush    time.Time
-	upstreamThinkBufferedByte int
+	upstreamThinkLastLiveFlush  time.Time
+	upstreamThinkLastPersist    time.Time
+	upstreamThinkPendingText    strings.Builder
+	upstreamThinkPendingReplace string
+	upstreamThinkPendingKind    string
+	upstreamThinkPendingReason  map[string]interface{}
+	upstreamThinkBufferedByte   int
 }
 
 func formatTraceStep(label string, detail string) string {
@@ -446,7 +453,7 @@ func (r *messageTraceRecorder) appendUpstreamReasoning(kind string, text string,
 		draft.status = messageTraceStatusStreaming
 	}
 	mergeUpstreamReasoningPayload(draft, kind, payload)
-	r.maybeFlushUpstreamThinkDelta(draft, payload, len(text), false)
+	r.queueUpstreamThinkLiveUpdate(draft, kind, text, "", payload)
 }
 
 func (r *messageTraceRecorder) syncStructuredThink(content string, summary string, payload map[string]interface{}) {
@@ -461,6 +468,7 @@ func (r *messageTraceRecorder) syncStructuredThink(content string, summary strin
 	if draft == nil {
 		return
 	}
+	previousContent := draft.contentMarkdown
 	displayContent := strings.TrimSpace(content)
 	if displayContent == "" {
 		displayContent = strings.TrimSpace(summary)
@@ -477,7 +485,8 @@ func (r *messageTraceRecorder) syncStructuredThink(content string, summary strin
 		draft.status = messageTraceStatusStreaming
 	}
 	mergeUpstreamReasoningPayload(draft, messageTraceThinkKindContent, payload)
-	r.maybeFlushUpstreamThinkDelta(draft, payload, len(content)+len(summary), false)
+	deltaText, replaceText := diffUpstreamThinkContent(previousContent, draft.contentMarkdown)
+	r.queueUpstreamThinkLiveUpdate(draft, messageTraceThinkKindContent, deltaText, replaceText, payload)
 }
 
 // recordPromptTrace 把 PromptPlan 摘要合并进处理轨迹，供前端结构化展示。
@@ -533,8 +542,7 @@ func (r *messageTraceRecorder) completeTools() {
 
 func (r *messageTraceRecorder) completeUpstreamThink() {
 	if r.completeDraft(r.upstreamThink) {
-		r.resetUpstreamThinkFlush()
-		r.emitUpstreamThinkDelta(nil)
+		r.flushUpstreamThinkLiveUpdate(r.upstreamThink, true, false)
 	}
 }
 
@@ -669,38 +677,100 @@ func (r *messageTraceRecorder) persistDraftCtx(ctx context.Context, draft *messa
 	}
 }
 
-func (r *messageTraceRecorder) maybeFlushUpstreamThinkDelta(draft *messageTraceDraft, payload map[string]interface{}, deltaBytes int, force bool) {
+type upstreamThinkLiveUpdate struct {
+	kind            string
+	delta           string
+	contentMarkdown string
+	reasoning       map[string]interface{}
+}
+
+func (r *messageTraceRecorder) queueUpstreamThinkLiveUpdate(draft *messageTraceDraft, kind string, deltaText string, replaceText string, payload map[string]interface{}) {
 	if !r.enabled() || draft == nil {
 		return
 	}
-	r.upstreamThinkBufferedByte += deltaBytes
-	if !force && !r.shouldFlushUpstreamThinkDelta() {
-		r.upsertSnapshotEvent(draft, tracePayloadJSON(draft.payload))
+	if deltaText != "" {
+		r.upstreamThinkBufferedByte += len(deltaText)
+		if len(deltaText) > upstreamThinkLiveReplaceBytes {
+			deltaText = ""
+		}
+	}
+	if deltaText != "" {
+		_, _ = r.upstreamThinkPendingText.WriteString(deltaText)
+	}
+	if replaceText != "" {
+		r.upstreamThinkBufferedByte += len(replaceText)
+		if len(replaceText) <= upstreamThinkLiveReplaceBytes {
+			r.upstreamThinkPendingReplace = replaceText
+		}
+	}
+	if strings.TrimSpace(kind) != "" {
+		r.upstreamThinkPendingKind = strings.TrimSpace(kind)
+	}
+	if reasoning := liveUpstreamReasoningPayload(kind, payload); len(reasoning) > 0 {
+		r.upstreamThinkPendingReason = reasoning
+	}
+	if !r.shouldFlushUpstreamThinkLiveUpdate() {
 		return
 	}
-	r.persistDraft(draft, force)
-	r.emitUpstreamThinkDelta(payload)
-	r.resetUpstreamThinkFlush()
+	r.flushUpstreamThinkLiveUpdate(draft, false, true)
 }
 
-func (r *messageTraceRecorder) shouldFlushUpstreamThinkDelta() bool {
+func (r *messageTraceRecorder) shouldFlushUpstreamThinkLiveUpdate() bool {
 	if r == nil {
 		return false
 	}
-	if r.upstreamThinkLastFlush.IsZero() {
+	if r.upstreamThinkLastLiveFlush.IsZero() {
 		return true
 	}
-	if r.upstreamThinkBufferedByte >= upstreamThinkFlushBytes {
+	if r.upstreamThinkBufferedByte >= upstreamThinkLiveFlushBytes {
 		return true
 	}
-	return time.Since(r.upstreamThinkLastFlush) >= upstreamThinkFlushInterval
+	return time.Since(r.upstreamThinkLastLiveFlush) >= upstreamThinkLiveFlushInterval
 }
 
-func (r *messageTraceRecorder) resetUpstreamThinkFlush() {
+func (r *messageTraceRecorder) shouldPersistUpstreamThinkSnapshot() bool {
+	if r == nil {
+		return false
+	}
+	if !r.cfg.ProcessTracePersistInflight {
+		return false
+	}
+	if r.upstreamThinkLastPersist.IsZero() {
+		return true
+	}
+	return time.Since(r.upstreamThinkLastPersist) >= upstreamThinkPersistInterval
+}
+
+func (r *messageTraceRecorder) flushUpstreamThinkLiveUpdate(draft *messageTraceDraft, force bool, persistSnapshot bool) {
+	if !r.enabled() || draft == nil {
+		return
+	}
+	if persistSnapshot && r.shouldPersistUpstreamThinkSnapshot() {
+		r.persistDraft(draft, false)
+		r.upstreamThinkLastPersist = time.Now()
+	}
+	update := upstreamThinkLiveUpdate{
+		kind:            r.upstreamThinkPendingKind,
+		delta:           r.upstreamThinkPendingText.String(),
+		contentMarkdown: r.upstreamThinkPendingReplace,
+		reasoning:       r.upstreamThinkPendingReason,
+	}
+	if !force && update.delta == "" && update.contentMarkdown == "" && len(update.reasoning) == 0 {
+		return
+	}
+	r.emitUpstreamThinkDelta(update)
+	r.resetUpstreamThinkLiveBuffer()
+}
+
+func (r *messageTraceRecorder) resetUpstreamThinkLiveBuffer() {
 	if r == nil {
 		return
 	}
-	r.upstreamThinkLastFlush = time.Now()
+	r.upstreamThinkLastLiveFlush = time.Now()
+	r.upstreamThinkPendingText.Reset()
+	r.upstreamThinkPendingReplace = ""
+	r.upstreamThinkPendingKind = ""
+	r.upstreamThinkPendingReason = nil
 	r.upstreamThinkBufferedByte = 0
 }
 
@@ -834,17 +904,29 @@ func (r *messageTraceRecorder) emitToolUpdate() {
 	})
 }
 
-func (r *messageTraceRecorder) emitUpstreamThinkDelta(reasoning map[string]interface{}) {
+func (r *messageTraceRecorder) emitUpstreamThinkDelta(update upstreamThinkLiveUpdate) {
 	if !r.visible() || r.upstreamThink == nil {
 		return
 	}
 	payload := map[string]interface{}{
-		"status": r.upstreamThink.status,
-		"block":  traceDraftToBlock(r.upstreamThink),
-		"trace":  r.snapshot(),
+		"status":  r.upstreamThink.status,
+		"title":   r.upstreamThink.title,
+		"summary": r.upstreamThink.summary,
+		"stage":   r.upstreamThink.stage,
+		"roundID": r.upstreamThink.roundID,
+		"eventID": r.upstreamThink.eventID,
 	}
-	if len(reasoning) > 0 {
-		payload["reasoning"] = reasoning
+	if update.kind != "" {
+		payload["kind"] = update.kind
+	}
+	if update.delta != "" {
+		payload["delta"] = update.delta
+	}
+	if update.contentMarkdown != "" {
+		payload["contentMarkdown"] = update.contentMarkdown
+	}
+	if len(update.reasoning) > 0 {
+		payload["reasoning"] = update.reasoning
 	}
 	emitEvent(r.onEvent, "upstream_think_delta", payload)
 }
@@ -1239,6 +1321,34 @@ func getTraceString(value interface{}) string {
 		return ""
 	}
 	return text
+}
+
+func diffUpstreamThinkContent(previous string, next string) (string, string) {
+	if next == "" || next == previous {
+		return "", ""
+	}
+	if previous != "" && strings.HasPrefix(next, previous) {
+		return next[len(previous):], ""
+	}
+	if previous == "" {
+		return next, ""
+	}
+	return "", next
+}
+
+func liveUpstreamReasoningPayload(kind string, payload map[string]interface{}) map[string]interface{} {
+	reasoning := map[string]interface{}{}
+	if strings.TrimSpace(kind) != "" {
+		reasoning["kind"] = strings.TrimSpace(kind)
+	}
+	for _, key := range []string{"event_type", "item_id", "status"} {
+		if value, ok := payload[key]; ok {
+			if text, ok := value.(string); ok && strings.TrimSpace(text) != "" {
+				reasoning[key] = strings.TrimSpace(text)
+			}
+		}
+	}
+	return reasoning
 }
 
 func mergeUpstreamReasoningPayload(draft *messageTraceDraft, kind string, payload map[string]interface{}) {

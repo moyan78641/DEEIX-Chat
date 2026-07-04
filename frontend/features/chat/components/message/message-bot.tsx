@@ -34,6 +34,11 @@ import { isUpstreamStreamingDebugBody, summarizeUpstreamError } from "@/features
 import type { FileContentResult } from "@/shared/api/file";
 import type { PreviewDialogFile } from "@/shared/components/file-preview/file-preview-dialog";
 import { resolveLeadingImagePreview } from "@/features/chat/model/media-image-preview";
+import {
+  clearLiveUpstreamThinkTrace,
+  mergeLiveUpstreamThinkTrace,
+  useLiveUpstreamThinkTrace,
+} from "@/features/chat/model/upstream-think-store";
 import type { BillingDisplayCurrency } from "@/shared/lib/billing-display";
 
 const EMPTY_TRACE_EVENTS: NonNullable<ChatAreaMessage["processTrace"]>["events"] = [];
@@ -164,9 +169,19 @@ export function ChatMessageBot({
       setEditingValue(item.content);
     }
   }, [isEditing, item.content]);
-  const upstreamThink = item.processTrace?.upstreamThink;
-  const toolTrace = item.processTrace?.tools;
-  const traceEvents = item.processTrace?.events ?? EMPTY_TRACE_EVENTS;
+  const liveProcessTrace = useLiveUpstreamThinkTrace(item.runID);
+  const processTrace =
+    liveProcessTrace && (item.isStreaming || !item.processTrace)
+      ? mergeLiveUpstreamThinkTrace(item.processTrace, liveProcessTrace)
+      : item.processTrace;
+  React.useEffect(() => {
+    if (!item.isStreaming && item.processTrace?.upstreamThink) {
+      clearLiveUpstreamThinkTrace(item.runID);
+    }
+  }, [item.isStreaming, item.processTrace?.upstreamThink, item.runID]);
+  const upstreamThink = processTrace?.upstreamThink;
+  const toolTrace = processTrace?.tools;
+  const traceEvents = processTrace?.events ?? EMPTY_TRACE_EVENTS;
   const messageStreaming = Boolean(item.isStreaming);
   const hasStreamdownContent = item.content.trim().length > 0;
   const leadingImagePreview = React.useMemo(() => resolveLeadingImagePreview(item.content), [item.content]);
@@ -261,7 +276,7 @@ export function ChatMessageBot({
   return (
     <div className="group/assistant-message flex w-full flex-col items-start">
       <MessageProcessTrace
-        trace={item.processTrace}
+        trace={processTrace}
         active={messageStreaming}
         autoCollapseReady={processAutoCollapseReady}
       />
