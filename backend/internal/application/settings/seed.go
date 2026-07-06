@@ -83,6 +83,13 @@ func defaultSettings() []domainsettings.SystemSetting {
 		{Namespace: "site", Key: "terms_content_zh_tw", Value: defaultTermsBodyTW, ValueType: "textarea", Description: "服务条款内容（繁體中文）"},
 		{Namespace: "site", Key: "privacy_title_zh_tw", Value: defaultPrivacyTitleTW, ValueType: "string", Description: "隐私政策标题（繁體中文）"},
 		{Namespace: "site", Key: "privacy_content_zh_tw", Value: defaultPrivacyBodyTW, ValueType: "textarea", Description: "隐私政策内容（繁體中文）"},
+		{Namespace: "site", Key: "tawk_enabled", Value: "false", ValueType: "bool", Description: "是否启用 tawk.to 在线客服小组件"},
+		{Namespace: "site", Key: "tawk_property_id", Value: "", ValueType: "string", Description: "tawk.to Property ID"},
+		{Namespace: "site", Key: "tawk_widget_id", Value: "", ValueType: "string", Description: "tawk.to Widget ID"},
+		{Namespace: "site", Key: "tawk_secure_mode_secret", Value: "", ValueType: "string", Description: "tawk.to Secure Mode Secret Key"},
+		{Namespace: "site", Key: "support_page_title", Value: "Support", ValueType: "string", Description: "客服支持页标题"},
+		{Namespace: "site", Key: "support_page_description", Value: "Need help with billing, subscriptions, model errors, or account access? Start a chat and we will follow up with the right context.", ValueType: "textarea", Description: "客服支持页说明"},
+		{Namespace: "site", Key: "support_contact_hint", Value: "For payment or subscription issues, include your order number if you have one.", ValueType: "string", Description: "客服支持页提示"},
 
 		// 计费配置
 		{Namespace: "billing", Key: "mode", Value: "self", ValueType: "string", Description: "计费方式：self=自用模式，period=订阅额度+按量余额，usage=纯按量计费"},

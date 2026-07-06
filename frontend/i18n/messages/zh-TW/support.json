@@ -1,0 +1,26 @@
+{
+  "eyebrow": "客服支援",
+  "title": "工單回饋",
+  "description": "遇到儲值、訂閱、模型呼叫或帳號問題時，可以從這裡聯絡支援。我們會自動帶上必要的帳號脈絡，方便更快定位。",
+  "contactHint": "儲值或訂閱問題請盡量提供訂單號；API 或模型問題請說明時間、模型和錯誤現象。",
+  "fallbackUser": "目前使用者",
+  "openChat": "開啟線上客服",
+  "chatUnavailable": "客服未啟用",
+  "emailSupport": "郵件聯絡",
+  "account": {
+    "title": "帳號資訊",
+    "user": "使用者",
+    "role": "角色",
+    "status": "狀態"
+  },
+  "billing": {
+    "title": "套餐資訊",
+    "plan": "目前套餐",
+    "status": "套餐狀態",
+    "created": "註冊時間"
+  },
+  "channel": {
+    "title": "支援渠道",
+    "liveChat": "線上客服"
+  }
+}

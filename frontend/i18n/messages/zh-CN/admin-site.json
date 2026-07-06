@@ -4,6 +4,7 @@
     "assets": "品牌素材",
     "home": "公开首页",
     "links": "链接",
+    "support": "客服支持",
     "legal": "服务条款与隐私政策"
   },
   "actions": {
@@ -57,6 +58,34 @@
     "privacyURL": {
       "label": "隐私政策 URL",
       "description": "可选的公开隐私政策链接。"
+    },
+    "tawkEnabled": {
+      "label": "启用 tawk.to",
+      "description": "在公开首页和工单反馈页显示在线客服小组件。"
+    },
+    "tawkPropertyID": {
+      "label": "Property ID",
+      "description": "tawk.to 嵌入地址里的第一段 ID。"
+    },
+    "tawkWidgetID": {
+      "label": "Widget ID",
+      "description": "tawk.to 嵌入地址里的第二段 ID。"
+    },
+    "tawkSecureModeSecret": {
+      "label": "Secure Mode Secret",
+      "description": "用于给登录用户签名的密钥，只保存在后端。"
+    },
+    "supportPageTitle": {
+      "label": "客服页标题",
+      "description": "登录后工单反馈页展示的标题。"
+    },
+    "supportPageDescription": {
+      "label": "客服页说明",
+      "description": "用户打开客服前看到的简短说明。"
+    },
+    "supportContactHint": {
+      "label": "客服提示",
+      "description": "展示在支持渠道状态附近的小提示。"
     },
     "termsTitleEnUS": {
       "label": "服务条款标题（English）",

@@ -22,6 +22,7 @@ func (m *Module) RegisterPublicRoutes(api *gin.RouterGroup) {
 // RegisterProtectedRoutes 注册需登录的鉴权路由。
 func (m *Module) RegisterProtectedRoutes(authRequired *gin.RouterGroup) {
 	authRequired.GET("/me", m.Handler.Me)
+	authRequired.GET("/support/tawk/profile", m.Handler.TawkVisitorProfile)
 	authRequired.PATCH("/me", m.Handler.PatchMe)
 	authRequired.PATCH("/me/username", m.Handler.PatchUsername)
 	authRequired.POST("/me/onboarding/complete", m.Handler.CompleteOnboarding)

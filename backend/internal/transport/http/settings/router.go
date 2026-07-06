@@ -5,6 +5,7 @@ import "github.com/gin-gonic/gin"
 func (m *Module) RegisterPublicRoutes(api *gin.RouterGroup) {
 	api.GET("/settings/login-page", m.Handler.GetLoginPageSettings)
 	api.GET("/settings/site-profile", m.Handler.GetSiteProfile)
+	api.GET("/settings/tawk", m.Handler.GetTawkSettings)
 	api.GET("/site-assets/:file_name", m.Handler.GetSiteAsset)
 }
 

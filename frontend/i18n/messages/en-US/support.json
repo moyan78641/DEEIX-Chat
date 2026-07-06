@@ -1,0 +1,26 @@
+{
+  "eyebrow": "Support",
+  "title": "Support",
+  "description": "Need help with billing, subscriptions, model errors, or account access? Start a chat and we will follow up with the right context.",
+  "contactHint": "For payment or subscription issues, include your order number if you have one.",
+  "fallbackUser": "Current user",
+  "openChat": "Open chat",
+  "chatUnavailable": "Chat unavailable",
+  "emailSupport": "Email support",
+  "account": {
+    "title": "Account",
+    "user": "User",
+    "role": "Role",
+    "status": "Status"
+  },
+  "billing": {
+    "title": "Plan",
+    "plan": "Current plan",
+    "status": "Plan status",
+    "created": "Registered"
+  },
+  "channel": {
+    "title": "Channel",
+    "liveChat": "Live chat"
+  }
+}

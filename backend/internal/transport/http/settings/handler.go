@@ -186,6 +186,27 @@ func (h *Handler) GetSiteProfile(c *gin.Context) {
 	response.Success(c, profile)
 }
 
+// GetTawkSettings 返回公开客服小组件配置。
+func (h *Handler) GetTawkSettings(c *gin.Context) {
+	values, err := h.service.RuntimeValuesByNamespace(c.Request.Context(), "site")
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "list support settings failed")
+		return
+	}
+	propertyID := strings.TrimSpace(values["tawk_property_id"])
+	widgetID := strings.TrimSpace(values["tawk_widget_id"])
+	enabled := strings.EqualFold(strings.TrimSpace(values["tawk_enabled"]), "true") && propertyID != "" && widgetID != ""
+	response.Success(c, TawkSettingsResponse{
+		Enabled:              enabled,
+		PropertyID:           propertyID,
+		WidgetID:             widgetID,
+		SecureModeConfigured: strings.TrimSpace(values["tawk_secure_mode_secret"]) != "",
+		SupportPageTitle:     firstNonEmpty(values["support_page_title"], "Support"),
+		SupportDescription:   firstNonEmpty(values["support_page_description"], "Need help with billing, subscriptions, model errors, or account access? Start a chat and we will follow up with the right context."),
+		SupportContactHint:   values["support_contact_hint"],
+	})
+}
+
 // UploadSiteAsset 上传站点品牌素材。
 func (h *Handler) UploadSiteAsset(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxSiteAssetUploadBytes+(1<<20))

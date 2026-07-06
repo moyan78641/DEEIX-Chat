@@ -14,6 +14,7 @@ var sensitiveSettingKeys = map[string]struct{}{
 	"billing:stripe_secret_key":            {},
 	"billing:stripe_webhook_secret":        {},
 	"billing:epay_key":                     {},
+	"site:tawk_secure_mode_secret":         {},
 	"extract:tika_auth_token":              {},
 	"extract:docling_auth_token":           {},
 	"extract:tesseract_ocr_auth_token":     {},

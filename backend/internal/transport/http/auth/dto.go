@@ -363,6 +363,15 @@ type MeResponse struct {
 	User UserResponse `json:"user"`
 }
 
+type TawkVisitorProfileResponse struct {
+	Enabled    bool              `json:"enabled"`
+	VisitorID  string            `json:"visitorID"`
+	Name       string            `json:"name"`
+	Email      string            `json:"email"`
+	SecureHash string            `json:"secureHash"`
+	Attributes map[string]string `json:"attributes"`
+}
+
 // LogoutResponse 登出响应。
 type LogoutResponse struct {
 	Revoked bool `json:"revoked"`

@@ -8,6 +8,7 @@ import { AuthGuard } from "@/shared/auth/auth-guard";
 import { AuthSessionProvider } from "@/shared/auth/auth-session-context";
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
 import { readAccessToken, SESSION_SNAPSHOT_CHANGED_EVENT, type SessionSnapshot } from "@/shared/auth/session";
+import { TawkWidgetProvider } from "@/shared/support/tawk-widget-provider";
 
 const AdminAccessGate = dynamic(
   () => import("@/features/admin/components/admin-access-gate").then((mod) => mod.AdminAccessGate),
@@ -66,12 +67,18 @@ function OptionalShareWorkspace({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!accessToken) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        <TawkWidgetProvider />
+      </>
+    );
   }
 
   return (
     <AuthSessionProvider accessToken={accessToken}>
       <ProjectLayout defaultSidebarOpen={false}>{children}</ProjectLayout>
+      <TawkWidgetProvider />
     </AuthSessionProvider>
   );
 }
@@ -80,7 +87,12 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   if (isPublicPath(pathname)) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        <TawkWidgetProvider />
+      </>
+    );
   }
 
   if (isPathWithin(pathname, "/share")) {
@@ -94,6 +106,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
       <ProjectLayout>{content}</ProjectLayout>
+      <TawkWidgetProvider />
     </AuthGuard>
   );
 }

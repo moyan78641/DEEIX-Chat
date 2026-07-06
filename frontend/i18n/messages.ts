@@ -23,6 +23,7 @@ import enRecent from "@/i18n/messages/en-US/recent.json";
 import enSettings from "@/i18n/messages/en-US/settings.json";
 import enShare from "@/i18n/messages/en-US/share.json";
 import enSite from "@/i18n/messages/en-US/site.json";
+import enSupport from "@/i18n/messages/en-US/support.json";
 import type { AppLocale } from "@/i18n/config";
 
 export type AppMessages = typeof DEFAULT_MESSAGES;
@@ -40,6 +41,7 @@ export const DEFAULT_MESSAGES = {
   files: enFiles,
   settings: enSettings,
   site: enSite,
+  support: enSupport,
   adminAnnouncements: enAdminAnnouncements,
   adminBilling: enAdminBilling,
   adminConversation: enAdminConversation,
@@ -74,6 +76,7 @@ export async function loadLocaleMessages(locale: AppLocale): Promise<AppMessages
     files,
     settings,
     site,
+    support,
     adminAnnouncements,
     adminBilling,
     adminConversation,
@@ -100,6 +103,7 @@ export async function loadLocaleMessages(locale: AppLocale): Promise<AppMessages
     import(`@/i18n/messages/${localeDir}/files.json`),
     import(`@/i18n/messages/${localeDir}/settings.json`),
     import(`@/i18n/messages/${localeDir}/site.json`),
+    import(`@/i18n/messages/${localeDir}/support.json`),
     import(`@/i18n/messages/${localeDir}/admin-announcements.json`),
     import(`@/i18n/messages/${localeDir}/admin-billing.json`),
     import(`@/i18n/messages/${localeDir}/admin-conversation.json`),
@@ -128,6 +132,7 @@ export async function loadLocaleMessages(locale: AppLocale): Promise<AppMessages
     files: files.default,
     settings: settings.default,
     site: site.default,
+    support: support.default,
     adminAnnouncements: adminAnnouncements.default,
     adminBilling: adminBilling.default,
     adminConversation: adminConversation.default,

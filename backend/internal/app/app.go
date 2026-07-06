@@ -211,6 +211,7 @@ func NewApp() (*App, error) {
 		return nil, err
 	}
 	authHandler := authhttp.NewHandler(authService)
+	authHandler.SetSettingsService(settingsService)
 	authModule := authhttp.NewModule(authHandler)
 	memoryRepo := memoryrepo.NewRepo(db)
 	memoryService := memory.NewService(memoryRepo)

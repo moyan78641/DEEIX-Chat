@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { SettingsFieldEditor } from "@/features/admin/components/sections/shared/settings-runtime-panel";
+import { SettingsFieldEditor, type SettingsFieldType } from "@/features/admin/components/sections/shared/settings-runtime-panel";
 import { listAdminSettingsByNamespace, patchAdminSettings, uploadSiteAsset } from "@/features/admin/api";
 import { resolveAdminErrorMessage } from "@/features/admin/utils/admin-error";
 import { cn } from "@/lib/utils";
@@ -44,9 +44,15 @@ type SiteSettingKey =
   | "terms_title_zh_tw"
   | "terms_content_zh_tw"
   | "privacy_title_zh_tw"
-  | "privacy_content_zh_tw";
+  | "privacy_content_zh_tw"
+  | "tawk_enabled"
+  | "tawk_property_id"
+  | "tawk_widget_id"
+  | "tawk_secure_mode_secret"
+  | "support_page_title"
+  | "support_page_description"
+  | "support_contact_hint";
 
-type SiteFieldType = "string" | "textarea";
 type AssetSettingKey = Extract<SiteSettingKey, "logo_url" | "logo_dark_url" | "favicon_url">;
 
 type SiteSettingsField = {
@@ -54,7 +60,7 @@ type SiteSettingsField = {
   key: SiteSettingKey;
   label: string;
   description: string;
-  type: SiteFieldType;
+  type: SettingsFieldType;
   placeholder?: string;
 };
 
@@ -118,7 +124,22 @@ function applySiteDefaults(settings: Record<string, string>): Record<string, str
     "site.terms_content_zh_tw": termsContentTw,
     "site.privacy_title_zh_tw": settings["site.privacy_title_zh_tw"] ?? "隱私政策",
     "site.privacy_content_zh_tw": settings["site.privacy_content_zh_tw"] ?? DEFAULT_PRIVACY_CONTENT_ZH_TW,
+    "site.tawk_enabled": settings["site.tawk_enabled"] ?? "false",
+    "site.tawk_property_id": settings["site.tawk_property_id"] ?? "",
+    "site.tawk_widget_id": settings["site.tawk_widget_id"] ?? "",
+    "site.tawk_secure_mode_secret": settings["site.tawk_secure_mode_secret"] ?? "",
+    "site.support_page_title": settings["site.support_page_title"]?.trim() || "Support",
+    "site.support_page_description": settings["site.support_page_description"]?.trim() || "Need help with billing, subscriptions, model errors, or account access? Start a chat and we will follow up with the right context.",
+    "site.support_contact_hint": settings["site.support_contact_hint"] ?? "For payment or subscription issues, include your order number if you have one.",
   };
+}
+
+function configuredSiteSettings(items: SettingItem[]): Record<string, boolean> {
+  const result: Record<string, boolean> = {};
+  for (const item of items) {
+    result[`site.${item.key}`] = Boolean(item.configured);
+  }
+  return result;
 }
 
 function legalSettingValue(value: string | undefined, defaultValue: string, legacyValue: string | undefined, legacyDefault: string): string {
@@ -193,6 +214,18 @@ export function AdminSiteSettingsPage() {
         ],
       },
       {
+        title: t("groups.support"),
+        fields: [
+          { namespace: "site", key: "tawk_enabled", label: t("fields.tawkEnabled.label"), description: t("fields.tawkEnabled.description"), type: "bool" },
+          { namespace: "site", key: "tawk_property_id", label: t("fields.tawkPropertyID.label"), description: t("fields.tawkPropertyID.description"), type: "string", placeholder: "6a4b785f17e91e1d4e171b4c" },
+          { namespace: "site", key: "tawk_widget_id", label: t("fields.tawkWidgetID.label"), description: t("fields.tawkWidgetID.description"), type: "string", placeholder: "1jsrcse1o" },
+          { namespace: "site", key: "tawk_secure_mode_secret", label: t("fields.tawkSecureModeSecret.label"), description: t("fields.tawkSecureModeSecret.description"), type: "password" },
+          { namespace: "site", key: "support_page_title", label: t("fields.supportPageTitle.label"), description: t("fields.supportPageTitle.description"), type: "string" },
+          { namespace: "site", key: "support_page_description", label: t("fields.supportPageDescription.label"), description: t("fields.supportPageDescription.description"), type: "textarea" },
+          { namespace: "site", key: "support_contact_hint", label: t("fields.supportContactHint.label"), description: t("fields.supportContactHint.description"), type: "string" },
+        ],
+      },
+      {
         title: t("groups.legal"),
         fields: [
           { namespace: "site", key: "terms_title_en_us", label: t("fields.termsTitleEnUS.label"), description: t("fields.termsTitleEnUS.description"), type: "string" },
@@ -214,6 +247,7 @@ export function AdminSiteSettingsPage() {
   );
   const [settingsMap, setSettingsMap] = React.useState<Record<string, string>>(() => applySiteDefaults({}));
   const [savedMap, setSavedMap] = React.useState<Record<string, string>>(() => applySiteDefaults({}));
+  const [configuredMap, setConfiguredMap] = React.useState<Record<string, boolean>>({});
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [uploadingFieldID, setUploadingFieldID] = React.useState("");
@@ -230,6 +264,7 @@ export function AdminSiteSettingsPage() {
       const flattened = flattenSiteSettings(items);
       setSettingsMap(flattened);
       setSavedMap(flattened);
+      setConfiguredMap(configuredSiteSettings(items));
     } catch (error) {
       toast.error(t("toast.loadFailed"), { description: resolveAdminErrorMessage(error) });
     } finally {
@@ -277,6 +312,7 @@ export function AdminSiteSettingsPage() {
       const flattened = flattenSiteSettings(grouped.site ?? []);
       setSettingsMap(flattened);
       setSavedMap(flattened);
+      setConfiguredMap(configuredSiteSettings(grouped.site ?? []));
       toast.success(t("toast.saved"));
     } catch (error) {
       toast.error(t("toast.saveFailed"), { description: resolveAdminErrorMessage(error) });
@@ -339,6 +375,7 @@ export function AdminSiteSettingsPage() {
                       <SettingsFieldEditor
                         field={toEditorField(field)}
                         value={settingsMap[id] ?? ""}
+                        configured={configuredMap[id]}
                         dirty={(settingsMap[id] ?? "") !== (savedMap[id] ?? "")}
                         disabled={loading || saving || uploadingFieldID === id}
                         labelAction={assetKey ? (

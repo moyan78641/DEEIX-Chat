@@ -4,6 +4,7 @@
     "assets": "Brand assets",
     "home": "Public home",
     "links": "Links",
+    "support": "Customer support",
     "legal": "Terms and privacy"
   },
   "actions": {
@@ -57,6 +58,34 @@
     "privacyURL": {
       "label": "Privacy URL",
       "description": "Optional public privacy link."
+    },
+    "tawkEnabled": {
+      "label": "Enable tawk.to",
+      "description": "Show the live chat widget on the public home page and the support page."
+    },
+    "tawkPropertyID": {
+      "label": "Property ID",
+      "description": "The first ID in the tawk.to embed URL."
+    },
+    "tawkWidgetID": {
+      "label": "Widget ID",
+      "description": "The second ID in the tawk.to embed URL."
+    },
+    "tawkSecureModeSecret": {
+      "label": "Secure Mode Secret",
+      "description": "Secret Key used to sign logged-in visitors. Keep this private."
+    },
+    "supportPageTitle": {
+      "label": "Support page title",
+      "description": "Heading shown on the logged-in support page."
+    },
+    "supportPageDescription": {
+      "label": "Support page description",
+      "description": "Short guidance shown before the user starts a chat."
+    },
+    "supportContactHint": {
+      "label": "Support contact hint",
+      "description": "Small note shown near the support channel status."
     },
     "termsTitleEnUS": {
       "label": "Terms title (English)",

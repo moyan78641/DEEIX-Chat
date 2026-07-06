@@ -267,11 +267,13 @@ func validatePatchItem(item PatchItem) error {
 			return fmt.Errorf("%s cannot be empty", key)
 		}
 		return validateStringMax(value, 80, key)
-	case "site:description", "site:home_title", "site:home_subtitle", "site:footer_text",
+	case "site:description", "site:home_title", "site:home_subtitle", "site:footer_text", "site:support_page_title", "site:support_contact_hint",
 		"site:agreement_title_en_us", "site:agreement_title_zh_cn", "site:agreement_title_zh_tw",
 		"site:terms_title_en_us", "site:terms_title_zh_cn", "site:terms_title_zh_tw",
 		"site:privacy_title_en_us", "site:privacy_title_zh_cn", "site:privacy_title_zh_tw":
 		return validateStringMax(value, 280, key)
+	case "site:support_page_description":
+		return validateStringMax(value, 2000, key)
 	case "site:agreement_content_en_us", "site:agreement_content_zh_cn", "site:agreement_content_zh_tw",
 		"site:terms_content_en_us", "site:terms_content_zh_cn", "site:terms_content_zh_tw",
 		"site:privacy_content_en_us", "site:privacy_content_zh_cn", "site:privacy_content_zh_tw":
@@ -281,6 +283,8 @@ func validatePatchItem(item PatchItem) error {
 			return err
 		}
 		return validateOptionalPublicAssetURL(value, key)
+	case "site:tawk_property_id", "site:tawk_widget_id", "site:tawk_secure_mode_secret":
+		return validateStringMax(value, 512, key)
 	case "site:contact_email":
 		return validateStringMax(value, 128, key)
 	case "chat:model_option_policy_mode":
@@ -420,7 +424,7 @@ func validatePatchItem(item PatchItem) error {
 		return validateStringMax(value, 255, key)
 	case "extract:tencent_ocr_secret_id", "extract:tencent_ocr_secret_key", "extract:aliyun_ocr_access_key_id", "extract:aliyun_ocr_access_key_secret":
 		return validateStringMax(value, 512, key)
-	case "auth:username_login_enabled", "auth:email_login_enabled", "auth:third_party_login_enabled", "auth:email_registration_enabled", "auth:email_verification_enabled", "auth:password_reset_enabled", "auth:email_registration_block_plus_alias", "auth:auto_link_verified_email", "auth:turnstile_registration_enabled", "auth:rate_limit_enabled", "billing:native_tool_billing_enabled", "chat:rag_enabled", "chat:message_embedding_enabled", "chat:semantic_context_enabled", "file:full_context_limit_enabled", "file:embedding_enabled", "file:embed_trigger_on_upload", "file:embedding_normalize", "extract:image_ocr_enabled", "extract:pdf_ocr_fallback_enabled", "mcp:mcp_enable":
+	case "auth:username_login_enabled", "auth:email_login_enabled", "auth:third_party_login_enabled", "auth:email_registration_enabled", "auth:email_verification_enabled", "auth:password_reset_enabled", "auth:email_registration_block_plus_alias", "auth:auto_link_verified_email", "auth:turnstile_registration_enabled", "auth:rate_limit_enabled", "site:tawk_enabled", "billing:native_tool_billing_enabled", "chat:rag_enabled", "chat:message_embedding_enabled", "chat:semantic_context_enabled", "file:full_context_limit_enabled", "file:embedding_enabled", "file:embed_trigger_on_upload", "file:embedding_normalize", "extract:image_ocr_enabled", "extract:pdf_ocr_fallback_enabled", "mcp:mcp_enable":
 		if _, err := strconv.ParseBool(value); err != nil {
 			return fmt.Errorf("%s must be bool", key)
 		}

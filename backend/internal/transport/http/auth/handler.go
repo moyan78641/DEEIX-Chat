@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
@@ -9,6 +12,7 @@ import (
 	"time"
 
 	appauth "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/auth"
+	appsettings "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/settings"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/user"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/shared/response"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/transport/http/middleware"
@@ -20,7 +24,8 @@ const legalConsentRequiredCode = "legal.consent_required"
 
 // Handler 封装认证 HTTP 处理。
 type Handler struct {
-	service *appauth.Service
+	service  *appauth.Service
+	settings *appsettings.Service
 }
 
 // NewHandler 创建处理器。
@@ -28,6 +33,10 @@ func NewHandler(service *appauth.Service) *Handler {
 	return &Handler{
 		service: service,
 	}
+}
+
+func (h *Handler) SetSettingsService(service *appsettings.Service) {
+	h.settings = service
 }
 
 func (h *Handler) recordAudit(c *gin.Context, userID uint, action string, resource string, resourceID string, detail interface{}) {
@@ -996,6 +1005,106 @@ func (h *Handler) Me(c *gin.Context) {
 	}
 
 	response.Success(c, MeResponse{User: toUserResponse(view)})
+}
+
+// TawkVisitorProfile 返回当前用户的 tawk.to Secure Mode 登录资料。
+func (h *Handler) TawkVisitorProfile(c *gin.Context) {
+	if h.settings == nil {
+		response.Error(c, http.StatusInternalServerError, "settings service unavailable")
+		return
+	}
+	userID := middleware.MustUserID(c)
+	if userID == 0 {
+		response.Error(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	values, err := h.settings.RuntimeValuesByNamespace(c.Request.Context(), "site")
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "load support settings failed")
+		return
+	}
+	propertyID := strings.TrimSpace(values["tawk_property_id"])
+	widgetID := strings.TrimSpace(values["tawk_widget_id"])
+	secret := strings.TrimSpace(values["tawk_secure_mode_secret"])
+	enabled := strings.EqualFold(strings.TrimSpace(values["tawk_enabled"]), "true") &&
+		propertyID != "" &&
+		widgetID != "" &&
+		secret != ""
+	if !enabled {
+		response.Success(c, TawkVisitorProfileResponse{Enabled: false})
+		return
+	}
+
+	item, err := h.service.GetProfile(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "failed to load profile")
+		return
+	}
+	view, err := h.service.BuildUserView(c.Request.Context(), *item)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "failed to resolve profile")
+		return
+	}
+	visitorID := strings.TrimSpace(view.PublicID)
+	if visitorID == "" {
+		visitorID = strconv.FormatUint(uint64(view.ID), 10)
+	}
+	name := firstNonEmptyString(view.DisplayName, view.Username, view.Email, visitorID)
+	attributes := map[string]string{
+		"id":                  visitorID,
+		"username":            truncateTawkAttribute(view.Username),
+		"role":                truncateTawkAttribute(view.Role),
+		"status":              truncateTawkAttribute(view.Status),
+		"locale":              truncateTawkAttribute(view.Locale),
+		"subscription_tier":   truncateTawkAttribute(view.SubscriptionTier),
+		"subscription_plan":   truncateTawkAttribute(view.SubscriptionPlanName),
+		"subscription_status": truncateTawkAttribute(view.SubscriptionStatus),
+		"created_at":          view.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if view.SubscriptionExpiresAt != nil {
+		attributes["subscription_expires_at"] = view.SubscriptionExpiresAt.UTC().Format(time.RFC3339)
+	}
+	if view.LastLoginAt != nil {
+		attributes["last_login_at"] = view.LastLoginAt.UTC().Format(time.RFC3339)
+	}
+	for key, value := range attributes {
+		if strings.TrimSpace(value) == "" {
+			delete(attributes, key)
+		}
+	}
+
+	response.Success(c, TawkVisitorProfileResponse{
+		Enabled:    true,
+		VisitorID:  visitorID,
+		Name:       name,
+		Email:      strings.TrimSpace(view.Email),
+		SecureHash: hmacSHA256Hex(visitorID, secret),
+		Attributes: attributes,
+	})
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func hmacSHA256Hex(message string, secret string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write([]byte(message))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func truncateTawkAttribute(value string) string {
+	trimmed := strings.TrimSpace(value)
+	runes := []rune(trimmed)
+	if len(runes) <= 255 {
+		return trimmed
+	}
+	return string(runes[:255])
 }
 
 // CurrentSessions godoc

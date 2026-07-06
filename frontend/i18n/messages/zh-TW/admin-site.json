@@ -4,6 +4,7 @@
     "assets": "品牌素材",
     "home": "公開首頁",
     "links": "連結",
+    "support": "客服支援",
     "legal": "服務條款與隱私政策"
   },
   "actions": {
@@ -57,6 +58,34 @@
     "privacyURL": {
       "label": "隱私政策 URL",
       "description": "可選的公開隱私政策連結。"
+    },
+    "tawkEnabled": {
+      "label": "啟用 tawk.to",
+      "description": "在公開首頁和工單回饋頁顯示線上客服小工具。"
+    },
+    "tawkPropertyID": {
+      "label": "Property ID",
+      "description": "tawk.to 嵌入地址裡的第一段 ID。"
+    },
+    "tawkWidgetID": {
+      "label": "Widget ID",
+      "description": "tawk.to 嵌入地址裡的第二段 ID。"
+    },
+    "tawkSecureModeSecret": {
+      "label": "Secure Mode Secret",
+      "description": "用於給登入使用者簽名的密鑰，只保存在後端。"
+    },
+    "supportPageTitle": {
+      "label": "客服頁標題",
+      "description": "登入後工單回饋頁展示的標題。"
+    },
+    "supportPageDescription": {
+      "label": "客服頁說明",
+      "description": "使用者開啟客服前看到的簡短說明。"
+    },
+    "supportContactHint": {
+      "label": "客服提示",
+      "description": "展示在支援渠道狀態附近的小提示。"
     },
     "termsTitleEnUS": {
       "label": "服務條款標題（English）",

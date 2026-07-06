@@ -69,6 +69,16 @@ type SiteAssetUploadResponse struct {
 	SizeBytes   int64  `json:"sizeBytes"`
 }
 
+type TawkSettingsResponse struct {
+	Enabled              bool   `json:"enabled"`
+	PropertyID           string `json:"propertyID"`
+	WidgetID             string `json:"widgetID"`
+	SecureModeConfigured bool   `json:"secureModeConfigured"`
+	SupportPageTitle     string `json:"supportPageTitle"`
+	SupportDescription   string `json:"supportDescription"`
+	SupportContactHint   string `json:"supportContactHint"`
+}
+
 type ModelOptionPolicyResponse struct {
 	Mode             string                         `json:"mode"`
 	AllowedPathsJSON string                         `json:"allowedPathsJSON"`

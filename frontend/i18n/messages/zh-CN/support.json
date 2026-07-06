@@ -1,0 +1,26 @@
+{
+  "eyebrow": "客服支持",
+  "title": "工单反馈",
+  "description": "遇到充值、订阅、模型调用或账号问题时，可以从这里联系支持。我们会自动带上必要的账号上下文，方便更快定位。",
+  "contactHint": "充值或订阅问题请尽量提供订单号；API 或模型问题请说明时间、模型和错误现象。",
+  "fallbackUser": "当前用户",
+  "openChat": "打开在线客服",
+  "chatUnavailable": "客服未启用",
+  "emailSupport": "邮件联系",
+  "account": {
+    "title": "账号信息",
+    "user": "用户",
+    "role": "角色",
+    "status": "状态"
+  },
+  "billing": {
+    "title": "套餐信息",
+    "plan": "当前套餐",
+    "status": "套餐状态",
+    "created": "注册时间"
+  },
+  "channel": {
+    "title": "支持渠道",
+    "liveChat": "在线客服"
+  }
+}
