@@ -307,6 +307,7 @@ function resolveMCPMaxSelectedTools(value: unknown): number {
 function toChatModelOption(item: PublicModelDTO): ChatModelOption {
   return {
     platformModelName: item.platformModelName,
+    displayName: item.displayName,
     icon: item.icon,
     vendor: item.vendor,
     kinds: parseKindsJSON(item.kindsJSON),

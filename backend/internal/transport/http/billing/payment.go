@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -92,6 +93,7 @@ func (h *Handler) CreateCheckout(c *gin.Context) {
 			Provider:             provider,
 			USDToCNYRate:         settings.USDToCNYRate,
 			PreferredPayCurrency: settings.DisplayCurrency,
+			CouponCode:           req.CouponCode,
 		})
 	default:
 		order, plan, price, err = h.service.CreatePaymentOrder(c.Request.Context(), appbilling.PaymentOrderInput{
@@ -101,10 +103,11 @@ func (h *Handler) CreateCheckout(c *gin.Context) {
 			Provider:             provider,
 			USDToCNYRate:         settings.USDToCNYRate,
 			PreferredPayCurrency: settings.DisplayCurrency,
+			CouponCode:           req.CouponCode,
 		})
 	}
 	if err != nil {
-		response.ErrorFrom(c, http.StatusBadRequest, err)
+		writePaymentMutationError(c, err)
 		return
 	}
 
@@ -136,19 +139,107 @@ func (h *Handler) CreateCheckout(c *gin.Context) {
 		"billing_payment_order",
 		order.OrderNo,
 		map[string]interface{}{
-			"provider":          order.Provider,
-			"order_type":        order.OrderType,
-			"plan_id":           order.PlanID,
-			"price_id":          order.PriceID,
-			"base_amount_cents": order.BaseAmountCents,
-			"base_currency":     order.BaseCurrency,
-			"pay_amount_cents":  order.PayAmountCents,
-			"pay_currency":      order.PayCurrency,
-			"fx_rate":           order.FXRate,
+			"provider":                   order.Provider,
+			"order_type":                 order.OrderType,
+			"plan_id":                    order.PlanID,
+			"price_id":                   order.PriceID,
+			"base_amount_cents":          order.BaseAmountCents,
+			"original_base_amount_cents": order.OriginalBaseAmountCents,
+			"discount_amount_cents":      order.DiscountAmountCents,
+			"coupon_id":                  order.CouponID,
+			"base_currency":              order.BaseCurrency,
+			"pay_amount_cents":           order.PayAmountCents,
+			"pay_currency":               order.PayCurrency,
+			"fx_rate":                    order.FXRate,
 		},
 	)
 
 	response.Success(c, CheckoutDataResponse{Checkout: toCheckoutResponse(order)})
+}
+
+// PurchaseSubscriptionWithBalance godoc
+// @Summary 使用站内余额购买套餐
+// @Description 当前用户用按量余额支付订阅套餐，并立即开通权益
+// @Tags billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body BalanceSubscriptionPurchaseRequest true "余额购买参数"
+// @Success 200 {object} BalanceSubscriptionPurchaseResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /billing/subscriptions/balance [post]
+func (h *Handler) PurchaseSubscriptionWithBalance(c *gin.Context) {
+	var req BalanceSubscriptionPurchaseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.InvalidRequestBody(c, err)
+		return
+	}
+	if !legalConsentAccepted(req.TermsAccepted, req.PrivacyAccepted) {
+		rejectMissingLegalConsent(c)
+		return
+	}
+	userID := middleware.MustUserID(c)
+	order, account, subscription, err := h.service.PurchaseSubscriptionWithBalance(c.Request.Context(), appbilling.BalanceSubscriptionPurchaseInput{
+		UserID:     userID,
+		PriceID:    req.PriceID,
+		Cycles:     req.Cycles,
+		CouponCode: req.CouponCode,
+	})
+	if err != nil {
+		writePaymentMutationError(c, err)
+		return
+	}
+	overview, err := h.service.GetBillingOverview(c.Request.Context(), userID, time.Now())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "get billing overview failed")
+		return
+	}
+	h.recordAudit(
+		c,
+		userID,
+		"billing.payment.balance_purchase",
+		"billing_payment_order",
+		order.OrderNo,
+		map[string]interface{}{
+			"plan_id":                    order.PlanID,
+			"price_id":                   order.PriceID,
+			"base_amount_cents":          order.BaseAmountCents,
+			"original_base_amount_cents": order.OriginalBaseAmountCents,
+			"discount_amount_cents":      order.DiscountAmountCents,
+			"coupon_id":                  order.CouponID,
+		},
+	)
+	response.Success(c, BalanceSubscriptionPurchaseDataResponse{
+		Checkout:     toCheckoutResponse(order),
+		Account:      toBillingAccountResponse(account),
+		Subscription: toSubscriptionResponse(subscription),
+		Overview:     toBillingOverviewResponse(overview),
+	})
+}
+
+func writePaymentMutationError(c *gin.Context, err error) {
+	var validationErr appbilling.CouponCodeValidationError
+	if errors.As(err, &validationErr) {
+		response.ErrorWithDetails(c, http.StatusBadRequest, "billing.invalid_coupon_code", err.Error(), validationErr)
+		return
+	}
+	if errors.Is(err, appbilling.ErrCouponCodeUnavailable) ||
+		errors.Is(err, appbilling.ErrCouponCodeExhausted) ||
+		errors.Is(err, appbilling.ErrCouponUserLimitExceeded) {
+		response.ErrorFrom(c, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, appbilling.ErrInvalidCouponCode) {
+		response.ErrorFrom(c, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, appbilling.ErrUsageBalanceInsufficient) ||
+		errors.Is(err, appbilling.ErrPaymentRequired) {
+		response.ErrorFrom(c, http.StatusBadRequest, err)
+		return
+	}
+	response.ErrorFrom(c, http.StatusBadRequest, err)
 }
 
 // StripeWebhook godoc

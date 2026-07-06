@@ -125,6 +125,7 @@ import { PermissionGroupSelector } from "@/features/admin/components/sections/gr
 
 type FormState = {
   platformModelName: string;
+  displayName: string;
   vendor: AdminLLMModelVendor | "";
   kinds: string[];
   icon: string;
@@ -189,6 +190,7 @@ function buildInitialState(target: AdminLLMModelDTO | null): FormState {
   if (!target) {
     return {
       platformModelName: "",
+      displayName: "",
       vendor: normalizeSupportedVendor(UNKNOWN_VENDOR),
       kinds: [],
       icon: "",
@@ -207,6 +209,7 @@ function buildInitialState(target: AdminLLMModelDTO | null): FormState {
   kinds = parseKindsJSON(target.kindsJSON);
   return {
     platformModelName: target.platformModelName,
+    displayName: target.displayName ?? "",
     vendor: normalizeSupportedVendor(target.vendor),
     kinds,
     icon: target.icon ?? "",
@@ -690,6 +693,7 @@ export function ModelSheet({ open, mode, target, models, onClose, onSuccess }: M
       if (mode === "create") {
         const data = await createAdminLLMModel(token, {
           platformModelName: form.platformModelName.trim(),
+          displayName: form.displayName.trim() || undefined,
           vendor: form.vendor || undefined,
           kindsJSON: kindsJson,
           icon: form.icon.trim() || undefined,
@@ -738,6 +742,7 @@ export function ModelSheet({ open, mode, target, models, onClose, onSuccess }: M
       if (!target) return;
       const payload: UpdateAdminLLMModelRequest = {
         platformModelName: form.platformModelName.trim() || undefined,
+        displayName: form.displayName.trim(),
         vendor: form.vendor || undefined,
         kindsJSON: kindsJson,
         icon: form.icon.trim(),
@@ -804,6 +809,17 @@ export function ModelSheet({ open, mode, target, models, onClose, onSuccess }: M
                   value={form.platformModelName}
                   placeholder="claude-sonnet-4.5"
                   onChange={(e) => setField("platformModelName", e.target.value)}
+                  disabled={pending}
+                />
+              </div>
+
+              <div className="min-w-0 space-y-1">
+                <Label className="text-xs font-normal text-muted-foreground" htmlFor="model-display-name">{t("sheet.displayName")}</Label>
+                <Input
+                  id="model-display-name"
+                  value={form.displayName}
+                  placeholder={form.platformModelName || t("sheet.displayNamePlaceholder")}
+                  onChange={(e) => setField("displayName", e.target.value)}
                   disabled={pending}
                 />
               </div>

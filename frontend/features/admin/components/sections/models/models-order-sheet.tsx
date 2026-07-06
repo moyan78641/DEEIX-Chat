@@ -328,6 +328,7 @@ export function ModelOrderSheet({
                     >
                       <div className="space-y-0.5">
                         {selectedGroup.items.map((model) => {
+                          const displayName = model.displayName?.trim() || model.platformModelName;
                           const identity = resolveModelIdentity({
                             code: model.platformModelName,
                             vendor: model.vendor,
@@ -351,12 +352,19 @@ export function ModelOrderSheet({
                                     attributes={attributes}
                                     disabled={saving}
                                     hidden={selectedGroup.items.length < 2}
-                                    label={t("dragModel", { name: model.platformModelName })}
+                                    label={t("dragModel", { name: displayName })}
                                     listeners={listeners}
                                   />
-                                  <LobeHubIcon iconUrl={iconURL} label={model.platformModelName} size={14} />
-                                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                                    {model.platformModelName}
+                                  <LobeHubIcon iconUrl={iconURL} label={displayName} size={14} />
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-xs font-medium text-foreground">
+                                      {displayName}
+                                    </span>
+                                    {displayName !== model.platformModelName ? (
+                                      <span className="block truncate text-[10px] leading-3 text-muted-foreground">
+                                        {model.platformModelName}
+                                      </span>
+                                    ) : null}
                                   </span>
                                   <div className="ml-auto flex max-w-[45%] shrink-0 items-center justify-end overflow-hidden">
                                     <KindBadges kindsJSON={model.kindsJSON} />

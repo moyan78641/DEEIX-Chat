@@ -59,15 +59,21 @@ import {
   getAdminReferenceData,
   batchDeleteAdminRedemptionCodes,
   createAdminBillingPlan,
+  createAdminCouponCode,
   createAdminRedemptionCodes,
+  deleteAdminCouponCode,
   deleteAdminRedemptionCode,
   invalidateAdminReferenceDataCache,
+  listAdminCouponCodes,
   listAdminRedemptionCodes,
   listAdminModelPricing,
   listAdminSettingsByNamespace,
   patchAdminBillingConfig,
   patchAdminSettings,
+  revealAdminCouponCode,
   revealAdminRedemptionCode,
+  reorderAdminBillingPlans,
+  updateAdminCouponCode,
   updateAdminRedemptionCode,
   updateAdminBillingPlan,
   upsertAdminModelPricing,
@@ -75,7 +81,7 @@ import {
 } from "@/features/admin/api";
 import type { PermissionGroup } from "@/features/admin/api/permission-groups";
 import { listAllAdminPages } from "@/features/admin/api/shared";
-import type { AdminBillingMode, AdminBillingPlanDTO, AdminModelPricingDTO, AdminRedemptionCodeDTO, NativeToolPricingDTO } from "@/features/admin/api/billing.types";
+import type { AdminBillingMode, AdminBillingPlanDTO, AdminCouponCodeDTO, AdminModelPricingDTO, AdminRedemptionCodeDTO, NativeToolPricingDTO } from "@/features/admin/api/billing.types";
 import type { AdminLLMModelDTO } from "@/features/admin/api/llm.types";
 import { resolveAdminErrorMessage } from "@/features/admin/utils/admin-error";
 import {
@@ -221,6 +227,24 @@ type RedemptionFormState = {
 
 type RedemptionBulkAction = "activate" | "deactivate" | "delete";
 
+type CouponFormState = {
+  id?: number;
+  code: string;
+  scope: "all" | "topup" | "subscription";
+  discountType: "percent" | "amount";
+  discountPercent: string;
+  discountAmountUSD: string;
+  minAmountUSD: string;
+  maxDiscountUSD: string;
+  planID: string;
+  maxRedemptions: string;
+  perUserLimit: string;
+  expiresAt: string;
+  description: string;
+  status: "active" | "inactive";
+};
+const COUPON_ALL_PLANS_VALUE = "__all_plans__";
+
 function createRedemptionFormState(mode: AdminBillingMode, planID = ""): RedemptionFormState {
   return {
     code: "",
@@ -237,6 +261,24 @@ function createRedemptionFormState(mode: AdminBillingMode, planID = ""): Redempt
   };
 }
 
+function createCouponFormState(): CouponFormState {
+  return {
+    code: "",
+    scope: "all",
+    discountType: "percent",
+    discountPercent: "10",
+    discountAmountUSD: "1",
+    minAmountUSD: "0",
+    maxDiscountUSD: "0",
+    planID: "",
+    maxRedemptions: "",
+    perUserLimit: "1",
+    expiresAt: "",
+    description: "",
+    status: "active",
+  };
+}
+
 function redemptionFormFromCode(item: AdminRedemptionCodeDTO): RedemptionFormState {
   return {
     id: item.id,
@@ -246,6 +288,25 @@ function redemptionFormFromCode(item: AdminRedemptionCodeDTO): RedemptionFormSta
     creditUSD: String(item.creditUSD || 0),
     planID: item.planID ? String(item.planID) : "",
     durationDays: String(item.durationDays || 0),
+    maxRedemptions: item.maxRedemptions == null ? "" : String(item.maxRedemptions),
+    perUserLimit: String(item.perUserLimit || 1),
+    expiresAt: redemptionExpiresFormValue(item.expiresAt),
+    description: item.description || "",
+    status: item.status === "inactive" ? "inactive" : "active",
+  };
+}
+
+function couponFormFromCode(item: AdminCouponCodeDTO): CouponFormState {
+  return {
+    id: item.id,
+    code: "",
+    scope: item.scope === "topup" || item.scope === "subscription" ? item.scope : "all",
+    discountType: item.discountType === "amount" ? "amount" : "percent",
+    discountPercent: String(item.discountPercent || 0),
+    discountAmountUSD: String(item.discountAmountUSD || 0),
+    minAmountUSD: String(item.minAmountUSD || 0),
+    maxDiscountUSD: String(item.maxDiscountUSD || 0),
+    planID: item.planID ? String(item.planID) : "",
     maxRedemptions: item.maxRedemptions == null ? "" : String(item.maxRedemptions),
     perUserLimit: String(item.perUserLimit || 1),
     expiresAt: redemptionExpiresFormValue(item.expiresAt),
@@ -275,7 +336,20 @@ function parseRequiredPositiveInt(value: string): number | undefined {
   return parsed && parsed > 0 ? parsed : undefined;
 }
 
+function parseOptionalNonNegativeNumber(value: string): number | undefined {
+  const text = value.trim();
+  if (!text) return 0;
+  const parsed = Number(text);
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined;
+  return parsed;
+}
+
 function isRedemptionCodeFormatValid(value: string): boolean {
+  const text = value.trim();
+  return !text || /^[A-Za-z0-9_-]{3,64}$/.test(text);
+}
+
+function isCouponCodeFormatValid(value: string): boolean {
   const text = value.trim();
   return !text || /^[A-Za-z0-9_-]{3,64}$/.test(text);
 }
@@ -298,8 +372,10 @@ export function AdminBillingPage() {
   const [models, setModels] = React.useState<AdminLLMModelDTO[]>([]);
   const [pricingItems, setPricingItems] = React.useState<AdminModelPricingDTO[]>([]);
   const [redemptionCodes, setRedemptionCodes] = React.useState<AdminRedemptionCodeDTO[]>([]);
+  const [couponCodes, setCouponCodes] = React.useState<AdminCouponCodeDTO[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [redemptionLoading, setRedemptionLoading] = React.useState(false);
+  const [couponLoading, setCouponLoading] = React.useState(false);
   const [modelPricingRefreshing, setModelPricingRefreshing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -314,6 +390,13 @@ export function AdminBillingPage() {
   const [redemptionPage, setRedemptionPage] = React.useState(1);
   const [redemptionPageSize, setRedemptionPageSize] = React.useState(DEFAULT_PAGE_SIZE);
   const [redemptionTotal, setRedemptionTotal] = React.useState(0);
+  const [couponQuery, setCouponQuery] = React.useState("");
+  const [couponScopeFilter, setCouponScopeFilter] = React.useState("");
+  const [couponStatusFilter, setCouponStatusFilter] = React.useState("");
+  const [couponAvailabilityFilter, setCouponAvailabilityFilter] = React.useState("");
+  const [couponPage, setCouponPage] = React.useState(1);
+  const [couponPageSize, setCouponPageSize] = React.useState(DEFAULT_PAGE_SIZE);
+  const [couponTotal, setCouponTotal] = React.useState(0);
   const [billingMode, setBillingMode] = React.useState<AdminBillingMode>("self");
   const [billingDisplayCurrency, setBillingDisplayCurrency] = React.useState<"USD" | "CNY">("USD");
   const [billingUsdToCnyRate, setBillingUsdToCnyRate] = React.useState("7.2");
@@ -341,12 +424,18 @@ export function AdminBillingPage() {
   const [permissionGroups, setPermissionGroups] = React.useState<PermissionGroup[]>([]);
   const [redemptionForm, setRedemptionForm] = React.useState<RedemptionFormState | null>(null);
   const [redemptionSaving, setRedemptionSaving] = React.useState(false);
+  const [couponForm, setCouponForm] = React.useState<CouponFormState | null>(null);
+  const [couponSaving, setCouponSaving] = React.useState(false);
   const [selectedRedemptionIDs, setSelectedRedemptionIDs] = React.useState<Set<number>>(new Set());
   const [redemptionBulkAction, setRedemptionBulkAction] = React.useState<RedemptionBulkAction | null>(null);
   const [redemptionBulkPending, setRedemptionBulkPending] = React.useState(false);
   const [redemptionDeleteTarget, setRedemptionDeleteTarget] = React.useState<AdminRedemptionCodeDTO | null>(null);
+  const [couponDeleteTarget, setCouponDeleteTarget] = React.useState<AdminCouponCodeDTO | null>(null);
   const [createdRedemptionCodes, setCreatedRedemptionCodes] = React.useState<string[]>([]);
+  const [createdCouponCode, setCreatedCouponCode] = React.useState("");
   const [redemptionStatusPendingID, setRedemptionStatusPendingID] = React.useState<number | null>(null);
+  const [couponStatusPendingID, setCouponStatusPendingID] = React.useState<number | null>(null);
+  const [planOrderSavingID, setPlanOrderSavingID] = React.useState<number | null>(null);
   const stripeWebhookEndpoint = React.useMemo(() => `${resolveApiBaseURL()}/api/v1/billing/payments/stripe/webhook`, []);
 
   const loadData = React.useCallback(async () => {
@@ -431,6 +520,46 @@ export function AdminBillingPage() {
     }
   }, [redemptionAvailabilityFilter, redemptionModeFilter, redemptionPage, redemptionPageSize, redemptionQuery, redemptionStatusFilter, t]);
 
+  const loadCouponCodes = React.useCallback(async (overrides: {
+    page?: number;
+    pageSize?: number;
+    query?: string;
+    scope?: string;
+    status?: string;
+    availability?: string;
+  } = {}, options: { showLoading?: boolean; showError?: boolean } = {}) => {
+    const showLoading = options.showLoading ?? true;
+    const showError = options.showError ?? showLoading;
+    if (showLoading) {
+      setCouponLoading(true);
+    }
+    try {
+      const token = await resolveAccessToken();
+      if (!token) {
+        toast.error(t("toast.sessionExpired"), { description: t("toast.sessionExpiredDescription") });
+        return;
+      }
+      const result = await listAdminCouponCodes(token, {
+        page: overrides.page ?? couponPage,
+        pageSize: overrides.pageSize ?? couponPageSize,
+        query: overrides.query ?? couponQuery,
+        scope: overrides.scope ?? couponScopeFilter,
+        status: overrides.status ?? couponStatusFilter,
+        availability: overrides.availability ?? couponAvailabilityFilter,
+      });
+      setCouponCodes(result.results ?? []);
+      setCouponTotal(result.total ?? 0);
+    } catch (error) {
+      if (showError) {
+        toast.error(t("toast.couponLoadFailed"), { description: resolveAdminErrorMessage(error) });
+      }
+    } finally {
+      if (showLoading) {
+        setCouponLoading(false);
+      }
+    }
+  }, [couponAvailabilityFilter, couponPage, couponPageSize, couponQuery, couponScopeFilter, couponStatusFilter, t]);
+
   const loadModelPricing = React.useCallback(async () => {
     setModelPricingRefreshing(true);
     try {
@@ -456,6 +585,10 @@ export function AdminBillingPage() {
   React.useEffect(() => {
     void loadRedemptionCodes();
   }, [loadRedemptionCodes]);
+
+  React.useEffect(() => {
+    void loadCouponCodes();
+  }, [loadCouponCodes]);
 
   const rows = React.useMemo(() => buildPricingRows(models, pricingItems), [models, pricingItems]);
   const vendorFilterOptions = React.useMemo(() => {
@@ -551,6 +684,15 @@ export function AdminBillingPage() {
   });
   const redemptionInitialLoading = redemptionTableLoading && redemptionCodes.length === 0;
   const showRedemptionRows = redemptionCodes.length > 0;
+  const couponPageCount = Math.max(1, Math.ceil(couponTotal / couponPageSize));
+  const couponTableLoading = loading || couponLoading;
+  const couponVirtualRows = useVirtualTableRows(couponCodes, {
+    enabled: couponCodes.length > 100,
+    estimateSize: 40,
+    overscan: 14,
+  });
+  const couponInitialLoading = couponTableLoading && couponCodes.length === 0;
+  const showCouponRows = couponCodes.length > 0;
   const modelPricingInitialLoading = loading && pageRows.length === 0;
   const showModelPricingRows = pageRows.length > 0;
   const isPaymentDirty = React.useMemo(
@@ -671,6 +813,29 @@ export function AdminBillingPage() {
   function openRedemptionEdit(item: AdminRedemptionCodeDTO) {
     setCreatedRedemptionCodes([]);
     setRedemptionForm(redemptionFormFromCode(item));
+  }
+
+  function openCouponCreate() {
+    setCreatedCouponCode("");
+    setCouponForm(createCouponFormState());
+  }
+
+  function openCouponEdit(item: AdminCouponCodeDTO) {
+    setCreatedCouponCode("");
+    setCouponForm(couponFormFromCode(item));
+  }
+
+  async function fetchCouponCodePlaintext(item: AdminCouponCodeDTO): Promise<string> {
+    const token = await resolveAccessToken();
+    if (!token) {
+      throw new Error(t("toast.sessionExpired"));
+    }
+    const data = await revealAdminCouponCode(token, item.id);
+    const code = data.code.code?.trim();
+    if (!code) {
+      throw new Error(t("toast.couponCodeRevealUnavailable"));
+    }
+    return code;
   }
 
   function handleToggleRedemptionSelected(id: number, checked: boolean) {
@@ -1088,6 +1253,159 @@ export function AdminBillingPage() {
     }
   }
 
+  async function saveCouponCode(event?: React.FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    if (!couponForm) return;
+
+    const maxRedemptions = parseOptionalPositiveInt(couponForm.maxRedemptions);
+    const perUserLimit = parseRequiredPositiveInt(couponForm.perUserLimit);
+    const minAmountUSD = parseOptionalNonNegativeNumber(couponForm.minAmountUSD);
+    const maxDiscountUSD = parseOptionalNonNegativeNumber(couponForm.maxDiscountUSD);
+    const discountPercent = parseOptionalNonNegativeNumber(couponForm.discountPercent);
+    const discountAmountUSD = parseOptionalNonNegativeNumber(couponForm.discountAmountUSD);
+    const expiresAt = datetimeLocalToISOString(couponForm.expiresAt);
+
+    if (!isCouponCodeFormatValid(couponForm.code)) {
+      toast.error(t("toast.couponInvalid"), { description: t("toast.couponInvalidCodeFormat") });
+      return;
+    }
+    if (maxRedemptions === undefined) {
+      toast.error(t("toast.couponInvalid"), { description: t("toast.couponInvalidMaxRedemptions") });
+      return;
+    }
+    if (!perUserLimit) {
+      toast.error(t("toast.couponInvalid"), { description: t("toast.couponInvalidPerUserLimit") });
+      return;
+    }
+    if (maxRedemptions !== null && perUserLimit > maxRedemptions) {
+      toast.error(t("toast.couponUserLimitExceedsTotal"));
+      return;
+    }
+    if (minAmountUSD === undefined || maxDiscountUSD === undefined) {
+      toast.error(t("toast.couponInvalid"), { description: t("toast.couponInvalidAmount") });
+      return;
+    }
+    if (expiresAt === undefined) {
+      toast.error(t("toast.couponInvalid"), { description: t("toast.couponInvalidExpiresAt") });
+      return;
+    }
+    if (expiresAt !== null && new Date(expiresAt).getTime() <= Date.now()) {
+      toast.error(t("toast.couponInvalid"), { description: t("toast.couponExpiredAtPast") });
+      return;
+    }
+    if (couponForm.discountType === "percent") {
+      if (discountPercent === undefined || discountPercent <= 0 || discountPercent > 100) {
+        toast.error(t("toast.couponInvalid"), { description: t("toast.couponInvalidPercent") });
+        return;
+      }
+    } else if (discountAmountUSD === undefined || discountAmountUSD <= 0) {
+      toast.error(t("toast.couponInvalid"), { description: t("toast.couponInvalidDiscountAmount") });
+      return;
+    }
+
+    setCouponSaving(true);
+    try {
+      const token = await resolveAccessToken();
+      if (!token) {
+        toast.error(t("toast.sessionExpired"), { description: t("toast.sessionExpiredDescription") });
+        return;
+      }
+
+      if (couponForm.id) {
+        const data = await updateAdminCouponCode(token, couponForm.id, {
+          status: couponForm.status,
+          maxRedemptions,
+          perUserLimit,
+          expiresAt,
+          description: couponForm.description.trim(),
+        });
+        setCouponCodes((current) => current.map((item) => item.id === data.code.id ? data.code : item));
+        setCouponForm(null);
+        toast.success(t("toast.couponUpdated"));
+        void loadCouponCodes({}, { showLoading: false });
+        return;
+      }
+
+      const data = await createAdminCouponCode(token, {
+        code: couponForm.code.trim() || undefined,
+        scope: couponForm.scope,
+        discountType: couponForm.discountType,
+        discountPercent: couponForm.discountType === "percent" ? discountPercent : undefined,
+        discountAmountUSD: couponForm.discountType === "amount" ? discountAmountUSD : undefined,
+        minAmountUSD,
+        maxDiscountUSD,
+        planID: couponForm.scope === "subscription" ? Number(couponForm.planID) || undefined : undefined,
+        maxRedemptions,
+        perUserLimit,
+        expiresAt,
+        description: couponForm.description.trim() || undefined,
+      });
+      setCouponCodes((current) => [data.code, ...current].slice(0, couponPageSize));
+      setCouponTotal((current) => current + 1);
+      setCreatedCouponCode(data.code.code || "");
+      setCouponForm(null);
+      toast.success(t("toast.couponCreated"));
+      void loadCouponCodes({}, { showLoading: false });
+    } catch (error) {
+      toast.error(couponForm.id ? t("toast.couponUpdateFailed") : t("toast.couponCreateFailed"), { description: resolveAdminErrorMessage(error) });
+    } finally {
+      setCouponSaving(false);
+    }
+  }
+
+  async function setCouponCodeStatus(item: AdminCouponCodeDTO, checked: boolean) {
+    const status = checked ? "active" : "inactive";
+    const previousCouponCodes = couponCodes;
+    setCouponStatusPendingID(item.id);
+    setCouponCodes((current) => current.map((code) => code.id === item.id ? { ...code, status } : code));
+    try {
+      const token = await resolveAccessToken();
+      if (!token) {
+        toast.error(t("toast.sessionExpired"), { description: t("toast.sessionExpiredDescription") });
+        setCouponCodes(previousCouponCodes);
+        return;
+      }
+      const data = await updateAdminCouponCode(token, item.id, { status });
+      setCouponCodes((current) => current.map((code) => code.id === data.code.id ? data.code : code));
+      toast.success(status === "active" ? t("toast.couponEnabled") : t("toast.couponDisabled"));
+      void loadCouponCodes({}, { showLoading: false });
+    } catch (error) {
+      setCouponCodes(previousCouponCodes);
+      toast.error(t("toast.couponUpdateFailed"), { description: resolveAdminErrorMessage(error) });
+    } finally {
+      setCouponStatusPendingID(null);
+    }
+  }
+
+  async function deleteSingleCouponCode() {
+    if (!couponDeleteTarget) return;
+    const target = couponDeleteTarget;
+    const previousCouponCodes = couponCodes;
+    const previousCouponTotal = couponTotal;
+    setCouponSaving(true);
+    setCouponDeleteTarget(null);
+    setCouponCodes((current) => current.filter((item) => item.id !== target.id));
+    setCouponTotal((current) => Math.max(0, current - 1));
+    try {
+      const token = await resolveAccessToken();
+      if (!token) {
+        toast.error(t("toast.sessionExpired"), { description: t("toast.sessionExpiredDescription") });
+        setCouponCodes(previousCouponCodes);
+        setCouponTotal(previousCouponTotal);
+        return;
+      }
+      await deleteAdminCouponCode(token, target.id);
+      toast.success(t("toast.couponDeleted"));
+      void loadCouponCodes({}, { showLoading: false });
+    } catch (error) {
+      setCouponCodes(previousCouponCodes);
+      setCouponTotal(previousCouponTotal);
+      toast.error(t("toast.couponDeleteFailed"), { description: resolveAdminErrorMessage(error) });
+    } finally {
+      setCouponSaving(false);
+    }
+  }
+
   function updatePaymentSetting(key: keyof PaymentSettings, value: string) {
     setPaymentSettings((current) => ({ ...current, [key]: value }));
   }
@@ -1455,6 +1773,37 @@ export function AdminBillingPage() {
     }
   }
 
+  async function movePlan(planID: number, direction: "up" | "down") {
+    const currentIndex = plans.findIndex((plan) => plan.id === planID);
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= plans.length) {
+      return;
+    }
+    const previousPlans = plans;
+    const nextPlans = [...plans];
+    const [moved] = nextPlans.splice(currentIndex, 1);
+    nextPlans.splice(targetIndex, 0, moved);
+    setPlans(nextPlans.map((plan, index) => ({ ...plan, sortOrder: index + 1 })));
+    setPlanOrderSavingID(planID);
+    try {
+      const token = await resolveAccessToken();
+      if (!token) {
+        toast.error(t("toast.sessionExpired"), { description: t("toast.sessionExpiredDescription") });
+        setPlans(previousPlans);
+        return;
+      }
+      const data = await reorderAdminBillingPlans(token, nextPlans.map((plan) => plan.id));
+      setPlans((data.plans ?? nextPlans).sort((left, right) => (left.sortOrder - right.sortOrder) || (left.id - right.id)));
+      invalidateAdminReferenceDataCache();
+      toast.success(t("toast.planOrderSaved"));
+    } catch (error) {
+      setPlans(previousPlans);
+      toast.error(t("toast.planOrderSaveFailed"), { description: resolveAdminErrorMessage(error) });
+    } finally {
+      setPlanOrderSavingID(null);
+    }
+  }
+
   function redemptionRewardLabel(item: AdminRedemptionCodeDTO): string {
     if (item.mode === "period") {
       const planLabel = planNameByID.get(item.planID) || t("redemption.unknownPlan");
@@ -1465,6 +1814,33 @@ export function AdminBillingPage() {
 
   function redemptionModeLabel(mode: AdminBillingMode | string): string {
     return t(`billingConfig.modes.${mode === "period" ? "period" : mode === "usage" ? "usage" : "self"}`);
+  }
+
+  function couponScopeLabel(scope: string): string {
+    if (scope === "topup") return t("coupon.scopes.topup");
+    if (scope === "subscription") return t("coupon.scopes.subscription");
+    return t("coupon.scopes.all");
+  }
+
+  function couponDiscountLabel(item: AdminCouponCodeDTO): string {
+    if (item.discountType === "amount") {
+      return t("coupon.amountDiscount", { amount: formatCreditUSD(item.discountAmountUSD) });
+    }
+    const percent = Number.isFinite(item.discountPercent) ? item.discountPercent : 0;
+    return t("coupon.percentDiscount", { percent });
+  }
+
+  function couponUnavailableReason(item: AdminCouponCodeDTO): string | null {
+    if (item.status !== "active") {
+      return t("coupon.unavailableInactive");
+    }
+    if (item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now()) {
+      return t("coupon.unavailableExpired");
+    }
+    if (item.remainingRedemptions !== null && item.remainingRedemptions <= 0) {
+      return t("coupon.unavailableExhausted");
+    }
+    return null;
   }
 
   function redemptionUnavailableReason(item: AdminRedemptionCodeDTO): string | null {
@@ -2010,13 +2386,218 @@ export function AdminBillingPage() {
 
       <section className="space-y-6 px-1">
         <div className="flex h-10 items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold">{t("coupon.title")}</h3>
+        </div>
+
+        <div className="space-y-3">
+          <TableToolbar
+            query={couponQuery}
+            onQueryChange={(value) => {
+              setCouponQuery(value);
+              setCouponPage(1);
+            }}
+            queryPlaceholder={t("coupon.searchPlaceholder")}
+            filters={[
+              {
+                key: "scope",
+                label: t("coupon.scopeFilterLabel"),
+                value: couponScopeFilter,
+                onValueChange: (value) => {
+                  setCouponScopeFilter(value);
+                  setCouponPage(1);
+                },
+                options: [
+                  { label: t("coupon.allScopes"), value: "" },
+                  { label: t("coupon.scopes.all"), value: "all" },
+                  { label: t("coupon.scopes.topup"), value: "topup" },
+                  { label: t("coupon.scopes.subscription"), value: "subscription" },
+                ],
+              },
+              {
+                key: "status",
+                label: t("coupon.statusFilterLabel"),
+                value: couponStatusFilter,
+                onValueChange: (value) => {
+                  setCouponStatusFilter(value);
+                  setCouponPage(1);
+                },
+                options: [
+                  { label: t("coupon.allStatuses"), value: "" },
+                  { label: t("coupon.active"), value: "active" },
+                  { label: t("coupon.inactive"), value: "inactive" },
+                ],
+              },
+              {
+                key: "availability",
+                label: t("coupon.availabilityFilterLabel"),
+                value: couponAvailabilityFilter,
+                onValueChange: (value) => {
+                  setCouponAvailabilityFilter(value);
+                  setCouponPage(1);
+                },
+                options: [
+                  { label: t("coupon.allAvailability"), value: "" },
+                  { label: t("coupon.available"), value: "available" },
+                  { label: t("coupon.expired"), value: "expired" },
+                  { label: t("coupon.exhausted"), value: "exhausted" },
+                ],
+              },
+            ]}
+            loading={couponTableLoading || couponSaving}
+            onRefresh={() => void loadCouponCodes()}
+          >
+            <Button type="button" size="sm" disabled={couponTableLoading || couponSaving} onClick={openCouponCreate}>
+              <Plus className="size-3.5" />
+              {t("coupon.create")}
+            </Button>
+          </TableToolbar>
+
+          <Table
+            viewportRef={couponVirtualRows.viewportRef}
+            viewportClassName={couponVirtualRows.viewportClassName}
+            viewportStyle={couponVirtualRows.viewportStyle}
+          >
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[168px]">{t("coupon.columns.code")}</TableHead>
+                <TableHead className="w-[104px]">{t("coupon.columns.scope")}</TableHead>
+                <TableHead className="w-[112px]">{t("coupon.columns.discount")}</TableHead>
+                <TableHead className="w-[112px]">{t("coupon.columns.limit")}</TableHead>
+                <TableHead className="w-[76px] text-center">{t("coupon.columns.status")}</TableHead>
+                <TableHead className="w-[104px]">{t("coupon.columns.expiresAt")}</TableHead>
+                <TableHead stickyEnd className="w-[88px]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {couponInitialLoading ? <TableLoadingRow colSpan={7} /> : null}
+              {!couponTableLoading && couponCodes.length === 0 ? <TableEmptyRow colSpan={7}>{t("coupon.empty")}</TableEmptyRow> : null}
+              {showCouponRows ? <VirtualTablePaddingRow colSpan={7} height={couponVirtualRows.paddingTop} /> : null}
+              {showCouponRows
+                ? couponVirtualRows.rows.map(({ item }) => {
+                  const unavailableReason = couponUnavailableReason(item);
+                  const displayCode = item.codeHint || "-";
+                  const limitTotal = item.maxRedemptions == null ? t("coupon.unlimited") : String(item.maxRedemptions);
+                  return (
+                    <TableRow key={item.id} tone={unavailableReason ? "muted" : undefined} className={cn(unavailableReason && "text-muted-foreground")}>
+                      <TableCell className="w-[168px] max-w-[168px] py-1.5 font-mono text-xs">
+                        <div className="flex h-7 items-center gap-1.5">
+                          <span className="min-w-0 max-w-[112px] truncate">{displayCode}</span>
+                          <CopyActionButton
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="h-6 w-6 text-muted-foreground shadow-none"
+                            messages={{ copied: tActions("copied"), failed: t("toast.couponCopyFailed") }}
+                            resolveValue={() => fetchCouponCodePlaintext(item)}
+                            onResolveError={(error) => toast.error(t("toast.couponCopyFailed"), { description: resolveAdminErrorMessage(error) })}
+                            iconClassName="size-3.5 stroke-1.5"
+                            aria-label={tActions("copy")}
+                          />
+                          {unavailableReason ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  tabIndex={0}
+                                  aria-label={t("coupon.unavailable")}
+                                  className="inline-flex size-4 items-center justify-center text-amber-600 outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-amber-400"
+                                >
+                                  <CircleAlert className="size-3.5 stroke-1.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-64 text-left">
+                                <div className="space-y-1">
+                                  <p className="font-medium">{t("coupon.unavailable")}</p>
+                                  <p className="text-background/80">{unavailableReason}</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell className="w-[104px] py-1.5 text-xs">{couponScopeLabel(item.scope)}</TableCell>
+                      <TableCell className="w-[112px] py-1.5 text-xs">{couponDiscountLabel(item)}</TableCell>
+                      <TableCell className="w-[112px] py-1.5 text-xs">
+                        <div className="flex items-center gap-1.5 text-[11px] leading-none">
+                          <span className="inline-flex h-5 min-w-11 items-center justify-center rounded-sm border border-border/60 bg-background/60 px-1.5 font-mono tabular-nums">
+                            {item.redeemedCount}
+                            <span className="px-0.5 text-muted-foreground">/</span>
+                            {limitTotal}
+                          </span>
+                          <span className="truncate text-muted-foreground">
+                            {t("coupon.perUserShort", { count: item.perUserLimit })}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="w-[76px] py-1.5 text-center">
+                        <div className="flex h-7 items-center justify-center">
+                          <Switch
+                            size="sm"
+                            checked={item.status === "active"}
+                            disabled={couponSaving || couponStatusPendingID === item.id}
+                            onCheckedChange={(checked) => void setCouponCodeStatus(item, checked)}
+                            aria-label={item.status === "active" ? t("coupon.disable") : t("coupon.enable")}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="w-[104px] py-1.5 text-xs text-muted-foreground">{item.expiresAt ? formatDateTime(item.expiresAt, locale) : t("coupon.never")}</TableCell>
+                      <TableCell stickyEnd className="w-[88px] py-1.5 text-right">
+                        <div className="flex h-7 items-center justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="h-7 w-7 text-muted-foreground shadow-none"
+                            onClick={() => openCouponEdit(item)}
+                            aria-label={t("coupon.edit")}
+                          >
+                            <Pencil className="size-3.5 stroke-1" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="h-7 w-7 text-destructive shadow-none hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setCouponDeleteTarget(item)}
+                            aria-label={tActions("delete")}
+                          >
+                            <Trash2 className="size-3.5 stroke-1" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+                : null}
+              {showCouponRows ? <VirtualTablePaddingRow colSpan={7} height={couponVirtualRows.paddingBottom} /> : null}
+            </TableBody>
+          </Table>
+
+          <TablePagination
+            total={couponTotal}
+            page={couponPage}
+            pageCount={couponPageCount}
+            pageSize={couponPageSize}
+            onPageChange={setCouponPage}
+            onPageSizeChange={(next) => {
+              setCouponPageSize(next);
+              setCouponPage(1);
+            }}
+            loading={couponTableLoading}
+          />
+        </div>
+      </section>
+
+      <Separator className="mx-1 my-10" />
+
+      <section className="space-y-6 px-1">
+        <div className="flex h-10 items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">{t("plans.title")}</h3>
           <Button type="button" size="sm" variant="outline" className="h-8 gap-2" onClick={openPlanCreate}>
             <Plus className="size-3.5 stroke-1" />
             {t("plans.create")}
           </Button>
         </div>
-        <PeriodBillingTable plans={plans} loading={loading} onEdit={openPlanEdit} />
+        <PeriodBillingTable plans={plans} loading={loading} onEdit={openPlanEdit} onMove={(planID, direction) => void movePlan(planID, direction)} movingPlanID={planOrderSavingID} />
       </section>
         </TabsContent>
 
@@ -2528,6 +3109,241 @@ export function AdminBillingPage() {
       </Dialog>
 
       <Dialog
+        open={!!couponForm}
+        onOpenChange={(open) => {
+          if (!open && !couponSaving) {
+            setCouponForm(null);
+          }
+        }}
+      >
+        {couponForm ? (
+          <DialogContent className="flex max-h-[min(86vh,760px)] flex-col gap-0 overflow-hidden p-0">
+            <DialogHeader className="shrink-0 px-4 py-4">
+              <DialogTitle>{couponForm.id ? t("coupon.editTitle") : t("coupon.createTitle")}</DialogTitle>
+              <DialogDescription>
+                {couponForm.id ? t("coupon.editDescription") : t("coupon.createDescription")}
+              </DialogDescription>
+            </DialogHeader>
+
+            <motion.form layout transition={DIALOG_LAYOUT_TRANSITION} onSubmit={(event) => void saveCouponCode(event)} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-2">
+                {!couponForm.id ? (
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t("coupon.code")}</p>
+                      <Input
+                        id="coupon-code"
+                        value={couponForm.code}
+                        placeholder={t("coupon.codePlaceholder")}
+                        disabled={couponSaving}
+                        onChange={(event) => setCouponForm((current) => current ? { ...current, code: event.target.value } : current)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t("coupon.scope")}</p>
+                      <Select
+                        value={couponForm.scope}
+                        disabled={couponSaving}
+                        onValueChange={(value) => {
+                          const scope = value === "topup" || value === "subscription" ? value : "all";
+                          setCouponForm((current) => current ? { ...current, scope } : current);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent align="end">
+                          <SelectItem value="all">{t("coupon.scopes.all")}</SelectItem>
+                          <SelectItem value="topup">{t("coupon.scopes.topup")}</SelectItem>
+                          <SelectItem value="subscription">{t("coupon.scopes.subscription")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className={cn("grid gap-5", couponForm.id ? "grid-cols-2" : "grid-cols-2")}>
+                  {!couponForm.id ? (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t("coupon.discountType")}</p>
+                      <Select
+                        value={couponForm.discountType}
+                        disabled={couponSaving}
+                        onValueChange={(value) => {
+                          const discountType = value === "amount" ? "amount" : "percent";
+                          setCouponForm((current) => current ? { ...current, discountType } : current);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent align="end">
+                          <SelectItem value="percent">{t("coupon.discountTypes.percent")}</SelectItem>
+                          <SelectItem value="amount">{t("coupon.discountTypes.amount")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+
+                  {couponForm.id ? (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t("coupon.status")}</p>
+                      <div className="flex h-8 items-center px-1">
+                        <Switch
+                          size="sm"
+                          checked={couponForm.status === "active"}
+                          disabled={couponSaving}
+                          onCheckedChange={(checked) => setCouponForm((current) => current ? { ...current, status: checked ? "active" : "inactive" } : current)}
+                          aria-label={couponForm.status === "active" ? t("coupon.disable") : t("coupon.enable")}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {!couponForm.id ? (
+                    couponForm.discountType === "percent" ? (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">{t("coupon.discountPercent")}</p>
+                        <Input
+                          id="coupon-discount-percent"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={couponForm.discountPercent}
+                          disabled={couponSaving}
+                          onChange={(event) => setCouponForm((current) => current ? { ...current, discountPercent: event.target.value } : current)}
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">{t("coupon.discountAmountUSD")}</p>
+                        <Input
+                          id="coupon-discount-amount"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={couponForm.discountAmountUSD}
+                          disabled={couponSaving}
+                          onChange={(event) => setCouponForm((current) => current ? { ...current, discountAmountUSD: event.target.value } : current)}
+                        />
+                      </div>
+                    )
+                  ) : null}
+                </div>
+
+                {!couponForm.id ? (
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t("coupon.minAmountUSD")}</p>
+                      <Input
+                        id="coupon-min-amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={couponForm.minAmountUSD}
+                        disabled={couponSaving}
+                        onChange={(event) => setCouponForm((current) => current ? { ...current, minAmountUSD: event.target.value } : current)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{t("coupon.maxDiscountUSD")}</p>
+                      <Input
+                        id="coupon-max-discount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={couponForm.maxDiscountUSD}
+                        placeholder={t("coupon.noMaxDiscount")}
+                        disabled={couponSaving}
+                        onChange={(event) => setCouponForm((current) => current ? { ...current, maxDiscountUSD: event.target.value } : current)}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                {!couponForm.id && couponForm.scope === "subscription" ? (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">{t("coupon.plan")}</p>
+                    <Select
+                      value={couponForm.planID || COUPON_ALL_PLANS_VALUE}
+                      disabled={couponSaving || activePlanOptions.length === 0}
+                      onValueChange={(value) => setCouponForm((current) => current ? { ...current, planID: value === COUPON_ALL_PLANS_VALUE ? "" : value } : current)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("coupon.allPlans")} />
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        <SelectItem value={COUPON_ALL_PLANS_VALUE}>{t("coupon.allPlans")}</SelectItem>
+                        {activePlanOptions.map((plan) => (
+                          <SelectItem key={plan.id} value={String(plan.id)}>{plan.name || plan.code}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">{t("coupon.maxRedemptions")}</p>
+                    <Input
+                      id="coupon-max"
+                      type="number"
+                      min={1}
+                      value={couponForm.maxRedemptions}
+                      placeholder={t("coupon.unlimited")}
+                      disabled={couponSaving}
+                      onChange={(event) => setCouponForm((current) => current ? { ...current, maxRedemptions: event.target.value } : current)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">{t("coupon.perUserLimit")}</p>
+                    <Input
+                      id="coupon-per-user"
+                      type="number"
+                      min={1}
+                      max={couponForm.maxRedemptions.trim() || undefined}
+                      value={couponForm.perUserLimit}
+                      disabled={couponSaving}
+                      onChange={(event) => setCouponForm((current) => current ? { ...current, perUserLimit: event.target.value } : current)}
+                    />
+                  </div>
+                </div>
+
+                <AdminDateTimePicker
+                  value={couponForm.expiresAt}
+                  disabled={couponSaving}
+                  label={t("coupon.expiresAt")}
+                  placeholder={t("coupon.never")}
+                  onChange={(value) => setCouponForm((current) => current ? { ...current, expiresAt: value } : current)}
+                />
+
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{t("coupon.description")}</p>
+                  <Textarea
+                    id="coupon-description"
+                    value={couponForm.description}
+                    className="h-20 resize-none"
+                    disabled={couponSaving}
+                    onChange={(event) => setCouponForm((current) => current ? { ...current, description: event.target.value } : current)}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="shrink-0 px-4 py-3">
+                <Button type="button" variant="ghost" disabled={couponSaving} onClick={() => setCouponForm(null)}>
+                  {tActions("cancel")}
+                </Button>
+                <Button type="submit" disabled={couponSaving}>
+                  {couponSaving ? <SpinnerLabel>{tActions("saving")}</SpinnerLabel> : tActions("save")}
+                </Button>
+              </DialogFooter>
+            </motion.form>
+          </DialogContent>
+        ) : null}
+      </Dialog>
+
+      <Dialog
         open={createdRedemptionCodes.length > 0}
         onOpenChange={(open) => {
           if (!open) {
@@ -2582,6 +3398,41 @@ export function AdminBillingPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={Boolean(createdCouponCode)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreatedCouponCode("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>{t("coupon.createdCodeTitle")}</DialogTitle>
+            <DialogDescription>{t("coupon.createdCodeDescription")}</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-border/60 bg-muted/25 px-3 py-2">
+            <span className="min-w-0 break-all font-mono text-xs">{createdCouponCode}</span>
+            <CopyActionButton
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground"
+              value={createdCouponCode}
+              messages={{ copied: tActions("copied"), failed: tCommonErrors("copyFailed") }}
+              aria-label={tActions("copy")}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" onClick={() => setCreatedCouponCode("")}>
+              {tActions("close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AdminBulkConfirmDialog
         open={redemptionBulkAction !== null}
         onOpenChange={(open) => {
@@ -2606,6 +3457,19 @@ export function AdminBillingPage() {
         confirmLabel={tActions("delete")}
         pendingLabel={t("redemption.deleting")}
         onConfirm={() => void deleteSingleRedemptionCode()}
+      />
+
+      <AdminBulkConfirmDialog
+        open={couponDeleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !couponSaving) setCouponDeleteTarget(null);
+        }}
+        pending={couponSaving}
+        title={t("coupon.deleteTitle")}
+        description={t("coupon.deleteDescription")}
+        confirmLabel={tActions("delete")}
+        pendingLabel={t("coupon.deleting")}
+        onConfirm={() => void deleteSingleCouponCode()}
       />
     </div>
   );

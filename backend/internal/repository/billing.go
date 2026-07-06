@@ -17,10 +17,12 @@ type BillingRepository interface {
 	GetActivePlanByCode(ctx context.Context, code string) (*domainbilling.Plan, error)
 	CreatePlanWithDefaultPrice(ctx context.Context, plan *domainbilling.Plan, price *domainbilling.Price) error
 	UpdatePlanWithDefaultPrice(ctx context.Context, plan *domainbilling.Plan, price *domainbilling.Price) error
+	ReorderPlans(ctx context.Context, orderedPlanIDs []uint) error
 	ListCurrentSubscriptionsByUserIDs(ctx context.Context, userIDs []uint, now time.Time) ([]domainbilling.Subscription, error)
 	ListSubscriptionEntitlementsByUserIDs(ctx context.Context, userIDs []uint, now time.Time) ([]domainbilling.Subscription, error)
 	ReplaceSubscription(ctx context.Context, item *domainbilling.Subscription) error
-	CreatePaymentOrder(ctx context.Context, item *domainbilling.PaymentOrder) (*domainbilling.PaymentOrder, error)
+	CreatePaymentOrder(ctx context.Context, item *domainbilling.PaymentOrder, coupon *CouponOrderApplyInput) (*domainbilling.PaymentOrder, error)
+	CreateBalanceSubscriptionOrder(ctx context.Context, item *domainbilling.PaymentOrder, subscription *domainbilling.Subscription, debitNanousd int64, coupon *CouponOrderApplyInput) (*domainbilling.PaymentOrder, *domainbilling.BillingAccount, *domainbilling.Subscription, error)
 	UpdatePaymentOrderCheckout(ctx context.Context, orderNo string, externalCheckoutID string, checkoutURL string) error
 	GetPaymentOrderByOrderNo(ctx context.Context, orderNo string) (*domainbilling.PaymentOrder, error)
 	MarkPaymentOrderPaidAndGrantSubscription(ctx context.Context, orderNo string, externalPaymentID string, paidAt time.Time, subscription *domainbilling.Subscription) (*domainbilling.PaymentOrder, bool, error)
@@ -34,6 +36,13 @@ type BillingRepository interface {
 	ListBillingAccountsByUserIDs(ctx context.Context, userIDs []uint) ([]domainbilling.BillingAccount, error)
 	SetBillingAccountBalance(ctx context.Context, userID uint, balanceNanousd int64, refNo string, description string) (*domainbilling.BillingAccount, error)
 	MarkPaymentOrderPaidAndCreditBalance(ctx context.Context, orderNo string, externalPaymentID string, paidAt time.Time) (*domainbilling.PaymentOrder, bool, error)
+	ListCouponCodes(ctx context.Context, filter CouponCodeListFilter, offset int, limit int) ([]domainbilling.CouponCode, int64, error)
+	GetCouponCodeByID(ctx context.Context, id uint) (*domainbilling.CouponCode, error)
+	GetCouponCodeByHash(ctx context.Context, codeHash string) (*domainbilling.CouponCode, error)
+	CountCouponRedemptionsByUser(ctx context.Context, couponID uint, userID uint) (int64, error)
+	CreateCouponCode(ctx context.Context, item *domainbilling.CouponCode) (*domainbilling.CouponCode, error)
+	PatchCouponCode(ctx context.Context, id uint, patch CouponCodePatch) (*domainbilling.CouponCode, error)
+	DeleteCouponCode(ctx context.Context, id uint) error
 	ListRedemptionCodes(ctx context.Context, filter RedemptionCodeListFilter, offset int, limit int) ([]domainbilling.RedemptionCode, int64, error)
 	GetRedemptionCodeByID(ctx context.Context, id uint) (*domainbilling.RedemptionCode, error)
 	CreateRedemptionCode(ctx context.Context, item *domainbilling.RedemptionCode) (*domainbilling.RedemptionCode, error)
@@ -54,6 +63,38 @@ type BillingRepository interface {
 	ListMonthlyUsageByUser(ctx context.Context, userID uint, limit int) ([]domainbilling.UsageMonthlySummary, error)
 	ListDailyUsageByUser(ctx context.Context, userID uint, startDate time.Time, endDate time.Time) ([]domainbilling.UsageDailySummary, error)
 	SumBillableNanousd(ctx context.Context, userID uint, startAt time.Time, endAt time.Time) (int64, error)
+}
+
+// CouponCodeListFilter 描述管理员优惠码列表筛选条件。
+type CouponCodeListFilter struct {
+	Scope        string
+	Status       string
+	Availability string
+	Query        string
+}
+
+// CouponCodePatch 描述可更新的优惠码管理字段。
+type CouponCodePatch struct {
+	Status            *string
+	MaxRedemptionsSet bool
+	MaxRedemptions    *int
+	PerUserLimit      *int
+	ExpiresAtSet      bool
+	ExpiresAt         *time.Time
+	Description       *string
+}
+
+// CouponOrderApplyInput 描述一次订单使用优惠码需要写入的折扣快照。
+type CouponOrderApplyInput struct {
+	CouponID            uint
+	UserID              uint
+	OrderNo             string
+	OrderType           string
+	PlanID              uint
+	OriginalAmountCents int64
+	DiscountAmountCents int64
+	FinalAmountCents    int64
+	SnapshotJSON        string
 }
 
 // RedemptionCodeListFilter 描述管理员兑换码列表筛选条件。

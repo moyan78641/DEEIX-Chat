@@ -44,6 +44,8 @@ func Models() []interface{} {
 		&model.PaymentOrder{},
 		&model.BillingAccount{},
 		&model.BalanceTransaction{},
+		&model.CouponCode{},
+		&model.CouponRedemption{},
 		&model.RedemptionCode{},
 		&model.Redemption{},
 		&model.ModelPricing{},

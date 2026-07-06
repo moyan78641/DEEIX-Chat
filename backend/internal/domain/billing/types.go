@@ -73,6 +73,8 @@ const (
 	PaymentProviderStripe = "stripe"
 	// PaymentProviderEPay 表示易支付。
 	PaymentProviderEPay = "epay"
+	// PaymentProviderBalance 表示使用站内余额支付。
+	PaymentProviderBalance = "balance"
 
 	// PaymentStatusPending 表示支付待完成。
 	PaymentStatusPending = "pending"
@@ -100,34 +102,101 @@ const (
 	BalanceTransactionTypeAdminSet = "admin_set"
 	// BalanceTransactionTypeRedemption 表示兑换码入账。
 	BalanceTransactionTypeRedemption = "redemption"
+	// BalanceTransactionTypeSubscriptionPurchase 表示使用余额购买订阅。
+	BalanceTransactionTypeSubscriptionPurchase = "subscription_purchase"
 )
 
 // PaymentOrder 表示一次支付单。
 type PaymentOrder struct {
-	ID                 uint
-	OrderNo            string
-	OrderType          string
-	UserID             uint
-	PlanID             uint
-	PriceID            uint
-	Provider           string
-	Status             string
-	BaseCurrency       string
-	BaseAmountCents    int64
-	PayCurrency        string
-	PayAmountCents     int64
-	FXRate             string
-	CreditNanousd      int64
-	BillingInterval    string
-	Cycles             int
-	ExternalPaymentID  string
-	ExternalCheckoutID string
-	CheckoutURL        string
-	PaidAt             *time.Time
-	ExpiredAt          *time.Time
-	SnapshotJSON       string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	ID                      uint
+	OrderNo                 string
+	OrderType               string
+	UserID                  uint
+	PlanID                  uint
+	PriceID                 uint
+	Provider                string
+	Status                  string
+	BaseCurrency            string
+	BaseAmountCents         int64
+	OriginalBaseAmountCents int64
+	DiscountAmountCents     int64
+	CouponID                uint
+	CouponCode              string
+	PayCurrency             string
+	PayAmountCents          int64
+	FXRate                  string
+	CreditNanousd           int64
+	BillingInterval         string
+	Cycles                  int
+	ExternalPaymentID       string
+	ExternalCheckoutID      string
+	CheckoutURL             string
+	PaidAt                  *time.Time
+	ExpiredAt               *time.Time
+	SnapshotJSON            string
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+}
+
+const (
+	// CouponScopeAll 表示优惠码适用于充值和订阅。
+	CouponScopeAll = "all"
+	// CouponScopeTopUp 表示优惠码仅适用于余额充值。
+	CouponScopeTopUp = "topup"
+	// CouponScopeSubscription 表示优惠码仅适用于套餐购买。
+	CouponScopeSubscription = "subscription"
+
+	// CouponDiscountTypePercent 表示百分比折扣。
+	CouponDiscountTypePercent = "percent"
+	// CouponDiscountTypeAmount 表示固定金额折扣。
+	CouponDiscountTypeAmount = "amount"
+
+	// CouponStatusActive 表示优惠码启用。
+	CouponStatusActive = "active"
+	// CouponStatusInactive 表示优惠码停用。
+	CouponStatusInactive = "inactive"
+	// CouponStatusDeleted 表示优惠码已删除。
+	CouponStatusDeleted = "deleted"
+)
+
+// CouponCode 表示用于支付折扣的优惠码定义。
+type CouponCode struct {
+	ID                  uint
+	CodeHash            string
+	CodeEncrypted       string
+	CodeHint            string
+	Scope               string
+	DiscountType        string
+	DiscountPercent     int
+	DiscountAmountCents int64
+	MinAmountCents      int64
+	MaxDiscountCents    int64
+	PlanID              uint
+	MaxRedemptions      *int
+	PerUserLimit        int
+	RedeemedCount       int
+	Status              string
+	ExpiresAt           *time.Time
+	Description         string
+	CreatedByUserID     uint
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+// CouponRedemption 表示支付订单实际使用优惠码的记录。
+type CouponRedemption struct {
+	ID                  uint
+	CouponID            uint
+	UserID              uint
+	OrderID             uint
+	OrderNo             string
+	OrderType           string
+	OriginalAmountCents int64
+	DiscountAmountCents int64
+	FinalAmountCents    int64
+	SnapshotJSON        string
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 // BillingAccount 表示用户按量计费账户。

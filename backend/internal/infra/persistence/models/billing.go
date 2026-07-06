@@ -71,32 +71,82 @@ func (Subscription) TableName() string {
 // PaymentOrder 记录用户购买套餐时创建的支付单。
 type PaymentOrder struct {
 	BaseModel
-	OrderNo            string     `gorm:"size:64;not null;uniqueIndex:idx_billing_payment_orders_order_no;comment:内部支付单号"`
-	OrderType          string     `gorm:"size:32;not null;default:'subscription';index:idx_billing_payment_orders_order_type;comment:支付单类型(subscription/topup)"`
-	UserID             uint       `gorm:"not null;index:idx_billing_payment_orders_user_id;comment:用户ID"`
-	PlanID             uint       `gorm:"not null;index:idx_billing_payment_orders_plan_id;comment:套餐ID"`
-	PriceID            uint       `gorm:"not null;index:idx_billing_payment_orders_price_id;comment:价格ID"`
-	Provider           string     `gorm:"size:32;not null;default:'';index:idx_billing_payment_orders_provider;comment:支付渠道(stripe/epay)"`
-	Status             string     `gorm:"size:32;not null;default:'pending';index:idx_billing_payment_orders_status;comment:支付状态"`
-	BaseCurrency       string     `gorm:"size:16;not null;default:'USD';comment:基准币种"`
-	BaseAmountCents    int64      `gorm:"not null;default:0;comment:基准金额(分)"`
-	PayCurrency        string     `gorm:"size:16;not null;default:'CNY';comment:支付币种"`
-	PayAmountCents     int64      `gorm:"not null;default:0;comment:支付金额(分)"`
-	FXRate             string     `gorm:"size:32;not null;default:'';comment:汇率快照"`
-	CreditNanousd      int64      `gorm:"not null;default:0;comment:充值入账金额(纳美元)"`
-	BillingInterval    string     `gorm:"size:16;not null;default:'month';comment:计费周期"`
-	Cycles             int        `gorm:"not null;default:1;comment:购买周期数"`
-	ExternalPaymentID  string     `gorm:"size:128;not null;default:'';index:idx_billing_payment_orders_external_payment_id;comment:外部支付ID"`
-	ExternalCheckoutID string     `gorm:"size:128;not null;default:'';index:idx_billing_payment_orders_external_checkout_id;comment:外部收银台ID"`
-	CheckoutURL        string     `gorm:"type:text;not null;default:'';comment:收银台跳转地址"`
-	PaidAt             *time.Time `gorm:"comment:支付完成时间"`
-	ExpiredAt          *time.Time `gorm:"comment:支付单过期时间"`
-	SnapshotJSON       string     `gorm:"type:text;not null;default:'';comment:支付单快照JSON"`
+	OrderNo                 string     `gorm:"size:64;not null;uniqueIndex:idx_billing_payment_orders_order_no;comment:内部支付单号"`
+	OrderType               string     `gorm:"size:32;not null;default:'subscription';index:idx_billing_payment_orders_order_type;comment:支付单类型(subscription/topup)"`
+	UserID                  uint       `gorm:"not null;index:idx_billing_payment_orders_user_id;comment:用户ID"`
+	PlanID                  uint       `gorm:"not null;index:idx_billing_payment_orders_plan_id;comment:套餐ID"`
+	PriceID                 uint       `gorm:"not null;index:idx_billing_payment_orders_price_id;comment:价格ID"`
+	Provider                string     `gorm:"size:32;not null;default:'';index:idx_billing_payment_orders_provider;comment:支付渠道(stripe/epay)"`
+	Status                  string     `gorm:"size:32;not null;default:'pending';index:idx_billing_payment_orders_status;comment:支付状态"`
+	BaseCurrency            string     `gorm:"size:16;not null;default:'USD';comment:基准币种"`
+	BaseAmountCents         int64      `gorm:"not null;default:0;comment:基准金额(分)"`
+	OriginalBaseAmountCents int64      `gorm:"not null;default:0;comment:优惠前基准金额(分)"`
+	DiscountAmountCents     int64      `gorm:"not null;default:0;comment:优惠金额(分)"`
+	CouponID                uint       `gorm:"not null;default:0;index:idx_billing_payment_orders_coupon_id;comment:优惠码ID"`
+	CouponCode              string     `gorm:"size:32;not null;default:'';index:idx_billing_payment_orders_coupon_code;comment:优惠码提示"`
+	PayCurrency             string     `gorm:"size:16;not null;default:'CNY';comment:支付币种"`
+	PayAmountCents          int64      `gorm:"not null;default:0;comment:支付金额(分)"`
+	FXRate                  string     `gorm:"size:32;not null;default:'';comment:汇率快照"`
+	CreditNanousd           int64      `gorm:"not null;default:0;comment:充值入账金额(纳美元)"`
+	BillingInterval         string     `gorm:"size:16;not null;default:'month';comment:计费周期"`
+	Cycles                  int        `gorm:"not null;default:1;comment:购买周期数"`
+	ExternalPaymentID       string     `gorm:"size:128;not null;default:'';index:idx_billing_payment_orders_external_payment_id;comment:外部支付ID"`
+	ExternalCheckoutID      string     `gorm:"size:128;not null;default:'';index:idx_billing_payment_orders_external_checkout_id;comment:外部收银台ID"`
+	CheckoutURL             string     `gorm:"type:text;not null;default:'';comment:收银台跳转地址"`
+	PaidAt                  *time.Time `gorm:"comment:支付完成时间"`
+	ExpiredAt               *time.Time `gorm:"comment:支付单过期时间"`
+	SnapshotJSON            string     `gorm:"type:text;not null;default:'';comment:支付单快照JSON"`
 }
 
 // TableName 指定表名。
 func (PaymentOrder) TableName() string {
 	return "billing_payment_orders"
+}
+
+// CouponCode 记录管理员创建的支付优惠码定义。
+type CouponCode struct {
+	BaseModel
+	CodeHash            string     `gorm:"size:64;not null;uniqueIndex:idx_billing_coupon_codes_hash;comment:优惠码HMAC-SHA256哈希"`
+	CodeEncrypted       string     `gorm:"type:text;not null;default:'';comment:AES-GCM加密后的优惠码明文"`
+	CodeHint            string     `gorm:"size:32;not null;default:'';comment:优惠码展示提示，不包含完整明文"`
+	Scope               string     `gorm:"size:32;not null;default:'all';index:idx_billing_coupon_codes_scope;comment:适用范围(all/topup/subscription)"`
+	DiscountType        string     `gorm:"size:16;not null;default:'percent';comment:优惠类型(percent/amount)"`
+	DiscountPercent     int        `gorm:"not null;default:0;comment:百分比折扣"`
+	DiscountAmountCents int64      `gorm:"not null;default:0;comment:固定优惠金额(分,USD)"`
+	MinAmountCents      int64      `gorm:"not null;default:0;comment:最低订单金额(分,USD)"`
+	MaxDiscountCents    int64      `gorm:"not null;default:0;comment:最高优惠金额(分,USD)"`
+	PlanID              uint       `gorm:"not null;default:0;index:idx_billing_coupon_codes_plan_id;comment:限定套餐ID,0表示不限"`
+	MaxRedemptions      *int       `gorm:"comment:总使用次数上限，空表示不限"`
+	PerUserLimit        int        `gorm:"not null;default:1;comment:单用户使用次数上限"`
+	RedeemedCount       int        `gorm:"not null;default:0;comment:已使用次数"`
+	Status              string     `gorm:"size:32;not null;default:'active';index:idx_billing_coupon_codes_status;comment:状态(active/inactive/deleted)"`
+	ExpiresAt           *time.Time `gorm:"index:idx_billing_coupon_codes_expires_at;comment:过期时间"`
+	Description         string     `gorm:"size:255;not null;default:'';comment:优惠码说明"`
+	CreatedByUserID     uint       `gorm:"not null;default:0;index:idx_billing_coupon_codes_created_by;comment:创建管理员ID"`
+}
+
+// TableName 指定表名。
+func (CouponCode) TableName() string {
+	return "billing_coupon_codes"
+}
+
+// CouponRedemption 记录一次支付订单使用优惠码。
+type CouponRedemption struct {
+	BaseModel
+	CouponID            uint   `gorm:"not null;index:idx_billing_coupon_redemptions_coupon_id;index:idx_billing_coupon_redemptions_coupon_user,priority:1;comment:优惠码ID"`
+	UserID              uint   `gorm:"not null;index:idx_billing_coupon_redemptions_user_id;index:idx_billing_coupon_redemptions_coupon_user,priority:2;comment:用户ID"`
+	OrderID             uint   `gorm:"not null;index:idx_billing_coupon_redemptions_order_id;comment:支付订单ID"`
+	OrderNo             string `gorm:"size:64;not null;index:idx_billing_coupon_redemptions_order_no;comment:支付订单号"`
+	OrderType           string `gorm:"size:32;not null;default:'subscription';index:idx_billing_coupon_redemptions_order_type;comment:订单类型"`
+	OriginalAmountCents int64  `gorm:"not null;default:0;comment:原始金额(分,USD)"`
+	DiscountAmountCents int64  `gorm:"not null;default:0;comment:优惠金额(分,USD)"`
+	FinalAmountCents    int64  `gorm:"not null;default:0;comment:优惠后金额(分,USD)"`
+	SnapshotJSON        string `gorm:"type:text;not null;default:'{}';comment:优惠快照JSON"`
+}
+
+// TableName 指定表名。
+func (CouponRedemption) TableName() string {
+	return "billing_coupon_redemptions"
 }
 
 // BillingAccount 记录用户按量计费余额账户。

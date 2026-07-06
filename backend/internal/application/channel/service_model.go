@@ -350,6 +350,7 @@ func (s *Service) CreateModel(ctx context.Context, input CreateModelInput) (*Mod
 
 	item := &domainchannel.PlatformModel{
 		PlatformModelName:  platformModelName,
+		DisplayName:        normalizeModelDisplayName(input.DisplayName),
 		Vendor:             normalizeModelVendor(input.Vendor, platformModelName),
 		KindsJSON:          kindsJSON,
 		Icon:               normalizeModelIcon(input.Icon, input.Vendor, platformModelName),
@@ -395,6 +396,10 @@ func (s *Service) UpdateModel(ctx context.Context, modelID uint, input UpdateMod
 	if input.Vendor != nil {
 		nextVendor = normalizeModelVendor(*input.Vendor, nextPlatformModelName)
 		update.Vendor = &nextVendor
+	}
+	if input.DisplayName != nil {
+		displayName := normalizeModelDisplayName(*input.DisplayName)
+		update.DisplayName = &displayName
 	}
 	if input.KindsJSON != nil {
 		kindsJSON, err := normalizeKindsJSON(*input.KindsJSON)

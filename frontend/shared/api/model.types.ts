@@ -22,6 +22,7 @@ export type PublicModelPricingDTO = {
 
 export type PublicModelDTO = {
   platformModelName: string;
+  displayName: string;
   vendor: string;
   kindsJSON: string;
   icon: string;

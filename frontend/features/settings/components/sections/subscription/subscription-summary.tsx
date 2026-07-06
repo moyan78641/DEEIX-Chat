@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { SpinnerLabel } from "@/components/ui/spinner";
 import { AgreementCheckbox } from "@/shared/site/agreement-checkbox";
@@ -197,7 +198,9 @@ type SubscriptionSummaryProps = {
   selectedPrice: BillingPlanPriceDTO | null;
   selectedPaymentProvider: PaymentProvider;
   selectedEPayType: string;
+  subscriptionCouponCode: string;
   checkoutPriceID: number | null;
+  balancePurchaseLoading: boolean;
   pricingDialogOpen: boolean;
   paymentDialogOpen: boolean;
   protectedPaidPlanRank: number;
@@ -214,7 +217,9 @@ type SubscriptionSummaryProps = {
   onSelectPlan: (plan: BillingPlanDTO, price: BillingPlanPriceDTO | null, isCurrent: boolean) => void;
   onPaymentProviderChange: (provider: PaymentProvider) => void;
   onEPayTypeChange: (type: string) => void;
+  onSubscriptionCouponCodeChange: (value: string) => void;
   onConfirmPayment: () => void;
+  onBalancePurchase: () => void;
 };
 
 export function SubscriptionSummary({
@@ -242,7 +247,9 @@ export function SubscriptionSummary({
   selectedPrice,
   selectedPaymentProvider,
   selectedEPayType,
+  subscriptionCouponCode,
   checkoutPriceID,
+  balancePurchaseLoading,
   pricingDialogOpen,
   paymentDialogOpen,
   protectedPaidPlanRank,
@@ -259,7 +266,9 @@ export function SubscriptionSummary({
   onSelectPlan,
   onPaymentProviderChange,
   onEPayTypeChange,
+  onSubscriptionCouponCodeChange,
   onConfirmPayment,
+  onBalancePurchase,
 }: SubscriptionSummaryProps) {
   const t = useTranslations("settings.subscriptionPage");
   const hasCurrentPeriodPlan = billingMode === "period" && Boolean(currentPlan);
@@ -562,16 +571,31 @@ export function SubscriptionSummary({
               })
               : null}
           </div>
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">{t("coupon.code")}</p>
+            <Input
+              value={subscriptionCouponCode}
+              autoComplete="off"
+              className="font-mono"
+              placeholder={t("coupon.placeholder")}
+              disabled={checkoutPriceID === selectedPrice?.id || balancePurchaseLoading}
+              onChange={(event) => onSubscriptionCouponCodeChange(event.target.value)}
+              aria-label={t("coupon.code")}
+            />
+          </div>
           <AgreementCheckbox
             checked={agreementAccepted}
-            disabled={checkoutPriceID === selectedPrice?.id}
+            disabled={checkoutPriceID === selectedPrice?.id || balancePurchaseLoading}
             onCheckedChange={onAgreementAcceptedChange}
           />
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onPaymentDialogOpenChange(false)} disabled={checkoutPriceID === selectedPrice?.id}>
+            <Button type="button" variant="ghost" onClick={() => onPaymentDialogOpenChange(false)} disabled={checkoutPriceID === selectedPrice?.id || balancePurchaseLoading}>
               {t("actions.cancel")}
             </Button>
-            <Button type="button" disabled={paymentDisabled || !agreementAccepted || !selectedPrice || checkoutPriceID === selectedPrice.id} onClick={onConfirmPayment}>
+            <Button type="button" variant="outline" disabled={!agreementAccepted || !selectedPrice || checkoutPriceID === selectedPrice?.id || balancePurchaseLoading} onClick={onBalancePurchase}>
+              {balancePurchaseLoading ? <SpinnerLabel>{t("actions.processing")}</SpinnerLabel> : t("payment.balancePay")}
+            </Button>
+            <Button type="button" disabled={paymentDisabled || !agreementAccepted || !selectedPrice || checkoutPriceID === selectedPrice.id || balancePurchaseLoading} onClick={onConfirmPayment}>
               {checkoutPriceID === selectedPrice?.id ? <SpinnerLabel>{t("actions.processing")}</SpinnerLabel> : t("payment.continue")}
             </Button>
           </DialogFooter>

@@ -91,6 +91,7 @@ func toUpstreamAPIKeyResponses(items []appchannel.UpstreamAPIKeyView) []Upstream
 type ModelResponse struct {
 	ID                 uint   `json:"id"`
 	PlatformModelName  string `json:"platformModelName"`
+	DisplayName        string `json:"displayName"`
 	Vendor             string `json:"vendor"`
 	KindsJSON          string `json:"kindsJSON"`
 	Icon               string `json:"icon"`
@@ -116,6 +117,7 @@ func toModelResponse(v appchannel.ModelView) ModelResponse {
 	return ModelResponse{
 		ID:                 v.ID,
 		PlatformModelName:  v.PlatformModelName,
+		DisplayName:        v.DisplayName,
 		Vendor:             v.Vendor,
 		KindsJSON:          v.KindsJSON,
 		Icon:               v.Icon,
@@ -598,6 +600,7 @@ type CircuitResetResponse struct {
 // PublicModelResponse 面向前端的可用模型展示 DTO。
 type PublicModelResponse struct {
 	PlatformModelName string                      `json:"platformModelName"`
+	DisplayName       string                      `json:"displayName"`
 	Vendor            string                      `json:"vendor"`
 	KindsJSON         string                      `json:"kindsJSON"`
 	Icon              string                      `json:"icon"`
@@ -779,6 +782,7 @@ func toLLMSettingResponse(v domainchannel.LLMSetting) LLMSettingResponse {
 func toPublicModelResponse(v appchannel.ModelView) PublicModelResponse {
 	return PublicModelResponse{
 		PlatformModelName: v.PlatformModelName,
+		DisplayName:       v.DisplayName,
 		Vendor:            v.Vendor,
 		KindsJSON:         v.KindsJSON,
 		Icon:              v.Icon,

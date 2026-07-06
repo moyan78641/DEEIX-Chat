@@ -29,10 +29,20 @@ type CreateCheckoutRequest struct {
 	Cycles           int    `json:"cycles" binding:"min=1,max=120"`
 	PaymentProvider  string `json:"paymentProvider" binding:"omitempty,oneof=stripe epay"`
 	EPayType         string `json:"epayType" binding:"omitempty,max=32"`
+	CouponCode       string `json:"couponCode" binding:"omitempty,min=3,max=64"`
 	SuccessURL       string `json:"successURL" binding:"omitempty,max=512"`
 	CancelURL        string `json:"cancelURL" binding:"omitempty,max=512"`
 	TermsAccepted    bool   `json:"termsAccepted"`
 	PrivacyAccepted  bool   `json:"privacyAccepted"`
+}
+
+// BalanceSubscriptionPurchaseRequest 使用站内余额购买套餐请求。
+type BalanceSubscriptionPurchaseRequest struct {
+	PriceID         uint   `json:"priceID" binding:"required,min=1"`
+	Cycles          int    `json:"cycles" binding:"min=1,max=120"`
+	CouponCode      string `json:"couponCode" binding:"omitempty,min=3,max=64"`
+	TermsAccepted   bool   `json:"termsAccepted"`
+	PrivacyAccepted bool   `json:"privacyAccepted"`
 }
 
 // UpsertModelPricingRequest 保存模型计费单价。金额单位均为美元。
@@ -96,6 +106,36 @@ type PatchRedemptionCodeRequestDoc struct {
 	PerUserLimit   *int       `json:"perUserLimit" minimum:"1" maximum:"100"`
 	ExpiresAt      *time.Time `json:"expiresAt"`
 	Description    *string    `json:"description" maxLength:"255"`
+}
+
+// CreateCouponCodeRequest 创建支付优惠码请求。
+type CreateCouponCodeRequest struct {
+	Code              string     `json:"code" binding:"omitempty,min=3,max=64"`
+	Scope             string     `json:"scope" binding:"omitempty,oneof=all topup subscription"`
+	DiscountType      string     `json:"discountType" binding:"omitempty,oneof=percent amount"`
+	DiscountPercent   int        `json:"discountPercent" binding:"omitempty,min=0,max=100"`
+	DiscountAmountUSD float64    `json:"discountAmountUSD" binding:"omitempty,min=0"`
+	MinAmountUSD      float64    `json:"minAmountUSD" binding:"omitempty,min=0"`
+	MaxDiscountUSD    float64    `json:"maxDiscountUSD" binding:"omitempty,min=0"`
+	PlanID            uint       `json:"planID" binding:"omitempty,min=1"`
+	MaxRedemptions    *int       `json:"maxRedemptions" binding:"omitempty,min=1"`
+	PerUserLimit      int        `json:"perUserLimit" binding:"omitempty,min=1,max=100"`
+	ExpiresAt         *time.Time `json:"expiresAt"`
+	Description       string     `json:"description" binding:"omitempty,max=255"`
+}
+
+// PatchCouponCodeRequest 更新支付优惠码请求。
+type PatchCouponCodeRequest struct {
+	Status         *string             `json:"status" binding:"omitempty,oneof=active inactive"`
+	MaxRedemptions nullableIntRequest  `json:"maxRedemptions"`
+	PerUserLimit   *int                `json:"perUserLimit" binding:"omitempty,min=1,max=100"`
+	ExpiresAt      nullableTimeRequest `json:"expiresAt"`
+	Description    *string             `json:"description" binding:"omitempty,max=255"`
+}
+
+// ReorderBillingPlansRequest 调整套餐展示顺序请求。
+type ReorderBillingPlansRequest struct {
+	PlanIDs []uint `json:"planIDs" binding:"required,min=1,dive,gt=0"`
 }
 
 // BatchDeleteRedemptionCodeRequest 批量删除兑换码请求。
@@ -232,25 +272,37 @@ type SubscriptionDataResponse struct {
 
 // CheckoutResponse 支付收银台响应。
 type CheckoutResponse struct {
-	OrderNo            string     `json:"orderNo"`
-	OrderType          string     `json:"orderType"`
-	Provider           string     `json:"provider"`
-	Status             string     `json:"status"`
-	CheckoutURL        string     `json:"checkoutURL"`
-	ExternalCheckoutID string     `json:"externalCheckoutID"`
-	BaseAmountCents    int64      `json:"baseAmountCents"`
-	BaseCurrency       string     `json:"baseCurrency"`
-	PayAmountCents     int64      `json:"payAmountCents"`
-	PayCurrency        string     `json:"payCurrency"`
-	FXRate             string     `json:"fxRate"`
-	CreditNanousd      int64      `json:"creditNanousd"`
-	CreditUSD          float64    `json:"creditUSD"`
-	ExpiredAt          *time.Time `json:"expiredAt"`
+	OrderNo                 string     `json:"orderNo"`
+	OrderType               string     `json:"orderType"`
+	Provider                string     `json:"provider"`
+	Status                  string     `json:"status"`
+	CheckoutURL             string     `json:"checkoutURL"`
+	ExternalCheckoutID      string     `json:"externalCheckoutID"`
+	BaseAmountCents         int64      `json:"baseAmountCents"`
+	OriginalBaseAmountCents int64      `json:"originalBaseAmountCents"`
+	DiscountAmountCents     int64      `json:"discountAmountCents"`
+	CouponID                uint       `json:"couponID"`
+	CouponCode              string     `json:"couponCode"`
+	BaseCurrency            string     `json:"baseCurrency"`
+	PayAmountCents          int64      `json:"payAmountCents"`
+	PayCurrency             string     `json:"payCurrency"`
+	FXRate                  string     `json:"fxRate"`
+	CreditNanousd           int64      `json:"creditNanousd"`
+	CreditUSD               float64    `json:"creditUSD"`
+	ExpiredAt               *time.Time `json:"expiredAt"`
 }
 
 // CheckoutDataResponse 支付收银台操作响应。
 type CheckoutDataResponse struct {
 	Checkout CheckoutResponse `json:"checkout"`
+}
+
+// BalanceSubscriptionPurchaseDataResponse 使用余额购买套餐响应。
+type BalanceSubscriptionPurchaseDataResponse struct {
+	Checkout     CheckoutResponse        `json:"checkout"`
+	Account      BillingAccountResponse  `json:"account"`
+	Subscription SubscriptionResponse    `json:"subscription"`
+	Overview     BillingOverviewResponse `json:"overview"`
 }
 
 type PaymentWebhookIgnoredResponse struct {
@@ -406,6 +458,33 @@ type RedemptionCodeResponse struct {
 	UpdatedAt            time.Time  `json:"updatedAt"`
 }
 
+// CouponCodeResponse 后台支付优惠码响应。
+type CouponCodeResponse struct {
+	ID                   uint       `json:"id"`
+	Code                 string     `json:"code,omitempty"`
+	CodeHint             string     `json:"codeHint"`
+	Scope                string     `json:"scope"`
+	DiscountType         string     `json:"discountType"`
+	DiscountPercent      int        `json:"discountPercent"`
+	DiscountAmountCents  int64      `json:"discountAmountCents"`
+	DiscountAmountUSD    float64    `json:"discountAmountUSD"`
+	MinAmountCents       int64      `json:"minAmountCents"`
+	MinAmountUSD         float64    `json:"minAmountUSD"`
+	MaxDiscountCents     int64      `json:"maxDiscountCents"`
+	MaxDiscountUSD       float64    `json:"maxDiscountUSD"`
+	PlanID               uint       `json:"planID"`
+	MaxRedemptions       *int       `json:"maxRedemptions"`
+	PerUserLimit         int        `json:"perUserLimit"`
+	RedeemedCount        int        `json:"redeemedCount"`
+	RemainingRedemptions *int       `json:"remainingRedemptions"`
+	Status               string     `json:"status"`
+	ExpiresAt            *time.Time `json:"expiresAt"`
+	Description          string     `json:"description"`
+	CreatedByUserID      uint       `json:"createdByUserID"`
+	CreatedAt            time.Time  `json:"createdAt"`
+	UpdatedAt            time.Time  `json:"updatedAt"`
+}
+
 // RedemptionResponse 用户兑换记录响应。
 type RedemptionResponse struct {
 	ID                   uint      `json:"id"`
@@ -427,14 +506,30 @@ type RedemptionCodeListDataResponse struct {
 	Results []RedemptionCodeResponse `json:"results"`
 }
 
+// CouponCodeListDataResponse 后台优惠码分页响应。
+type CouponCodeListDataResponse struct {
+	Total   int64                `json:"total"`
+	Results []CouponCodeResponse `json:"results"`
+}
+
 // RedemptionCodeDataResponse 后台兑换码操作响应。
 type RedemptionCodeDataResponse struct {
 	Code RedemptionCodeResponse `json:"code"`
 }
 
+// CouponCodeDataResponse 后台优惠码操作响应。
+type CouponCodeDataResponse struct {
+	Code CouponCodeResponse `json:"code"`
+}
+
 // RedemptionCodeCreateDataResponse 后台批量创建兑换码响应。
 type RedemptionCodeCreateDataResponse struct {
 	Results []RedemptionCodeResponse `json:"results"`
+}
+
+// CouponCodeDeleteDataResponse 后台优惠码删除响应。
+type CouponCodeDeleteDataResponse struct {
+	Deleted bool `json:"deleted"`
 }
 
 // RedemptionCodeDeleteDataResponse 后台兑换码删除响应。
@@ -548,6 +643,11 @@ type BillingPlanDataResponse struct {
 	Plan BillingPlanResponse `json:"plan"`
 }
 
+// BillingPlanOrderDataResponse 套餐排序操作响应。
+type BillingPlanOrderDataResponse struct {
+	Plans []BillingPlanResponse `json:"plans"`
+}
+
 // ── Swagger 文档 DTO ─────────────────────────────────────────────────────────
 
 // PlanListResponseDoc 套餐列表响应。
@@ -566,6 +666,12 @@ type SubscribeResponseDoc struct {
 type CheckoutResponseDoc struct {
 	ErrorMsg string               `json:"errorMsg"`
 	Data     CheckoutDataResponse `json:"data"`
+}
+
+// BalanceSubscriptionPurchaseResponseDoc 使用余额购买套餐响应。
+type BalanceSubscriptionPurchaseResponseDoc struct {
+	ErrorMsg string                                  `json:"errorMsg"`
+	Data     BalanceSubscriptionPurchaseDataResponse `json:"data"`
 }
 
 // BillingAccountResponseDoc 按量计费账户响应。
@@ -622,6 +728,12 @@ type BillingPlanResponseDoc struct {
 	Data     BillingPlanDataResponse `json:"data"`
 }
 
+// BillingPlanOrderResponseDoc 套餐排序响应文档。
+type BillingPlanOrderResponseDoc struct {
+	ErrorMsg string                       `json:"errorMsg"`
+	Data     BillingPlanOrderDataResponse `json:"data"`
+}
+
 // RedemptionCodeListResponseDoc 后台兑换码列表响应文档。
 type RedemptionCodeListResponseDoc struct {
 	ErrorMsg string                         `json:"errorMsg"`
@@ -634,6 +746,18 @@ type RedemptionCodeResponseDoc struct {
 	Data     RedemptionCodeDataResponse `json:"data"`
 }
 
+// CouponCodeListResponseDoc 后台优惠码列表响应文档。
+type CouponCodeListResponseDoc struct {
+	ErrorMsg string                     `json:"errorMsg"`
+	Data     CouponCodeListDataResponse `json:"data"`
+}
+
+// CouponCodeResponseDoc 后台优惠码操作响应文档。
+type CouponCodeResponseDoc struct {
+	ErrorMsg string                 `json:"errorMsg"`
+	Data     CouponCodeDataResponse `json:"data"`
+}
+
 // RedemptionCodeCreateResponseDoc 后台兑换码创建响应文档。
 type RedemptionCodeCreateResponseDoc struct {
 	ErrorMsg string                           `json:"errorMsg"`
@@ -644,6 +768,12 @@ type RedemptionCodeCreateResponseDoc struct {
 type RedemptionCodeDeleteResponseDoc struct {
 	ErrorMsg string                           `json:"errorMsg"`
 	Data     RedemptionCodeDeleteDataResponse `json:"data"`
+}
+
+// CouponCodeDeleteResponseDoc 后台优惠码删除响应文档。
+type CouponCodeDeleteResponseDoc struct {
+	ErrorMsg string                       `json:"errorMsg"`
+	Data     CouponCodeDeleteDataResponse `json:"data"`
 }
 
 // BatchDeleteRedemptionCodeResponseDoc 后台兑换码批量删除响应文档。
@@ -771,20 +901,24 @@ func toCheckoutResponse(item *domainbilling.PaymentOrder) CheckoutResponse {
 		return CheckoutResponse{}
 	}
 	return CheckoutResponse{
-		OrderNo:            item.OrderNo,
-		OrderType:          item.OrderType,
-		Provider:           item.Provider,
-		Status:             item.Status,
-		CheckoutURL:        item.CheckoutURL,
-		ExternalCheckoutID: item.ExternalCheckoutID,
-		BaseAmountCents:    item.BaseAmountCents,
-		BaseCurrency:       item.BaseCurrency,
-		PayAmountCents:     item.PayAmountCents,
-		PayCurrency:        item.PayCurrency,
-		FXRate:             item.FXRate,
-		CreditNanousd:      item.CreditNanousd,
-		CreditUSD:          nanousdToUSD(item.CreditNanousd),
-		ExpiredAt:          item.ExpiredAt,
+		OrderNo:                 item.OrderNo,
+		OrderType:               item.OrderType,
+		Provider:                item.Provider,
+		Status:                  item.Status,
+		CheckoutURL:             item.CheckoutURL,
+		ExternalCheckoutID:      item.ExternalCheckoutID,
+		BaseAmountCents:         item.BaseAmountCents,
+		OriginalBaseAmountCents: item.OriginalBaseAmountCents,
+		DiscountAmountCents:     item.DiscountAmountCents,
+		CouponID:                item.CouponID,
+		CouponCode:              item.CouponCode,
+		BaseCurrency:            item.BaseCurrency,
+		PayAmountCents:          item.PayAmountCents,
+		PayCurrency:             item.PayCurrency,
+		FXRate:                  item.FXRate,
+		CreditNanousd:           item.CreditNanousd,
+		CreditUSD:               nanousdToUSD(item.CreditNanousd),
+		ExpiredAt:               item.ExpiredAt,
 	}
 }
 
@@ -877,6 +1011,50 @@ func toRedemptionCodeResponses(items []appbilling.RedemptionCodeView) []Redempti
 	results := make([]RedemptionCodeResponse, 0, len(items))
 	for _, item := range items {
 		results = append(results, toRedemptionCodeResponse(item))
+	}
+	return results
+}
+
+func toCouponCodeResponse(item appbilling.CouponCodeView) CouponCodeResponse {
+	remaining := (*int)(nil)
+	if item.MaxRedemptions != nil {
+		value := *item.MaxRedemptions - item.RedeemedCount
+		if value < 0 {
+			value = 0
+		}
+		remaining = &value
+	}
+	return CouponCodeResponse{
+		ID:                   item.ID,
+		Code:                 item.Code,
+		CodeHint:             item.CodeHint,
+		Scope:                item.Scope,
+		DiscountType:         item.DiscountType,
+		DiscountPercent:      item.DiscountPercent,
+		DiscountAmountCents:  item.DiscountAmountCents,
+		DiscountAmountUSD:    float64(item.DiscountAmountCents) / 100,
+		MinAmountCents:       item.MinAmountCents,
+		MinAmountUSD:         float64(item.MinAmountCents) / 100,
+		MaxDiscountCents:     item.MaxDiscountCents,
+		MaxDiscountUSD:       float64(item.MaxDiscountCents) / 100,
+		PlanID:               item.PlanID,
+		MaxRedemptions:       item.MaxRedemptions,
+		PerUserLimit:         item.PerUserLimit,
+		RedeemedCount:        item.RedeemedCount,
+		RemainingRedemptions: remaining,
+		Status:               item.Status,
+		ExpiresAt:            item.ExpiresAt,
+		Description:          item.Description,
+		CreatedByUserID:      item.CreatedByUserID,
+		CreatedAt:            item.CreatedAt,
+		UpdatedAt:            item.UpdatedAt,
+	}
+}
+
+func toCouponCodeResponses(items []appbilling.CouponCodeView) []CouponCodeResponse {
+	results := make([]CouponCodeResponse, 0, len(items))
+	for _, item := range items {
+		results = append(results, toCouponCodeResponse(item))
 	}
 	return results
 }

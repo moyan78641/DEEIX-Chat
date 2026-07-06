@@ -33,6 +33,7 @@ func (LLMUpstream) TableName() string {
 type LLMPlatformModel struct {
 	ControlPlaneModel
 	Name               string `gorm:"size:128;not null;default:'';uniqueIndex:idx_llm_platform_models_name;comment:平台模型名"`
+	DisplayName        string `gorm:"size:128;not null;default:'';comment:用户侧展示名称"`
 	Vendor             string `gorm:"size:64;not null;default:'';index:idx_llm_platform_models_vendor;comment:平台展示厂商"`
 	KindsJSON          string `gorm:"type:text;not null;default:'[\"chat\"]';comment:模型类型JSON数组"`
 	CapabilitiesJSON   string `gorm:"type:text;not null;default:'{}';comment:平台能力配置JSON"`

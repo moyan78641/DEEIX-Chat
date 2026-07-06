@@ -24,6 +24,7 @@ function ChatMentionMenuItemButton({
   onSelect: () => void;
 }) {
   const platformModelName = item.kind === "model" ? item.model.platformModelName.trim() : "";
+  const modelLabel = item.kind === "model" ? item.model.displayName?.trim() || platformModelName : "";
   const identity = React.useMemo(() => {
     if (item.kind !== "model") {
       return null;
@@ -49,7 +50,7 @@ function ChatMentionMenuItemButton({
       }}
     >
       {item.kind === "model" ? (
-        <LobeHubIcon iconUrl={iconURL} label={platformModelName} />
+        <LobeHubIcon iconUrl={iconURL} label={modelLabel} />
       ) : item.kind === "file" ? (
         <span className="flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground">
           <FileText className="size-3.5" strokeWidth={1.7} />

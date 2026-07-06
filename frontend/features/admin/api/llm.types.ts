@@ -68,6 +68,7 @@ export type AdminLLMUpstreamAPIKey = {
 export type AdminLLMModelDTO = {
   id: number;
   platformModelName: string;
+  displayName: string;
   vendor: AdminLLMModelVendor;
   kindsJSON: string;
   icon: string;
@@ -269,6 +270,7 @@ export type UpdateAdminLLMUpstreamRequest = {
 
 export type CreateAdminLLMModelRequest = {
   platformModelName: string;
+  displayName?: string;
   vendor?: AdminLLMModelVendor;
   kindsJSON?: string;
   icon?: string;
@@ -285,6 +287,7 @@ export type CreateAdminLLMModelRequest = {
 
 export type UpdateAdminLLMModelRequest = {
   platformModelName?: string;
+  displayName?: string;
   vendor?: AdminLLMModelVendor;
   kindsJSON?: string;
   icon?: string;

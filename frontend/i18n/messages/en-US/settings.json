@@ -601,12 +601,17 @@
       "card": "Card",
       "disabled": "Disabled",
       "continue": "Continue",
+      "balancePay": "Pay with balance",
       "epay": {
         "alipay": "Alipay",
         "wxpay": "WeChat Pay",
         "qqpay": "QQ Wallet",
         "custom": "Custom · {type}"
       }
+    },
+    "coupon": {
+      "code": "Coupon code",
+      "placeholder": "Optional"
     },
     "topUp": {
       "title": "Top up",
@@ -644,7 +649,9 @@
       "agreementRequired": "Please read and agree to the Terms of Service and Privacy Policy first.",
       "invalidRedemptionCode": "Enter a redemption code.",
       "redemptionSucceeded": "Redemption applied",
-      "redemptionFailed": "Redemption failed"
+      "redemptionFailed": "Redemption failed",
+      "balancePurchaseSucceeded": "Purchased with balance",
+      "balancePurchaseFailed": "Balance purchase failed"
     }
   }
 }

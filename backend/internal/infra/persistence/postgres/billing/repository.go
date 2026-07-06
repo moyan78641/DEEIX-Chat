@@ -304,6 +304,41 @@ func (r *Repo) UpdatePlanWithDefaultPrice(ctx context.Context, plan *domainbilli
 	})
 }
 
+// ReorderPlans 按指定顺序调整套餐展示顺序。
+func (r *Repo) ReorderPlans(ctx context.Context, orderedPlanIDs []uint) error {
+	if len(orderedPlanIDs) == 0 {
+		return repository.ErrInvalidInput
+	}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var rows []model.BillingPlan
+		if err := tx.Select("id").Where("id IN ?", orderedPlanIDs).Find(&rows).Error; err != nil {
+			return translateError(err)
+		}
+		existingIDs := make(map[uint]struct{}, len(rows))
+		for _, row := range rows {
+			existingIDs[row.ID] = struct{}{}
+		}
+		seenIDs := make(map[uint]struct{}, len(orderedPlanIDs))
+		for _, planID := range orderedPlanIDs {
+			if _, exists := seenIDs[planID]; exists {
+				return repository.ErrInvalidInput
+			}
+			if _, exists := existingIDs[planID]; !exists {
+				return repository.ErrNotFound
+			}
+			seenIDs[planID] = struct{}{}
+		}
+		for index, planID := range orderedPlanIDs {
+			if err := tx.Model(&model.BillingPlan{}).
+				Where("id = ?", planID).
+				Update("sort_order", (index+1)*100).Error; err != nil {
+				return translateError(err)
+			}
+		}
+		return nil
+	})
+}
+
 // CountPlansWithPermissionGroup 统计绑定指定权限组的套餐数量。
 func (r *Repo) CountPlansWithPermissionGroup(ctx context.Context, groupID uint) (int64, error) {
 	var count int64
@@ -427,37 +462,163 @@ func (r *Repo) ReplaceSubscription(ctx context.Context, item *domainbilling.Subs
 }
 
 // CreatePaymentOrder 创建支付单。
-func (r *Repo) CreatePaymentOrder(ctx context.Context, item *domainbilling.PaymentOrder) (*domainbilling.PaymentOrder, error) {
+func (r *Repo) CreatePaymentOrder(ctx context.Context, item *domainbilling.PaymentOrder, coupon *repository.CouponOrderApplyInput) (*domainbilling.PaymentOrder, error) {
 	if item == nil || strings.TrimSpace(item.OrderNo) == "" {
 		return nil, repository.ErrInvalidInput
 	}
-	record := model.PaymentOrder{
-		OrderNo:         strings.TrimSpace(item.OrderNo),
-		OrderType:       normalizeOrderType(item.OrderType),
-		UserID:          item.UserID,
-		PlanID:          item.PlanID,
-		PriceID:         item.PriceID,
-		Provider:        strings.TrimSpace(item.Provider),
-		Status:          firstNonEmpty(strings.TrimSpace(item.Status), domainbilling.PaymentStatusPending),
-		BaseCurrency:    normalizeCurrency(item.BaseCurrency),
-		BaseAmountCents: clampNonNegative(item.BaseAmountCents),
-		PayCurrency:     normalizeCurrency(item.PayCurrency),
-		PayAmountCents:  clampNonNegative(item.PayAmountCents),
-		FXRate:          strings.TrimSpace(item.FXRate),
-		CreditNanousd:   clampNonNegative(item.CreditNanousd),
-		BillingInterval: normalizeInterval(item.BillingInterval),
-		Cycles:          item.Cycles,
-		ExpiredAt:       item.ExpiredAt,
-		SnapshotJSON:    strings.TrimSpace(item.SnapshotJSON),
+	var result domainbilling.PaymentOrder
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		record := paymentOrderModelFromDomain(item)
+		if err := tx.Create(&record).Error; err != nil {
+			return translateError(err)
+		}
+		if coupon != nil && coupon.CouponID > 0 && coupon.DiscountAmountCents > 0 {
+			if err := applyCouponOrderUse(tx, coupon, record.ID); err != nil {
+				return err
+			}
+		}
+		if err := tx.Where("id = ?", record.ID).First(&record).Error; err != nil {
+			return translateError(err)
+		}
+		result = toDomainPaymentOrder(record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	if record.Cycles <= 0 {
-		record.Cycles = 1
-	}
-	if err := r.db.WithContext(ctx).Create(&record).Error; err != nil {
-		return nil, translateError(err)
-	}
-	result := toDomainPaymentOrder(record)
 	return &result, nil
+}
+
+// CreateBalanceSubscriptionOrder 使用站内余额支付套餐并开通订阅。
+func (r *Repo) CreateBalanceSubscriptionOrder(
+	ctx context.Context,
+	item *domainbilling.PaymentOrder,
+	subscription *domainbilling.Subscription,
+	debitNanousd int64,
+	coupon *repository.CouponOrderApplyInput,
+) (*domainbilling.PaymentOrder, *domainbilling.BillingAccount, *domainbilling.Subscription, error) {
+	if item == nil || subscription == nil || strings.TrimSpace(item.OrderNo) == "" {
+		return nil, nil, nil, repository.ErrInvalidInput
+	}
+	if debitNanousd < 0 {
+		return nil, nil, nil, repository.ErrInvalidInput
+	}
+	if item.UserID == 0 || item.UserID != subscription.UserID || item.PlanID != subscription.PlanID || item.PriceID != subscription.PriceID {
+		return nil, nil, nil, repository.ErrInvalidInput
+	}
+
+	var orderResult domainbilling.PaymentOrder
+	var accountResult domainbilling.BillingAccount
+	var subscriptionResult domainbilling.Subscription
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		if item.PaidAt != nil && !item.PaidAt.IsZero() {
+			now = *item.PaidAt
+		}
+
+		var plan model.BillingPlan
+		if err := tx.Where("id = ? AND is_active = ?", subscription.PlanID, true).First(&plan).Error; err != nil {
+			return translateError(err)
+		}
+		var price model.BillingPrice
+		if err := tx.Where("id = ? AND plan_id = ? AND is_active = ?", subscription.PriceID, subscription.PlanID, true).First(&price).Error; err != nil {
+			return translateError(err)
+		}
+		duration := time.Duration(0)
+		if price.BillingInterval != domainbilling.IntervalLifetime {
+			if subscription.CurrentPeriodEndAt == nil {
+				return repository.ErrInvalidInput
+			}
+			duration = subscription.CurrentPeriodEndAt.Sub(now)
+			if duration <= 0 {
+				return repository.ErrInvalidInput
+			}
+		}
+
+		account, err := getOrCreateBillingAccountForUpdate(tx, item.UserID)
+		if err != nil {
+			return err
+		}
+		if debitNanousd > 0 {
+			if account.BalanceNanousd < debitNanousd {
+				return repository.ErrInsufficientBalance
+			}
+			nextBalance := account.BalanceNanousd - debitNanousd
+			if err := tx.Model(account).Updates(map[string]interface{}{
+				"balance_nanousd": nextBalance,
+				"currency":        "USD",
+				"status":          "active",
+			}).Error; err != nil {
+				return translateError(err)
+			}
+			account.BalanceNanousd = nextBalance
+		}
+
+		record := paymentOrderModelFromDomain(item)
+		record.Provider = domainbilling.PaymentProviderBalance
+		record.Status = domainbilling.PaymentStatusPaid
+		record.ExternalPaymentID = strings.TrimSpace(item.ExternalPaymentID)
+		record.PaidAt = &now
+		if err := tx.Create(&record).Error; err != nil {
+			return translateError(err)
+		}
+		if coupon != nil && coupon.CouponID > 0 && coupon.DiscountAmountCents > 0 {
+			if err := applyCouponOrderUse(tx, coupon, record.ID); err != nil {
+				return err
+			}
+		}
+
+		if debitNanousd > 0 {
+			transaction := model.BalanceTransaction{
+				AccountID:           account.ID,
+				UserID:              item.UserID,
+				Type:                domainbilling.BalanceTransactionTypeSubscriptionPurchase,
+				AmountNanousd:       -debitNanousd,
+				BalanceAfterNanousd: account.BalanceNanousd,
+				RefType:             "payment_order",
+				RefID:               record.ID,
+				RefNo:               record.OrderNo,
+				Description:         "余额购买订阅套餐",
+			}
+			if err := tx.Create(&transaction).Error; err != nil {
+				return translateError(err)
+			}
+		}
+
+		var granted *model.Subscription
+		if price.BillingInterval == domainbilling.IntervalLifetime {
+			granted, err = grantLifetimeSubscription(tx, subscription, now)
+		} else {
+			granted, err = grantSubscriptionOnTimeline(tx, subscriptionTimelineGrantRequest{
+				UserID:            subscription.UserID,
+				Plan:              plan,
+				Price:             price,
+				StartAt:           now,
+				Duration:          duration,
+				CancelAtPeriodEnd: subscription.CancelAtPeriodEnd,
+				AutoRenew:         subscription.AutoRenew,
+				NewGrant:          true,
+			})
+		}
+		if err != nil {
+			return err
+		}
+
+		if err := tx.Where("id = ?", record.ID).First(&record).Error; err != nil {
+			return translateError(err)
+		}
+		if err := tx.Where("id = ?", account.ID).First(account).Error; err != nil {
+			return translateError(err)
+		}
+		orderResult = toDomainPaymentOrder(record)
+		accountResult = toDomainBillingAccount(*account)
+		subscriptionResult = toDomainSubscription(*granted)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return &orderResult, &accountResult, &subscriptionResult, nil
 }
 
 // UpdatePaymentOrderCheckout 保存外部收银台信息。
@@ -535,24 +696,30 @@ func (r *Repo) MarkPaymentOrderPaidAndGrantSubscription(
 		if err := tx.Where("id = ? AND plan_id = ? AND is_active = ?", subscription.PriceID, subscription.PlanID, true).First(&price).Error; err != nil {
 			return translateError(err)
 		}
-		if subscription.CurrentPeriodEndAt == nil {
-			return repository.ErrInvalidInput
-		}
-		duration := subscription.CurrentPeriodEndAt.Sub(paidAt)
-		if duration <= 0 {
-			return repository.ErrInvalidInput
-		}
-		if _, err := grantSubscriptionOnTimeline(tx, subscriptionTimelineGrantRequest{
-			UserID:            subscription.UserID,
-			Plan:              plan,
-			Price:             price,
-			StartAt:           paidAt,
-			Duration:          duration,
-			CancelAtPeriodEnd: subscription.CancelAtPeriodEnd,
-			AutoRenew:         subscription.AutoRenew,
-			NewGrant:          true,
-		}); err != nil {
-			return err
+		if price.BillingInterval == domainbilling.IntervalLifetime {
+			if _, err := grantLifetimeSubscription(tx, subscription, paidAt); err != nil {
+				return err
+			}
+		} else {
+			if subscription.CurrentPeriodEndAt == nil {
+				return repository.ErrInvalidInput
+			}
+			duration := subscription.CurrentPeriodEndAt.Sub(paidAt)
+			if duration <= 0 {
+				return repository.ErrInvalidInput
+			}
+			if _, err := grantSubscriptionOnTimeline(tx, subscriptionTimelineGrantRequest{
+				UserID:            subscription.UserID,
+				Plan:              plan,
+				Price:             price,
+				StartAt:           paidAt,
+				Duration:          duration,
+				CancelAtPeriodEnd: subscription.CancelAtPeriodEnd,
+				AutoRenew:         subscription.AutoRenew,
+				NewGrant:          true,
+			}); err != nil {
+				return err
+			}
 		}
 
 		if err := tx.Model(&order).Updates(map[string]interface{}{
@@ -1081,6 +1248,220 @@ func (r *Repo) MarkPaymentOrderPaidAndCreditBalance(
 		return nil, false, err
 	}
 	return &result, credited, nil
+}
+
+// ListCouponCodes 分页查询后台优惠码定义。
+func (r *Repo) ListCouponCodes(ctx context.Context, filter repository.CouponCodeListFilter, offset int, limit int) ([]domainbilling.CouponCode, int64, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	items := make([]model.CouponCode, 0, limit)
+	var total int64
+	query := r.db.WithContext(ctx).Model(&model.CouponCode{})
+	if scope := strings.TrimSpace(filter.Scope); scope != "" {
+		query = query.Where("scope = ?", scope)
+	}
+	if status := strings.TrimSpace(filter.Status); status != "" {
+		query = query.Where("status = ?", status)
+	} else {
+		query = query.Where("status <> ?", domainbilling.CouponStatusDeleted)
+	}
+	if availability := strings.TrimSpace(filter.Availability); availability != "" {
+		now := time.Now()
+		switch availability {
+		case "available":
+			query = query.
+				Where("status = ?", domainbilling.CouponStatusActive).
+				Where("(expires_at IS NULL OR expires_at > ?)", now).
+				Where("(max_redemptions IS NULL OR redeemed_count < max_redemptions)")
+		case "expired":
+			query = query.Where("expires_at IS NOT NULL AND expires_at <= ?", now)
+		case "exhausted":
+			query = query.Where("max_redemptions IS NOT NULL AND redeemed_count >= max_redemptions")
+		}
+	}
+	if keyword := strings.TrimSpace(filter.Query); keyword != "" {
+		like := "%" + strings.ToLower(keyword) + "%"
+		query = query.Where("LOWER(description) LIKE ? OR LOWER(code_hint) LIKE ?", like, like)
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, translateError(err)
+	}
+	if err := query.Order("created_at DESC, id DESC").Offset(offset).Limit(limit).Find(&items).Error; err != nil {
+		return nil, 0, translateError(err)
+	}
+	results := make([]domainbilling.CouponCode, 0, len(items))
+	for _, item := range items {
+		results = append(results, toDomainCouponCode(item))
+	}
+	return results, total, nil
+}
+
+// GetCouponCodeByID 查询单个未删除优惠码定义。
+func (r *Repo) GetCouponCodeByID(ctx context.Context, id uint) (*domainbilling.CouponCode, error) {
+	if id == 0 {
+		return nil, repository.ErrInvalidInput
+	}
+	var item model.CouponCode
+	if err := r.db.WithContext(ctx).
+		Where("id = ? AND status <> ?", id, domainbilling.CouponStatusDeleted).
+		First(&item).Error; err != nil {
+		return nil, translateError(err)
+	}
+	result := toDomainCouponCode(item)
+	return &result, nil
+}
+
+// GetCouponCodeByHash 按哈希查询未删除优惠码定义。
+func (r *Repo) GetCouponCodeByHash(ctx context.Context, codeHash string) (*domainbilling.CouponCode, error) {
+	codeHash = strings.TrimSpace(codeHash)
+	if codeHash == "" {
+		return nil, repository.ErrInvalidInput
+	}
+	var item model.CouponCode
+	if err := r.db.WithContext(ctx).
+		Where("code_hash = ? AND status <> ?", codeHash, domainbilling.CouponStatusDeleted).
+		First(&item).Error; err != nil {
+		return nil, translateError(err)
+	}
+	result := toDomainCouponCode(item)
+	return &result, nil
+}
+
+// CountCouponRedemptionsByUser 统计用户使用指定优惠码的次数。
+func (r *Repo) CountCouponRedemptionsByUser(ctx context.Context, couponID uint, userID uint) (int64, error) {
+	if couponID == 0 || userID == 0 {
+		return 0, repository.ErrInvalidInput
+	}
+	var count int64
+	if err := r.db.WithContext(ctx).
+		Model(&model.CouponRedemption{}).
+		Where("coupon_id = ? AND user_id = ?", couponID, userID).
+		Count(&count).Error; err != nil {
+		return 0, translateError(err)
+	}
+	return count, nil
+}
+
+// CreateCouponCode 创建优惠码定义。
+func (r *Repo) CreateCouponCode(ctx context.Context, item *domainbilling.CouponCode) (*domainbilling.CouponCode, error) {
+	if item == nil || strings.TrimSpace(item.CodeHash) == "" {
+		return nil, repository.ErrInvalidInput
+	}
+	record := model.CouponCode{
+		CodeHash:            strings.TrimSpace(item.CodeHash),
+		CodeEncrypted:       strings.TrimSpace(item.CodeEncrypted),
+		CodeHint:            strings.TrimSpace(item.CodeHint),
+		Scope:               normalizeCouponScope(item.Scope),
+		DiscountType:        normalizeCouponDiscountType(item.DiscountType),
+		DiscountPercent:     clampPercent(item.DiscountPercent),
+		DiscountAmountCents: clampNonNegative(item.DiscountAmountCents),
+		MinAmountCents:      clampNonNegative(item.MinAmountCents),
+		MaxDiscountCents:    clampNonNegative(item.MaxDiscountCents),
+		PlanID:              item.PlanID,
+		MaxRedemptions:      copyIntPointer(item.MaxRedemptions),
+		PerUserLimit:        item.PerUserLimit,
+		Status:              normalizeCouponStatus(item.Status),
+		ExpiresAt:           item.ExpiresAt,
+		Description:         strings.TrimSpace(item.Description),
+		CreatedByUserID:     item.CreatedByUserID,
+	}
+	if record.PerUserLimit <= 0 {
+		record.PerUserLimit = 1
+	}
+	if err := r.db.WithContext(ctx).Create(&record).Error; err != nil {
+		return nil, translateError(err)
+	}
+	result := toDomainCouponCode(record)
+	return &result, nil
+}
+
+// PatchCouponCode 更新优惠码管理字段。
+func (r *Repo) PatchCouponCode(ctx context.Context, id uint, patch repository.CouponCodePatch) (*domainbilling.CouponCode, error) {
+	if id == 0 {
+		return nil, repository.ErrInvalidInput
+	}
+	var result domainbilling.CouponCode
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var record model.CouponCode
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND status <> ?", id, domainbilling.CouponStatusDeleted).
+			First(&record).Error; err != nil {
+			return translateError(err)
+		}
+		updates := map[string]interface{}{}
+		if patch.Status != nil {
+			status := normalizeCouponStatus(*patch.Status)
+			if status == "" {
+				return repository.ErrInvalidInput
+			}
+			updates["status"] = status
+		}
+		if patch.MaxRedemptionsSet {
+			if patch.MaxRedemptions != nil && (*patch.MaxRedemptions <= 0 || *patch.MaxRedemptions < record.RedeemedCount) {
+				return repository.ErrInvalidInput
+			}
+			updates["max_redemptions"] = patch.MaxRedemptions
+		}
+		if patch.PerUserLimit != nil {
+			if *patch.PerUserLimit <= 0 {
+				return repository.ErrInvalidInput
+			}
+			updates["per_user_limit"] = *patch.PerUserLimit
+		}
+		nextMaxRedemptions := record.MaxRedemptions
+		if patch.MaxRedemptionsSet {
+			nextMaxRedemptions = patch.MaxRedemptions
+		}
+		nextPerUserLimit := record.PerUserLimit
+		if patch.PerUserLimit != nil {
+			nextPerUserLimit = *patch.PerUserLimit
+		}
+		if nextMaxRedemptions != nil && nextPerUserLimit > *nextMaxRedemptions {
+			return repository.ErrInvalidInput
+		}
+		if patch.ExpiresAtSet {
+			updates["expires_at"] = patch.ExpiresAt
+		}
+		if patch.Description != nil {
+			updates["description"] = strings.TrimSpace(*patch.Description)
+		}
+		if len(updates) > 0 {
+			if err := tx.Model(&record).Updates(updates).Error; err != nil {
+				return translateError(err)
+			}
+		}
+		if err := tx.Where("id = ?", id).First(&record).Error; err != nil {
+			return translateError(err)
+		}
+		result = toDomainCouponCode(record)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// DeleteCouponCode 软删除优惠码定义。
+func (r *Repo) DeleteCouponCode(ctx context.Context, id uint) error {
+	if id == 0 {
+		return repository.ErrInvalidInput
+	}
+	result := r.db.WithContext(ctx).
+		Model(&model.CouponCode{}).
+		Where("id = ? AND status <> ?", id, domainbilling.CouponStatusDeleted).
+		Update("status", domainbilling.CouponStatusDeleted)
+	if result.Error != nil {
+		return translateError(result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return repository.ErrNotFound
+	}
+	return nil
 }
 
 // ListRedemptionCodes 分页查询后台兑换码定义。
@@ -1910,32 +2291,104 @@ func toDomainModelPricing(item model.ModelPricing) domainbilling.ModelPricing {
 	}
 }
 
+func paymentOrderModelFromDomain(item *domainbilling.PaymentOrder) model.PaymentOrder {
+	if item == nil {
+		return model.PaymentOrder{}
+	}
+	record := model.PaymentOrder{
+		OrderNo:                 strings.TrimSpace(item.OrderNo),
+		OrderType:               normalizeOrderType(item.OrderType),
+		UserID:                  item.UserID,
+		PlanID:                  item.PlanID,
+		PriceID:                 item.PriceID,
+		Provider:                strings.TrimSpace(item.Provider),
+		Status:                  firstNonEmpty(strings.TrimSpace(item.Status), domainbilling.PaymentStatusPending),
+		BaseCurrency:            normalizeCurrency(item.BaseCurrency),
+		BaseAmountCents:         clampNonNegative(item.BaseAmountCents),
+		OriginalBaseAmountCents: clampNonNegative(item.OriginalBaseAmountCents),
+		DiscountAmountCents:     clampNonNegative(item.DiscountAmountCents),
+		CouponID:                item.CouponID,
+		CouponCode:              strings.TrimSpace(item.CouponCode),
+		PayCurrency:             normalizeCurrency(item.PayCurrency),
+		PayAmountCents:          clampNonNegative(item.PayAmountCents),
+		FXRate:                  strings.TrimSpace(item.FXRate),
+		CreditNanousd:           clampNonNegative(item.CreditNanousd),
+		BillingInterval:         normalizeInterval(item.BillingInterval),
+		Cycles:                  item.Cycles,
+		ExternalPaymentID:       strings.TrimSpace(item.ExternalPaymentID),
+		ExternalCheckoutID:      strings.TrimSpace(item.ExternalCheckoutID),
+		CheckoutURL:             strings.TrimSpace(item.CheckoutURL),
+		PaidAt:                  item.PaidAt,
+		ExpiredAt:               item.ExpiredAt,
+		SnapshotJSON:            strings.TrimSpace(item.SnapshotJSON),
+	}
+	if record.Cycles <= 0 {
+		record.Cycles = 1
+	}
+	if record.OriginalBaseAmountCents <= 0 {
+		record.OriginalBaseAmountCents = record.BaseAmountCents + record.DiscountAmountCents
+	}
+	if record.OriginalBaseAmountCents < record.BaseAmountCents {
+		record.OriginalBaseAmountCents = record.BaseAmountCents
+	}
+	return record
+}
+
 func toDomainPaymentOrder(item model.PaymentOrder) domainbilling.PaymentOrder {
 	return domainbilling.PaymentOrder{
-		ID:                 item.ID,
-		OrderNo:            item.OrderNo,
-		OrderType:          item.OrderType,
-		UserID:             item.UserID,
-		PlanID:             item.PlanID,
-		PriceID:            item.PriceID,
-		Provider:           item.Provider,
-		Status:             item.Status,
-		BaseCurrency:       item.BaseCurrency,
-		BaseAmountCents:    item.BaseAmountCents,
-		PayCurrency:        item.PayCurrency,
-		PayAmountCents:     item.PayAmountCents,
-		FXRate:             item.FXRate,
-		CreditNanousd:      item.CreditNanousd,
-		BillingInterval:    item.BillingInterval,
-		Cycles:             item.Cycles,
-		ExternalPaymentID:  item.ExternalPaymentID,
-		ExternalCheckoutID: item.ExternalCheckoutID,
-		CheckoutURL:        item.CheckoutURL,
-		PaidAt:             item.PaidAt,
-		ExpiredAt:          item.ExpiredAt,
-		SnapshotJSON:       item.SnapshotJSON,
-		CreatedAt:          item.CreatedAt,
-		UpdatedAt:          item.UpdatedAt,
+		ID:                      item.ID,
+		OrderNo:                 item.OrderNo,
+		OrderType:               item.OrderType,
+		UserID:                  item.UserID,
+		PlanID:                  item.PlanID,
+		PriceID:                 item.PriceID,
+		Provider:                item.Provider,
+		Status:                  item.Status,
+		BaseCurrency:            item.BaseCurrency,
+		BaseAmountCents:         item.BaseAmountCents,
+		OriginalBaseAmountCents: item.OriginalBaseAmountCents,
+		DiscountAmountCents:     item.DiscountAmountCents,
+		CouponID:                item.CouponID,
+		CouponCode:              item.CouponCode,
+		PayCurrency:             item.PayCurrency,
+		PayAmountCents:          item.PayAmountCents,
+		FXRate:                  item.FXRate,
+		CreditNanousd:           item.CreditNanousd,
+		BillingInterval:         item.BillingInterval,
+		Cycles:                  item.Cycles,
+		ExternalPaymentID:       item.ExternalPaymentID,
+		ExternalCheckoutID:      item.ExternalCheckoutID,
+		CheckoutURL:             item.CheckoutURL,
+		PaidAt:                  item.PaidAt,
+		ExpiredAt:               item.ExpiredAt,
+		SnapshotJSON:            item.SnapshotJSON,
+		CreatedAt:               item.CreatedAt,
+		UpdatedAt:               item.UpdatedAt,
+	}
+}
+
+func toDomainCouponCode(item model.CouponCode) domainbilling.CouponCode {
+	return domainbilling.CouponCode{
+		ID:                  item.ID,
+		CodeHash:            item.CodeHash,
+		CodeEncrypted:       item.CodeEncrypted,
+		CodeHint:            item.CodeHint,
+		Scope:               item.Scope,
+		DiscountType:        item.DiscountType,
+		DiscountPercent:     item.DiscountPercent,
+		DiscountAmountCents: item.DiscountAmountCents,
+		MinAmountCents:      item.MinAmountCents,
+		MaxDiscountCents:    item.MaxDiscountCents,
+		PlanID:              item.PlanID,
+		MaxRedemptions:      copyIntPointer(item.MaxRedemptions),
+		PerUserLimit:        item.PerUserLimit,
+		RedeemedCount:       item.RedeemedCount,
+		Status:              item.Status,
+		ExpiresAt:           item.ExpiresAt,
+		Description:         item.Description,
+		CreatedByUserID:     item.CreatedByUserID,
+		CreatedAt:           item.CreatedAt,
+		UpdatedAt:           item.UpdatedAt,
 	}
 }
 
@@ -2059,6 +2512,89 @@ func toDomainSubscription(item model.Subscription) domainbilling.Subscription {
 		AutoRenew:            item.AutoRenew,
 		CreatedAt:            item.CreatedAt,
 		UpdatedAt:            item.UpdatedAt,
+	}
+}
+
+func applyCouponOrderUse(tx *gorm.DB, input *repository.CouponOrderApplyInput, orderID uint) error {
+	if input == nil || input.CouponID == 0 || input.UserID == 0 || orderID == 0 || strings.TrimSpace(input.OrderNo) == "" {
+		return repository.ErrInvalidInput
+	}
+	if input.DiscountAmountCents <= 0 || input.OriginalAmountCents <= 0 || input.FinalAmountCents < 0 {
+		return repository.ErrInvalidInput
+	}
+	var coupon model.CouponCode
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ? AND status <> ?", input.CouponID, domainbilling.CouponStatusDeleted).
+		First(&coupon).Error; err != nil {
+		return translateError(err)
+	}
+	if err := validateCouponUsable(tx, coupon, input.UserID, input.OrderType, input.PlanID, input.OriginalAmountCents, time.Now()); err != nil {
+		return err
+	}
+	redemption := model.CouponRedemption{
+		CouponID:            coupon.ID,
+		UserID:              input.UserID,
+		OrderID:             orderID,
+		OrderNo:             strings.TrimSpace(input.OrderNo),
+		OrderType:           normalizeOrderType(input.OrderType),
+		OriginalAmountCents: clampNonNegative(input.OriginalAmountCents),
+		DiscountAmountCents: clampNonNegative(input.DiscountAmountCents),
+		FinalAmountCents:    clampNonNegative(input.FinalAmountCents),
+		SnapshotJSON:        firstNonEmpty(strings.TrimSpace(input.SnapshotJSON), "{}"),
+	}
+	if err := tx.Create(&redemption).Error; err != nil {
+		return translateError(err)
+	}
+	if err := tx.Model(&coupon).Update("redeemed_count", gorm.Expr("redeemed_count + ?", 1)).Error; err != nil {
+		return translateError(err)
+	}
+	return nil
+}
+
+func validateCouponUsable(tx *gorm.DB, coupon model.CouponCode, userID uint, orderType string, planID uint, originalAmountCents int64, now time.Time) error {
+	if coupon.Status != domainbilling.CouponStatusActive {
+		return repository.ErrRedemptionUnavailable
+	}
+	if coupon.ExpiresAt != nil && !coupon.ExpiresAt.After(now) {
+		return repository.ErrRedemptionUnavailable
+	}
+	if coupon.MaxRedemptions != nil && coupon.RedeemedCount >= *coupon.MaxRedemptions {
+		return repository.ErrRedemptionExhausted
+	}
+	if coupon.PerUserLimit <= 0 {
+		return repository.ErrInvalidInput
+	}
+	if originalAmountCents < coupon.MinAmountCents {
+		return repository.ErrRedemptionUnavailable
+	}
+	if coupon.PlanID > 0 && coupon.PlanID != planID {
+		return repository.ErrRedemptionUnavailable
+	}
+	if !couponScopeMatchesOrder(coupon.Scope, orderType) {
+		return repository.ErrRedemptionUnavailable
+	}
+	var used int64
+	if err := tx.Model(&model.CouponRedemption{}).
+		Where("coupon_id = ? AND user_id = ?", coupon.ID, userID).
+		Count(&used).Error; err != nil {
+		return translateError(err)
+	}
+	if used >= int64(coupon.PerUserLimit) {
+		return repository.ErrRedemptionUserLimitExceeded
+	}
+	return nil
+}
+
+func couponScopeMatchesOrder(scope string, orderType string) bool {
+	switch normalizeCouponScope(scope) {
+	case domainbilling.CouponScopeAll:
+		return true
+	case domainbilling.CouponScopeTopUp:
+		return strings.TrimSpace(orderType) == domainbilling.PaymentOrderTypeTopUp
+	case domainbilling.CouponScopeSubscription:
+		return strings.TrimSpace(orderType) == domainbilling.PaymentOrderTypeSubscription
+	default:
+		return false
 	}
 }
 
@@ -2286,6 +2822,54 @@ func grantSubscriptionOnTimeline(tx *gorm.DB, input subscriptionTimelineGrantReq
 		return nil, err
 	}
 	return applySubscriptionTimeline(tx, input.UserID, existing, segments, now, input.Plan.ID)
+}
+
+func grantLifetimeSubscription(tx *gorm.DB, subscription *domainbilling.Subscription, now time.Time) (*model.Subscription, error) {
+	if subscription == nil || subscription.UserID == 0 || subscription.PlanID == 0 || subscription.PriceID == 0 {
+		return nil, repository.ErrInvalidInput
+	}
+	if now.IsZero() {
+		now = time.Now()
+	}
+	var existing []model.Subscription
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("user_id = ? AND status = ?", subscription.UserID, "active").
+		Find(&existing).Error; err != nil {
+		return nil, translateError(err)
+	}
+	for _, item := range existing {
+		endAt := now
+		if item.CurrentPeriodStartAt.After(endAt) {
+			endAt = item.CurrentPeriodStartAt
+		}
+		if item.CurrentPeriodEndAt != nil && item.CurrentPeriodEndAt.Before(endAt) {
+			endAt = *item.CurrentPeriodEndAt
+		}
+		if err := tx.Model(&item).Updates(map[string]interface{}{
+			"status":                "expired",
+			"auto_renew":            false,
+			"cancel_at_period_end":  false,
+			"current_period_end_at": endAt,
+		}).Error; err != nil {
+			return nil, translateError(err)
+		}
+	}
+	record := model.Subscription{
+		UserID:               subscription.UserID,
+		PlanID:               subscription.PlanID,
+		PriceID:              subscription.PriceID,
+		Status:               "active",
+		StartAt:              now,
+		CurrentPeriodStartAt: now,
+		CurrentPeriodEndAt:   nil,
+		CancelAtPeriodEnd:    subscription.CancelAtPeriodEnd,
+		CanceledAt:           nil,
+		AutoRenew:            false,
+	}
+	if err := tx.Create(&record).Error; err != nil {
+		return nil, translateError(err)
+	}
+	return &record, nil
 }
 
 func applySubscriptionTimeline(
@@ -2736,6 +3320,37 @@ func normalizeRedemptionStatus(value string) string {
 		return domainbilling.RedemptionCodeStatusDeleted
 	default:
 		return domainbilling.RedemptionCodeStatusActive
+	}
+}
+
+func normalizeCouponScope(value string) string {
+	switch strings.TrimSpace(value) {
+	case domainbilling.CouponScopeTopUp:
+		return domainbilling.CouponScopeTopUp
+	case domainbilling.CouponScopeSubscription:
+		return domainbilling.CouponScopeSubscription
+	default:
+		return domainbilling.CouponScopeAll
+	}
+}
+
+func normalizeCouponDiscountType(value string) string {
+	switch strings.TrimSpace(value) {
+	case domainbilling.CouponDiscountTypeAmount:
+		return domainbilling.CouponDiscountTypeAmount
+	default:
+		return domainbilling.CouponDiscountTypePercent
+	}
+}
+
+func normalizeCouponStatus(value string) string {
+	switch strings.TrimSpace(value) {
+	case domainbilling.CouponStatusInactive:
+		return domainbilling.CouponStatusInactive
+	case domainbilling.CouponStatusDeleted:
+		return domainbilling.CouponStatusDeleted
+	default:
+		return domainbilling.CouponStatusActive
 	}
 }
 

@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { StreamdownRender } from "@/shared/components/markdown/streamdown-render";
 import { useSiteProfile } from "@/shared/site/site-profile-context";
 
 type LegalDocumentKind = "terms" | "privacy";
@@ -79,8 +80,8 @@ export function AgreementCheckbox({
           <DialogHeader>
             <DialogTitle>{activeDocument.title}</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60svh] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/35 px-3 py-3 text-xs leading-5 text-muted-foreground">
-            {activeDocument.content || t("empty")}
+          <div className="max-h-[60svh] overflow-y-auto rounded-md bg-muted/35 px-3 py-3 text-xs leading-5 text-muted-foreground">
+            <StreamdownRender content={activeDocument.content || t("empty")} className="text-xs" />
           </div>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setOpenDocument(null)}>

@@ -71,6 +71,7 @@ func toModelView(item repository.ChannelModelListRow) ModelView {
 	return ModelView{
 		ID:                 item.ID,
 		PlatformModelName:  item.PlatformModelName,
+		DisplayName:        item.DisplayName,
 		Vendor:             item.Vendor,
 		KindsJSON:          item.KindsJSON,
 		Icon:               item.Icon,
@@ -634,6 +635,14 @@ func normalizeModelIcon(raw string, vendor string, candidates ...string) string 
 		return icon
 	}
 	return resolveVendorIcon(normalizeModelVendor(vendor, candidates...))
+}
+
+func normalizeModelDisplayName(raw string) string {
+	value := strings.TrimSpace(raw)
+	if len([]rune(value)) > 128 {
+		return string([]rune(value)[:128])
+	}
+	return value
 }
 
 func shouldRefreshAutoIcon(item *domainchannel.PlatformModel) bool {

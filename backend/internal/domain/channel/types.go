@@ -67,6 +67,7 @@ type Upstream struct {
 type PlatformModel struct {
 	ID                 uint
 	PlatformModelName  string
+	DisplayName        string
 	Vendor             string
 	KindsJSON          string
 	Icon               string

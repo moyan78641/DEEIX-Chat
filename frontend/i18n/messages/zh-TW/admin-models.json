@@ -260,6 +260,8 @@
   "sheet": {
     "createTitle": "新建模型",
     "editTitle": "編輯模型",
+    "displayName": "展示名稱",
+    "displayNamePlaceholder": "留空則顯示平臺模型名",
     "vendor": "廠商",
     "unknownVendor": "未知",
     "vendorSearchPlaceholder": "搜尋廠商",

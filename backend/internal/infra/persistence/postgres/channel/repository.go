@@ -269,6 +269,9 @@ func (r *Repo) UpdateModel(ctx context.Context, modelID uint, input repository.U
 	if input.PlatformModelName != nil {
 		updates["name"] = *input.PlatformModelName
 	}
+	if input.DisplayName != nil {
+		updates["display_name"] = *input.DisplayName
+	}
 	if input.Vendor != nil {
 		updates["vendor"] = *input.Vendor
 	}
@@ -451,7 +454,7 @@ func (r *Repo) modelListQuery(ctx context.Context) *gorm.DB {
 	return r.db.WithContext(ctx).
 		Table("llm_platform_models AS m").
 		Select(
-			"m.id, m.name AS platform_model_name, m.vendor, m.kinds_json, m.icon, m.capabilities_json, m.system_prompt, m.access_scope, m.status, m.description, m.cb_policy_mode, m.cb_failure_threshold, m.cb_duration_min, m.cb_window_min, m.sort_order, m.created_at, m.updated_at, " +
+			"m.id, m.name AS platform_model_name, m.display_name, m.vendor, m.kinds_json, m.icon, m.capabilities_json, m.system_prompt, m.access_scope, m.status, m.description, m.cb_policy_mode, m.cb_failure_threshold, m.cb_duration_min, m.cb_window_min, m.sort_order, m.created_at, m.updated_at, " +
 				"COALESCE(stats.source_count, 0) AS source_count, COALESCE(stats.active_source_count, 0) AS active_source_count, '[]' AS protocols_json, '[]' AS upstream_names_json",
 		).
 		Joins(
@@ -577,7 +580,7 @@ func applyModelListFilters(query *gorm.DB, input repository.ListChannelModelsInp
 	}
 	if keyword := strings.TrimSpace(input.Query); keyword != "" {
 		like := "%" + strings.ToLower(keyword) + "%"
-		query = query.Where("LOWER(m.name) LIKE ? OR LOWER(m.vendor) LIKE ? OR LOWER(m.description) LIKE ?", like, like, like)
+		query = query.Where("LOWER(m.name) LIKE ? OR LOWER(m.display_name) LIKE ? OR LOWER(m.vendor) LIKE ? OR LOWER(m.description) LIKE ?", like, like, like, like)
 	}
 	if vendor := strings.TrimSpace(input.Vendor); vendor != "" {
 		query = query.Where("m.vendor = ?", vendor)
@@ -1524,6 +1527,7 @@ func toPlatformModelDomain(item model.LLMPlatformModel) domainchannel.PlatformMo
 	return domainchannel.PlatformModel{
 		ID:                 item.ID,
 		PlatformModelName:  item.Name,
+		DisplayName:        item.DisplayName,
 		Vendor:             item.Vendor,
 		KindsJSON:          item.KindsJSON,
 		Icon:               item.Icon,
@@ -1548,6 +1552,7 @@ func toPlatformModelModel(item *domainchannel.PlatformModel) model.LLMPlatformMo
 	}
 	return model.LLMPlatformModel{
 		Name:               item.PlatformModelName,
+		DisplayName:        item.DisplayName,
 		Vendor:             item.Vendor,
 		KindsJSON:          item.KindsJSON,
 		Icon:               item.Icon,

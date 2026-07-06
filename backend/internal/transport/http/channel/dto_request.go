@@ -48,6 +48,7 @@ type UpdateUpstreamRequest struct {
 // CreateModelRequest 创建模型请求。
 type CreateModelRequest struct {
 	PlatformModelName  string `json:"platformModelName" binding:"required,min=2,max=128"`
+	DisplayName        string `json:"displayName" binding:"omitempty,max=128"`
 	Vendor             string `json:"vendor" binding:"omitempty,max=64"`
 	KindsJSON          string `json:"kindsJSON" binding:"omitempty,max=1000"`
 	Icon               string `json:"icon" binding:"max=128"`
@@ -65,6 +66,7 @@ type CreateModelRequest struct {
 // UpdateModelRequest 更新模型请求。
 type UpdateModelRequest struct {
 	PlatformModelName  *string `json:"platformModelName" binding:"omitempty,min=2,max=128"`
+	DisplayName        *string `json:"displayName" binding:"omitempty,max=128"`
 	Vendor             *string `json:"vendor" binding:"omitempty,max=64"`
 	KindsJSON          *string `json:"kindsJSON" binding:"omitempty,max=1000"`
 	Icon               *string `json:"icon" binding:"omitempty,max=128"`

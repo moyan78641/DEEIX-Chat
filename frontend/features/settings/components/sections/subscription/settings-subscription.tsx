@@ -17,6 +17,7 @@ import {
   listBillingMonthlyUsage,
   listBillingPlans,
   listBillingUsage,
+  purchaseBillingPlanWithBalance,
   redeemBillingCode,
   subscribeBillingPlan,
 } from "@/shared/api/billing";
@@ -104,13 +105,16 @@ export function SettingsSubscription() {
   const [usageLoading, setUsageLoading] = React.useState(true);
   const [checkoutPriceID, setCheckoutPriceID] = React.useState<number | null>(null);
   const [topUpAmount, setTopUpAmount] = React.useState("20");
+  const [topUpCouponCode, setTopUpCouponCode] = React.useState("");
   const [topUpLoading, setTopUpLoading] = React.useState(false);
+  const [balancePurchaseLoading, setBalancePurchaseLoading] = React.useState(false);
   const [pricingDialogOpen, setPricingDialogOpen] = React.useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = React.useState(false);
   const [selectedPlan, setSelectedPlan] = React.useState<BillingPlanDTO | null>(null);
   const [selectedPrice, setSelectedPrice] = React.useState<BillingPlanPriceDTO | null>(null);
   const [selectedPaymentProvider, setSelectedPaymentProvider] = React.useState<PaymentProvider>("stripe");
   const [selectedEPayType, setSelectedEPayType] = React.useState("alipay");
+  const [subscriptionCouponCode, setSubscriptionCouponCode] = React.useState("");
   const [topUpDialogOpen, setTopUpDialogOpen] = React.useState(false);
   const [redemptionDialogOpen, setRedemptionDialogOpen] = React.useState(false);
   const [topUpAgreementAccepted, setTopUpAgreementAccepted] = React.useState(false);
@@ -257,6 +261,7 @@ export function SettingsSubscription() {
         cycles: 1,
         paymentProvider,
         epayType: paymentProvider === "epay" ? epayType : undefined,
+        couponCode: subscriptionCouponCode.trim() || undefined,
         successURL: `${window.location.origin}/setting/subscription?payment=success`,
         cancelURL: `${window.location.origin}/setting/subscription?payment=cancel`,
         termsAccepted: true,
@@ -272,7 +277,7 @@ export function SettingsSubscription() {
     } finally {
       setCheckoutPriceID(null);
     }
-  }, [accessToken, resolveErrorMessage, t]);
+  }, [accessToken, resolveErrorMessage, subscriptionCouponCode, t]);
 
   const handleSubscribeFreePlan = React.useCallback(async (price: BillingPlanPriceDTO) => {
     setCheckoutPriceID(price.id);
@@ -309,6 +314,7 @@ export function SettingsSubscription() {
         cycles: 1,
         paymentProvider: selectedPaymentProvider,
         epayType: selectedPaymentProvider === "epay" ? selectedEPayType : undefined,
+        couponCode: topUpCouponCode.trim() || undefined,
         successURL: `${window.location.origin}/setting/subscription?payment=success`,
         cancelURL: `${window.location.origin}/setting/subscription?payment=cancel`,
         termsAccepted: true,
@@ -324,7 +330,7 @@ export function SettingsSubscription() {
     } finally {
       setTopUpLoading(false);
     }
-  }, [accessToken, resolveErrorMessage, selectedEPayType, selectedPaymentProvider, t, topUpAgreementAccepted, topUpAmount]);
+  }, [accessToken, resolveErrorMessage, selectedEPayType, selectedPaymentProvider, t, topUpAgreementAccepted, topUpAmount, topUpCouponCode]);
 
   const handleRedeemCode = React.useCallback(async () => {
     const code = redemptionCode.trim();
@@ -391,6 +397,8 @@ export function SettingsSubscription() {
         }
         setSelectedPlan(plan);
         setSelectedPrice(price);
+        setSubscriptionAgreementAccepted(false);
+        setSubscriptionCouponCode("");
         setPricingDialogOpen(false);
         setPaymentDialogOpen(true);
         return;
@@ -415,6 +423,38 @@ export function SettingsSubscription() {
     }
     await handleCheckout(selectedPrice, selectedPaymentProvider, selectedEPayType);
   }, [handleCheckout, selectedEPayType, selectedPaymentProvider, selectedPrice, subscriptionAgreementAccepted, t]);
+
+  const handleBalancePurchase = React.useCallback(async () => {
+    if (!subscriptionAgreementAccepted) {
+      toast.error(t("toasts.agreementRequired"));
+      return;
+    }
+    if (!selectedPrice) {
+      toast.error(t("toasts.noPlanSelected"), { description: t("toasts.noPlanSelectedDescription") });
+      return;
+    }
+    setBalancePurchaseLoading(true);
+    setCheckoutPriceID(selectedPrice.id);
+    try {
+      const data = await purchaseBillingPlanWithBalance(accessToken, {
+        priceID: selectedPrice.id,
+        cycles: 1,
+        couponCode: subscriptionCouponCode.trim() || undefined,
+        termsAccepted: true,
+        privacyAccepted: true,
+      });
+      setBillingOverview(data.overview);
+      setPaymentDialogOpen(false);
+      setPricingDialogOpen(false);
+      setSubscriptionCouponCode("");
+      toast.success(t("toasts.balancePurchaseSucceeded"));
+    } catch (error) {
+      toast.error(t("toasts.balancePurchaseFailed"), { description: resolveErrorMessage(error, t("toasts.retryLater")) });
+    } finally {
+      setCheckoutPriceID(null);
+      setBalancePurchaseLoading(false);
+    }
+  }, [accessToken, resolveErrorMessage, selectedPrice, subscriptionAgreementAccepted, subscriptionCouponCode, t]);
 
   const periodCredit = billingOverview?.periodCreditUSD ?? currentPlan?.periodCreditUSD ?? 0;
   const periodUsed = billingOverview?.periodUsedUSD ?? 0;
@@ -450,7 +490,9 @@ export function SettingsSubscription() {
         selectedPrice={selectedPrice}
         selectedPaymentProvider={selectedPaymentProvider}
         selectedEPayType={selectedEPayType}
+        subscriptionCouponCode={subscriptionCouponCode}
         checkoutPriceID={checkoutPriceID}
+        balancePurchaseLoading={balancePurchaseLoading}
         pricingDialogOpen={pricingDialogOpen}
         paymentDialogOpen={paymentDialogOpen}
         protectedPaidPlanRank={protectedPaidPlanRank}
@@ -463,19 +505,28 @@ export function SettingsSubscription() {
         onAgreementAcceptedChange={setSubscriptionAgreementAccepted}
         onOpenTopUpDialog={() => {
           setTopUpAgreementAccepted(false);
+          setTopUpCouponCode("");
           setTopUpDialogOpen(true);
         }}
         onPricingDialogOpenChange={(open) => {
           if (open) {
             setSubscriptionAgreementAccepted(false);
+            setSubscriptionCouponCode("");
           }
           setPricingDialogOpen(open);
         }}
-        onPaymentDialogOpenChange={setPaymentDialogOpen}
+        onPaymentDialogOpenChange={(open) => {
+          if (!open) {
+            setSubscriptionCouponCode("");
+          }
+          setPaymentDialogOpen(open);
+        }}
         onSelectPlan={(plan, price, isCurrent) => void handleSelectPlan(plan, price, isCurrent)}
         onPaymentProviderChange={setSelectedPaymentProvider}
         onEPayTypeChange={setSelectedEPayType}
+        onSubscriptionCouponCodeChange={setSubscriptionCouponCode}
         onConfirmPayment={() => void handleConfirmPayment()}
+        onBalancePurchase={() => void handleBalancePurchase()}
       />
 
       <section className="space-y-6 px-0.5 md:space-y-7 xl:space-y-8 xl:px-1">
@@ -524,6 +575,7 @@ export function SettingsSubscription() {
         open={topUpDialogOpen}
         onOpenChange={setTopUpDialogOpen}
         amount={topUpAmount}
+        couponCode={topUpCouponCode}
         currentBalance={formatAccountBalance(billingAccount?.balanceUSD ?? 0, billingDisplay)}
         billingLoading={billingLoading}
         topUpLoading={topUpLoading}
@@ -537,6 +589,7 @@ export function SettingsSubscription() {
         agreementAccepted={topUpAgreementAccepted}
         onAgreementAcceptedChange={setTopUpAgreementAccepted}
         onAmountChange={setTopUpAmount}
+        onCouponCodeChange={setTopUpCouponCode}
         onPaymentProviderChange={setSelectedPaymentProvider}
         onEPayTypeChange={setSelectedEPayType}
         onSubmit={() => void handleTopUp()}

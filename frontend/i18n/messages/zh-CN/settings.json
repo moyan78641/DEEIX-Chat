@@ -601,12 +601,17 @@
       "card": "银行卡",
       "disabled": "未开启",
       "continue": "继续支付",
+      "balancePay": "余额购买",
       "epay": {
         "alipay": "支付宝",
         "wxpay": "微信支付",
         "qqpay": "QQ 钱包",
         "custom": "自定义 · {type}"
       }
+    },
+    "coupon": {
+      "code": "优惠码",
+      "placeholder": "可选"
     },
     "topUp": {
       "title": "充值",
@@ -644,7 +649,9 @@
       "agreementRequired": "请先阅读并同意服务条款和隐私政策。",
       "invalidRedemptionCode": "请输入兑换码。",
       "redemptionSucceeded": "兑换成功",
-      "redemptionFailed": "兑换失败"
+      "redemptionFailed": "兑换失败",
+      "balancePurchaseSucceeded": "余额购买成功",
+      "balancePurchaseFailed": "余额购买失败"
     }
   }
 }

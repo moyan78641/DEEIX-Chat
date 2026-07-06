@@ -53,4 +53,16 @@ var (
 	ErrRedemptionCodeExhausted = errors.New("redemption code exhausted")
 	// ErrRedemptionUserLimitExceeded 当前用户已达到兑换次数上限。
 	ErrRedemptionUserLimitExceeded = errors.New("redemption user limit exceeded")
+	// ErrInvalidCouponCode 优惠码格式或配置非法。
+	ErrInvalidCouponCode = errors.New("invalid coupon code")
+	// ErrCouponCodeConflict 优惠码明文对应的哈希已存在。
+	ErrCouponCodeConflict = errors.New("coupon code already exists")
+	// ErrCouponCodeUnavailable 优惠码不存在、停用、过期或不适用于当前订单。
+	ErrCouponCodeUnavailable = errors.New("coupon code is unavailable")
+	// ErrCouponCodePlaintextUnavailable 优惠码未保存可解密密文，无法再次展示明文。
+	ErrCouponCodePlaintextUnavailable = errors.New("coupon code plaintext unavailable")
+	// ErrCouponCodeExhausted 优惠码总次数已用完。
+	ErrCouponCodeExhausted = errors.New("coupon code exhausted")
+	// ErrCouponUserLimitExceeded 当前用户已达到优惠码使用次数上限。
+	ErrCouponUserLimitExceeded = errors.New("coupon user limit exceeded")
 )

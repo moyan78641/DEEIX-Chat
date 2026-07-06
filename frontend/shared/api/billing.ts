@@ -1,6 +1,8 @@
 import { authedRequest } from "@/shared/api/authed-client";
 import type { PagePayload } from "@/shared/api/common.types";
 import type {
+  BalanceSubscriptionPurchaseData,
+  BalanceSubscriptionPurchaseRequest,
   BillingAccountData,
   BillingConfigData,
   BillingOverviewData,
@@ -103,6 +105,17 @@ export async function subscribeBillingPlan(
   return authedRequest<SubscribeData>(
     "/api/v1/billing/subscriptions",
     { method: "POST", accessToken, body: { priceID: priceID, cycles: 1, ...(legalConsent ?? {}) } },
+    true,
+  );
+}
+
+export async function purchaseBillingPlanWithBalance(
+  accessToken: string,
+  payload: BalanceSubscriptionPurchaseRequest,
+): Promise<BalanceSubscriptionPurchaseData> {
+  return authedRequest<BalanceSubscriptionPurchaseData>(
+    "/api/v1/billing/subscriptions/balance",
+    { method: "POST", accessToken, body: payload },
     true,
   );
 }

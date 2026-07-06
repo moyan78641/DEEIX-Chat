@@ -43,6 +43,7 @@ type UpdateUpstreamInput struct {
 // CreateModelInput 定义创建模型入参。
 type CreateModelInput struct {
 	PlatformModelName  string
+	DisplayName        string
 	Vendor             string
 	KindsJSON          string
 	Icon               string
@@ -60,6 +61,7 @@ type CreateModelInput struct {
 // UpdateModelInput 定义更新模型入参。
 type UpdateModelInput struct {
 	PlatformModelName  *string
+	DisplayName        *string
 	Vendor             *string
 	KindsJSON          *string
 	Icon               *string

@@ -422,6 +422,14 @@ function resolveRedemptionCodeValidationMessage(error: ApiError, locale: AppLoca
   return lookupErrorMessage(locale, `billing.redemption_validation.${reason}`);
 }
 
+function resolveCouponCodeValidationMessage(error: ApiError, locale: AppLocale): string | undefined {
+  if (error.errorCode !== "billing.invalid_coupon_code") return undefined;
+  if (!isRedemptionCodeErrorDetails(error.details) || typeof error.details.reason !== "string") return undefined;
+  const reason = error.details.reason.trim();
+  if (!reason) return undefined;
+  return lookupErrorMessage(locale, `billing.coupon_validation.${reason}`);
+}
+
 export function resolveLocalizedErrorMessage(error: unknown, fallback?: string): string {
   const locale = readClientLocale();
   if (error instanceof ApiError && error.errorCode) {
@@ -438,6 +446,11 @@ export function resolveLocalizedErrorMessage(error: unknown, fallback?: string):
     const redemptionCodeValidationMessage = resolveRedemptionCodeValidationMessage(error, locale);
     if (redemptionCodeValidationMessage) {
       return redemptionCodeValidationMessage;
+    }
+
+    const couponCodeValidationMessage = resolveCouponCodeValidationMessage(error, locale);
+    if (couponCodeValidationMessage) {
+      return couponCodeValidationMessage;
     }
 
     const translated = lookupErrorMessage(locale, error.errorCode);

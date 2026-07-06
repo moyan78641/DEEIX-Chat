@@ -260,6 +260,8 @@
   "sheet": {
     "createTitle": "Create model",
     "editTitle": "Edit model",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "Empty uses the platform model name",
     "vendor": "Vendor",
     "unknownVendor": "Unknown",
     "vendorSearchPlaceholder": "Search vendors",

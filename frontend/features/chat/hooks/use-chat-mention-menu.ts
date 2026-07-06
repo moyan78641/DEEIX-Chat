@@ -320,13 +320,13 @@ function resolveToolDescription(tool: MCPToolDTO): string {
 function filterModels(modelOptions: ChatModelOption[], query: string): ChatMentionModelMenuItem[] {
   return modelOptions
     .filter((model) =>
-      itemMatchesQuery([model.platformModelName, model.vendor], query),
+      itemMatchesQuery([model.displayName, model.platformModelName, model.vendor], query),
     )
     .map((model) => ({
       id: `model:${model.platformModelName}`,
       kind: "model" as const,
-      label: model.platformModelName,
-      description: model.vendor,
+      label: model.displayName?.trim() || model.platformModelName,
+      description: [model.displayName?.trim() ? model.platformModelName : "", model.vendor].filter(Boolean).join(" - "),
       model,
       selected: false,
     }));

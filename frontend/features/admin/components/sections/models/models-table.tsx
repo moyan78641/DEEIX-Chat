@@ -378,7 +378,9 @@ const ModelTableRow = React.memo(function ModelTableRow({
   const iconURL = resolveLobeHubIconURL(identity.modelIcon);
   const vendorIdentity = resolveVendorIdentity(item.vendor);
   const vendorIconURL = resolveLobeHubIconURL(vendorIdentity.vendorIcon);
-  const titleText = item.platformModelName.trim();
+  const displayName = item.displayName?.trim() || item.platformModelName.trim();
+  const titleText = displayName;
+  const showPlatformName = displayName !== item.platformModelName.trim();
   const protocols = resolveModelProtocols(item);
   const availability = resolveModelAvailability(item);
   const muted = availability !== "available";
@@ -406,8 +408,15 @@ const ModelTableRow = React.memo(function ModelTableRow({
           <div className="flex min-w-0 items-center gap-2">
             <ModelAvailabilityBadge availability={availability} />
             <LobeHubIcon iconUrl={iconURL} label={titleText} />
-            <span className={cn("min-w-0 flex-1 truncate text-xs font-medium leading-5", muted ? "text-muted-foreground" : "text-foreground")}>
-              {titleText}
+            <span className="min-w-0 flex-1">
+              <span className={cn("block truncate text-xs font-medium leading-4", muted ? "text-muted-foreground" : "text-foreground")}>
+                {titleText}
+              </span>
+              {showPlatformName ? (
+                <span className="block truncate text-[10px] leading-3 text-muted-foreground">
+                  {item.platformModelName}
+                </span>
+              ) : null}
             </span>
           </div>
         </TableCell>

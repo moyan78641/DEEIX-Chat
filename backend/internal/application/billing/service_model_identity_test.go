@@ -197,6 +197,9 @@ func (r *billingRepositoryStub) UpdatePlanWithDefaultPrice(_ context.Context, pl
 	r.updatedPrice = price
 	return nil
 }
+func (r *billingRepositoryStub) ReorderPlans(context.Context, []uint) error {
+	return nil
+}
 func (r *billingRepositoryStub) ListCurrentSubscriptionsByUserIDs(context.Context, []uint, time.Time) ([]domainbilling.Subscription, error) {
 	panic("not used")
 }
@@ -221,11 +224,28 @@ func (r *billingRepositoryStub) ReplaceSubscription(_ context.Context, item *dom
 	r.replacedSubscription = item
 	return nil
 }
-func (r *billingRepositoryStub) CreatePaymentOrder(_ context.Context, item *domainbilling.PaymentOrder) (*domainbilling.PaymentOrder, error) {
+func (r *billingRepositoryStub) CreatePaymentOrder(_ context.Context, item *domainbilling.PaymentOrder, _ *repository.CouponOrderApplyInput) (*domainbilling.PaymentOrder, error) {
 	if item.ID == 0 {
 		item.ID = 1
 	}
 	return item, nil
+}
+func (r *billingRepositoryStub) CreateBalanceSubscriptionOrder(_ context.Context, item *domainbilling.PaymentOrder, subscription *domainbilling.Subscription, debitNanousd int64, _ *repository.CouponOrderApplyInput) (*domainbilling.PaymentOrder, *domainbilling.BillingAccount, *domainbilling.Subscription, error) {
+	account := r.account
+	if account == nil {
+		account = &domainbilling.BillingAccount{UserID: item.UserID, Currency: "USD", Status: "active", BalanceNanousd: debitNanousd}
+	}
+	if account.BalanceNanousd < debitNanousd {
+		return nil, nil, nil, repository.ErrInsufficientBalance
+	}
+	account.BalanceNanousd -= debitNanousd
+	if item.ID == 0 {
+		item.ID = 1
+	}
+	if subscription.ID == 0 {
+		subscription.ID = 1
+	}
+	return item, account, subscription, nil
 }
 func (r *billingRepositoryStub) UpdatePaymentOrderCheckout(context.Context, string, string, string) error {
 	panic("not used")
@@ -273,6 +293,27 @@ func (r *billingRepositoryStub) SetBillingAccountBalance(context.Context, uint, 
 	panic("not used")
 }
 func (r *billingRepositoryStub) MarkPaymentOrderPaidAndCreditBalance(context.Context, string, string, time.Time) (*domainbilling.PaymentOrder, bool, error) {
+	panic("not used")
+}
+func (r *billingRepositoryStub) ListCouponCodes(context.Context, repository.CouponCodeListFilter, int, int) ([]domainbilling.CouponCode, int64, error) {
+	panic("not used")
+}
+func (r *billingRepositoryStub) GetCouponCodeByID(context.Context, uint) (*domainbilling.CouponCode, error) {
+	panic("not used")
+}
+func (r *billingRepositoryStub) GetCouponCodeByHash(context.Context, string) (*domainbilling.CouponCode, error) {
+	panic("not used")
+}
+func (r *billingRepositoryStub) CountCouponRedemptionsByUser(context.Context, uint, uint) (int64, error) {
+	return 0, nil
+}
+func (r *billingRepositoryStub) CreateCouponCode(context.Context, *domainbilling.CouponCode) (*domainbilling.CouponCode, error) {
+	panic("not used")
+}
+func (r *billingRepositoryStub) PatchCouponCode(context.Context, uint, repository.CouponCodePatch) (*domainbilling.CouponCode, error) {
+	panic("not used")
+}
+func (r *billingRepositoryStub) DeleteCouponCode(context.Context, uint) error {
 	panic("not used")
 }
 func (r *billingRepositoryStub) ListRedemptionCodes(context.Context, repository.RedemptionCodeListFilter, int, int) ([]domainbilling.RedemptionCode, int64, error) {

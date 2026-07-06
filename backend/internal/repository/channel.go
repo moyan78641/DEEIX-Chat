@@ -217,6 +217,7 @@ type ListChannelModelsInput struct {
 // UpdateChannelModelInput 定义平台模型更新字段。
 type UpdateChannelModelInput struct {
 	PlatformModelName  *string
+	DisplayName        *string
 	Vendor             *string
 	KindsJSON          *string
 	Icon               *string
@@ -323,6 +324,7 @@ func (input UpdateChannelPlatformRouteInput) IsZero() bool {
 // IsZero 判断是否没有任何更新字段。
 func (input UpdateChannelModelInput) IsZero() bool {
 	return input.PlatformModelName == nil &&
+		input.DisplayName == nil &&
 		input.Vendor == nil &&
 		input.KindsJSON == nil &&
 		input.Icon == nil &&

@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -26,10 +26,14 @@ export function PeriodBillingTable({
   plans,
   loading,
   onEdit,
+  onMove,
+  movingPlanID,
 }: {
   plans: AdminBillingPlanDTO[];
   loading: boolean;
   onEdit: (plan: AdminBillingPlanDTO) => void;
+  onMove?: (planID: number, direction: "up" | "down") => void;
+  movingPlanID?: number | null;
 }) {
   const t = useTranslations("adminBilling");
   const initialLoading = loading && plans.length === 0;
@@ -44,14 +48,14 @@ export function PeriodBillingTable({
           <TableHead>{t("plans.tablePrice")}</TableHead>
           <TableHead>{t("plans.tableCredit")}</TableHead>
           <TableHead>{t("plans.tableDiscount")}</TableHead>
-          <TableHead stickyEnd className="w-[56px]" />
+          <TableHead stickyEnd className="w-[96px]" />
         </TableRow>
       </TableHeader>
       <TableBody>
         {initialLoading ? <TableLoadingRow colSpan={6} /> : null}
         {!loading && plans.length === 0 ? <TableEmptyRow colSpan={6}>{t("plans.empty")}</TableEmptyRow> : null}
         {showPlans
-          ? plans.map((plan) => {
+          ? plans.map((plan, index) => {
               const defaultPrice = plan.prices.find((item) => item.isDefault) || plan.prices[0];
               return (
                 <TableRow key={plan.id}>
@@ -79,8 +83,34 @@ export function PeriodBillingTable({
                     </span>
                   </TableCell>
                   <TableCell className="py-1.5">{plan.discountPercent}%</TableCell>
-                  <TableCell stickyEnd className="w-[56px] py-1.5 text-right">
+                  <TableCell stickyEnd className="w-[96px] py-1.5 text-right">
                     <div className="flex h-7 items-center justify-end">
+                      {onMove ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="h-7 w-7 text-muted-foreground shadow-none"
+                            disabled={loading || movingPlanID === plan.id || index === 0}
+                            onClick={() => onMove(plan.id, "up")}
+                            aria-label={t("plans.moveUp")}
+                          >
+                            <ArrowUp className="size-3.5 stroke-1" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="h-7 w-7 text-muted-foreground shadow-none"
+                            disabled={loading || movingPlanID === plan.id || index === plans.length - 1}
+                            onClick={() => onMove(plan.id, "down")}
+                            aria-label={t("plans.moveDown")}
+                          >
+                            <ArrowDown className="size-3.5 stroke-1" />
+                          </Button>
+                        </>
+                      ) : null}
                       <Button
                         type="button"
                         variant="ghost"

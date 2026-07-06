@@ -32,6 +32,7 @@ type TopUpDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   amount: string;
+  couponCode: string;
   currentBalance: string;
   billingLoading: boolean;
   topUpLoading: boolean;
@@ -48,6 +49,7 @@ type TopUpDialogProps = {
     custom: (type: string) => string;
   };
   onAmountChange: (value: string) => void;
+  onCouponCodeChange: (value: string) => void;
   onPaymentProviderChange: (provider: PaymentProvider) => void;
   onEPayTypeChange: (type: string) => void;
   onSubmit: () => void;
@@ -59,6 +61,7 @@ export function TopUpDialog({
   open,
   onOpenChange,
   amount,
+  couponCode,
   currentBalance,
   billingLoading,
   topUpLoading,
@@ -70,6 +73,7 @@ export function TopUpDialog({
   billingDisplay,
   epayLabels,
   onAmountChange,
+  onCouponCodeChange,
   onPaymentProviderChange,
   onEPayTypeChange,
   onSubmit,
@@ -111,6 +115,19 @@ export function TopUpDialog({
               aria-label={t("topUp.amountAria")}
             />
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">{t("coupon.code")}</p>
+          <Input
+            value={couponCode}
+            autoComplete="off"
+            className="font-mono"
+            placeholder={t("coupon.placeholder")}
+            disabled={billingLoading || topUpLoading || paymentDisabled}
+            onChange={(event) => onCouponCodeChange(event.target.value)}
+            aria-label={t("coupon.code")}
+          />
         </div>
 
         {!paymentDisabled ? (

@@ -322,6 +322,7 @@ type PaymentOrderInput struct {
 	Provider             string
 	USDToCNYRate         float64
 	PreferredPayCurrency string
+	CouponCode           string
 }
 
 // TopUpPaymentOrderInput 定义创建按量充值支付单入参。
@@ -332,6 +333,15 @@ type TopUpPaymentOrderInput struct {
 	Provider             string
 	USDToCNYRate         float64
 	PreferredPayCurrency string
+	CouponCode           string
+}
+
+// BalanceSubscriptionPurchaseInput 定义使用站内余额购买套餐的入参。
+type BalanceSubscriptionPurchaseInput struct {
+	UserID     uint
+	PriceID    uint
+	Cycles     int
+	CouponCode string
 }
 
 type paymentQuote struct {
@@ -802,9 +812,18 @@ func (s *Service) CreatePaymentOrder(ctx context.Context, input PaymentOrderInpu
 		return nil, nil, nil, repository.ErrInvalidInput
 	}
 	baseCurrency := normalizeCurrency(price.Currency)
-	baseAmountCents := price.AmountCents * int64(cycles)
-	if baseAmountCents <= 0 {
+	originalBaseAmountCents := price.AmountCents * int64(cycles)
+	if originalBaseAmountCents <= 0 {
 		return nil, nil, nil, repository.ErrInvalidInput
+	}
+	baseAmountCents := originalBaseAmountCents
+	couponQuote, err := s.ResolveCouponQuote(ctx, input.UserID, input.CouponCode, domainbilling.PaymentOrderTypeSubscription, plan.ID, originalBaseAmountCents, false)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	couponApply := (*repository.CouponOrderApplyInput)(nil)
+	if couponQuote != nil {
+		baseAmountCents = couponQuote.FinalAmountCents
 	}
 	quote := resolvePaymentQuote(provider, baseCurrency, baseAmountCents, input.USDToCNYRate, input.PreferredPayCurrency)
 	if quote.PayAmountCents <= 0 {
@@ -818,42 +837,52 @@ func (s *Service) CreatePaymentOrder(ctx context.Context, input PaymentOrderInpu
 	now := time.Now()
 	expiredAt := now.Add(30 * time.Minute)
 	snapshot := map[string]interface{}{
-		"plan_id":           plan.ID,
-		"plan_code":         plan.Code,
-		"plan_name":         plan.Name,
-		"price_id":          price.ID,
-		"price_code":        price.Code,
-		"billing_interval":  price.BillingInterval,
-		"cycles":            cycles,
-		"base_currency":     quote.BaseCurrency,
-		"base_amount_cents": quote.BaseAmountCents,
-		"pay_currency":      quote.PayCurrency,
-		"pay_amount_cents":  quote.PayAmountCents,
-		"fx_rate":           formatFXRate(quote.FXRate),
-		"provider":          provider,
+		"plan_id":                    plan.ID,
+		"plan_code":                  plan.Code,
+		"plan_name":                  plan.Name,
+		"price_id":                   price.ID,
+		"price_code":                 price.Code,
+		"billing_interval":           price.BillingInterval,
+		"cycles":                     cycles,
+		"original_base_amount_cents": originalBaseAmountCents,
+		"discount_amount_cents":      discountAmountCents(couponQuote),
+		"base_currency":              quote.BaseCurrency,
+		"base_amount_cents":          quote.BaseAmountCents,
+		"pay_currency":               quote.PayCurrency,
+		"pay_amount_cents":           quote.PayAmountCents,
+		"fx_rate":                    formatFXRate(quote.FXRate),
+		"provider":                   provider,
+	}
+	if couponQuote != nil {
+		snapshot["coupon"] = json.RawMessage(couponQuote.SnapshotJSON)
+		couponApply = couponOrderApplyInput(couponQuote, input.UserID, orderNo, domainbilling.PaymentOrderTypeSubscription, plan.ID)
 	}
 	snapshotJSON := "{}"
 	if raw, marshalErr := json.Marshal(snapshot); marshalErr == nil {
 		snapshotJSON = string(raw)
 	}
 	order, err := s.repo.CreatePaymentOrder(ctx, &domainbilling.PaymentOrder{
-		OrderNo:         orderNo,
-		OrderType:       domainbilling.PaymentOrderTypeSubscription,
-		UserID:          input.UserID,
-		PlanID:          plan.ID,
-		PriceID:         price.ID,
-		Provider:        provider,
-		Status:          domainbilling.PaymentStatusPending,
-		BaseCurrency:    quote.BaseCurrency,
-		BaseAmountCents: quote.BaseAmountCents,
-		PayCurrency:     quote.PayCurrency,
-		PayAmountCents:  quote.PayAmountCents,
-		FXRate:          formatFXRate(quote.FXRate),
-		BillingInterval: price.BillingInterval,
-		Cycles:          cycles,
-		ExpiredAt:       &expiredAt,
-		SnapshotJSON:    snapshotJSON,
-	})
+		OrderNo:                 orderNo,
+		OrderType:               domainbilling.PaymentOrderTypeSubscription,
+		UserID:                  input.UserID,
+		PlanID:                  plan.ID,
+		PriceID:                 price.ID,
+		Provider:                provider,
+		Status:                  domainbilling.PaymentStatusPending,
+		BaseCurrency:            quote.BaseCurrency,
+		BaseAmountCents:         quote.BaseAmountCents,
+		OriginalBaseAmountCents: originalBaseAmountCents,
+		DiscountAmountCents:     discountAmountCents(couponQuote),
+		CouponID:                couponID(couponQuote),
+		CouponCode:              couponCodeHint(couponQuote),
+		PayCurrency:             quote.PayCurrency,
+		PayAmountCents:          quote.PayAmountCents,
+		FXRate:                  formatFXRate(quote.FXRate),
+		BillingInterval:         price.BillingInterval,
+		Cycles:                  cycles,
+		ExpiredAt:               &expiredAt,
+		SnapshotJSON:            snapshotJSON,
+	}, couponApply)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -889,12 +918,24 @@ func (s *Service) CreateTopUpPaymentOrder(ctx context.Context, input TopUpPaymen
 		return nil, repository.ErrInvalidInput
 	}
 	creditNanousd := usdToNanousd(baseAmountUSD)
-	baseAmountCents := int64(math.Round(baseAmountUSD * 100))
+	originalBaseAmountCents := int64(math.Round(baseAmountUSD * 100))
+	if originalBaseAmountCents <= 0 {
+		return nil, repository.ErrInvalidInput
+	}
+	baseAmountCents := originalBaseAmountCents
+	couponQuote, err := s.ResolveCouponQuote(ctx, input.UserID, input.CouponCode, domainbilling.PaymentOrderTypeTopUp, 0, originalBaseAmountCents, false)
+	if err != nil {
+		return nil, err
+	}
+	couponApply := (*repository.CouponOrderApplyInput)(nil)
+	if couponQuote != nil {
+		baseAmountCents = couponQuote.FinalAmountCents
+	}
 	quote := resolvePaymentQuote(provider, baseCurrency, baseAmountCents, rate, input.PreferredPayCurrency)
-	if quote.PayCurrency == amountCurrency {
+	if couponQuote == nil && quote.PayCurrency == amountCurrency {
 		quote.PayAmountCents = input.AmountMinorUnits
 	} else if quote.PayCurrency == "CNY" && quote.BaseCurrency == "USD" {
-		quote.PayAmountCents = int64(math.Round(baseAmountUSD * rate * 100))
+		quote.PayAmountCents = int64(math.Round(float64(baseAmountCents) * rate))
 	}
 	if quote.BaseAmountCents <= 0 || quote.PayAmountCents <= 0 || creditNanousd <= 0 {
 		return nil, repository.ErrInvalidInput
@@ -907,38 +948,161 @@ func (s *Service) CreateTopUpPaymentOrder(ctx context.Context, input TopUpPaymen
 	now := time.Now()
 	expiredAt := now.Add(30 * time.Minute)
 	snapshot := map[string]interface{}{
-		"order_type":         domainbilling.PaymentOrderTypeTopUp,
-		"base_currency":      quote.BaseCurrency,
-		"base_amount_cents":  quote.BaseAmountCents,
-		"pay_currency":       quote.PayCurrency,
-		"pay_amount_cents":   quote.PayAmountCents,
-		"fx_rate":            formatFXRate(quote.FXRate),
-		"amount_currency":    amountCurrency,
-		"amount_minor_units": input.AmountMinorUnits,
-		"credit_nanousd":     creditNanousd,
-		"provider":           provider,
+		"order_type":                 domainbilling.PaymentOrderTypeTopUp,
+		"original_base_amount_cents": originalBaseAmountCents,
+		"discount_amount_cents":      discountAmountCents(couponQuote),
+		"base_currency":              quote.BaseCurrency,
+		"base_amount_cents":          quote.BaseAmountCents,
+		"pay_currency":               quote.PayCurrency,
+		"pay_amount_cents":           quote.PayAmountCents,
+		"fx_rate":                    formatFXRate(quote.FXRate),
+		"amount_currency":            amountCurrency,
+		"amount_minor_units":         input.AmountMinorUnits,
+		"credit_nanousd":             creditNanousd,
+		"provider":                   provider,
+	}
+	if couponQuote != nil {
+		snapshot["coupon"] = json.RawMessage(couponQuote.SnapshotJSON)
+		couponApply = couponOrderApplyInput(couponQuote, input.UserID, orderNo, domainbilling.PaymentOrderTypeTopUp, 0)
 	}
 	snapshotJSON := "{}"
 	if raw, marshalErr := json.Marshal(snapshot); marshalErr == nil {
 		snapshotJSON = string(raw)
 	}
 	return s.repo.CreatePaymentOrder(ctx, &domainbilling.PaymentOrder{
-		OrderNo:         orderNo,
-		OrderType:       domainbilling.PaymentOrderTypeTopUp,
-		UserID:          input.UserID,
-		Provider:        provider,
-		Status:          domainbilling.PaymentStatusPending,
-		BaseCurrency:    quote.BaseCurrency,
-		BaseAmountCents: quote.BaseAmountCents,
-		PayCurrency:     quote.PayCurrency,
-		PayAmountCents:  quote.PayAmountCents,
-		FXRate:          formatFXRate(quote.FXRate),
-		CreditNanousd:   creditNanousd,
-		BillingInterval: domainbilling.IntervalLifetime,
-		Cycles:          1,
-		ExpiredAt:       &expiredAt,
-		SnapshotJSON:    snapshotJSON,
-	})
+		OrderNo:                 orderNo,
+		OrderType:               domainbilling.PaymentOrderTypeTopUp,
+		UserID:                  input.UserID,
+		Provider:                provider,
+		Status:                  domainbilling.PaymentStatusPending,
+		BaseCurrency:            quote.BaseCurrency,
+		BaseAmountCents:         quote.BaseAmountCents,
+		OriginalBaseAmountCents: originalBaseAmountCents,
+		DiscountAmountCents:     discountAmountCents(couponQuote),
+		CouponID:                couponID(couponQuote),
+		CouponCode:              couponCodeHint(couponQuote),
+		PayCurrency:             quote.PayCurrency,
+		PayAmountCents:          quote.PayAmountCents,
+		FXRate:                  formatFXRate(quote.FXRate),
+		CreditNanousd:           creditNanousd,
+		BillingInterval:         domainbilling.IntervalLifetime,
+		Cycles:                  1,
+		ExpiredAt:               &expiredAt,
+		SnapshotJSON:            snapshotJSON,
+	}, couponApply)
+}
+
+// PurchaseSubscriptionWithBalance 使用站内余额购买并开通套餐。
+func (s *Service) PurchaseSubscriptionWithBalance(ctx context.Context, input BalanceSubscriptionPurchaseInput) (*domainbilling.PaymentOrder, *domainbilling.BillingAccount, *domainbilling.Subscription, error) {
+	mode, err := s.repo.GetBillingMode(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if mode != "period" {
+		return nil, nil, nil, ErrPaymentRequired
+	}
+	cycles := input.Cycles
+	if cycles <= 0 {
+		cycles = 1
+	}
+	price, err := s.repo.GetPriceByID(ctx, input.PriceID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	plan, err := s.repo.GetPlanByID(ctx, price.PlanID)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if input.UserID == 0 || !plan.IsActive || !price.IsActive {
+		return nil, nil, nil, repository.ErrInvalidInput
+	}
+	originalBaseAmountCents := price.AmountCents * int64(cycles)
+	if originalBaseAmountCents <= 0 {
+		return nil, nil, nil, repository.ErrInvalidInput
+	}
+	baseAmountCents := originalBaseAmountCents
+	couponQuote, err := s.ResolveCouponQuote(ctx, input.UserID, input.CouponCode, domainbilling.PaymentOrderTypeSubscription, plan.ID, originalBaseAmountCents, true)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if couponQuote != nil {
+		baseAmountCents = couponQuote.FinalAmountCents
+	}
+	orderNo, err := generateOrderNo()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	now := time.Now()
+	endAt := resolvePeriodEnd(now, price.BillingInterval, cycles)
+	snapshot := map[string]interface{}{
+		"plan_id":                    plan.ID,
+		"plan_code":                  plan.Code,
+		"plan_name":                  plan.Name,
+		"price_id":                   price.ID,
+		"price_code":                 price.Code,
+		"billing_interval":           price.BillingInterval,
+		"cycles":                     cycles,
+		"original_base_amount_cents": originalBaseAmountCents,
+		"discount_amount_cents":      discountAmountCents(couponQuote),
+		"base_currency":              "USD",
+		"base_amount_cents":          baseAmountCents,
+		"pay_currency":               "USD",
+		"pay_amount_cents":           baseAmountCents,
+		"fx_rate":                    "1",
+		"provider":                   domainbilling.PaymentProviderBalance,
+	}
+	couponApply := (*repository.CouponOrderApplyInput)(nil)
+	if couponQuote != nil {
+		snapshot["coupon"] = json.RawMessage(couponQuote.SnapshotJSON)
+		couponApply = couponOrderApplyInput(couponQuote, input.UserID, orderNo, domainbilling.PaymentOrderTypeSubscription, plan.ID)
+	}
+	snapshotJSON := "{}"
+	if raw, marshalErr := json.Marshal(snapshot); marshalErr == nil {
+		snapshotJSON = string(raw)
+	}
+	order := &domainbilling.PaymentOrder{
+		OrderNo:                 orderNo,
+		OrderType:               domainbilling.PaymentOrderTypeSubscription,
+		UserID:                  input.UserID,
+		PlanID:                  plan.ID,
+		PriceID:                 price.ID,
+		Provider:                domainbilling.PaymentProviderBalance,
+		Status:                  domainbilling.PaymentStatusPaid,
+		BaseCurrency:            "USD",
+		BaseAmountCents:         baseAmountCents,
+		OriginalBaseAmountCents: originalBaseAmountCents,
+		DiscountAmountCents:     discountAmountCents(couponQuote),
+		CouponID:                couponID(couponQuote),
+		CouponCode:              couponCodeHint(couponQuote),
+		PayCurrency:             "USD",
+		PayAmountCents:          baseAmountCents,
+		FXRate:                  "1",
+		BillingInterval:         price.BillingInterval,
+		Cycles:                  cycles,
+		ExternalPaymentID:       orderNo,
+		PaidAt:                  &now,
+		SnapshotJSON:            snapshotJSON,
+	}
+	subscription := &domainbilling.Subscription{
+		UserID:               input.UserID,
+		PlanID:               plan.ID,
+		PriceID:              price.ID,
+		Status:               "active",
+		StartAt:              now,
+		CurrentPeriodStartAt: now,
+		CurrentPeriodEndAt:   endAt,
+		CancelAtPeriodEnd:    false,
+		CanceledAt:           nil,
+		AutoRenew:            price.BillingInterval != domainbilling.IntervalLifetime,
+	}
+	createdOrder, account, createdSubscription, err := s.repo.CreateBalanceSubscriptionOrder(ctx, order, subscription, centsToNanousd(baseAmountCents), couponApply)
+	if err != nil {
+		if errors.Is(err, repository.ErrInsufficientBalance) {
+			return nil, nil, nil, ErrUsageBalanceInsufficient
+		}
+		return nil, nil, nil, err
+	}
+	return createdOrder, account, createdSubscription, nil
 }
 
 // AttachPaymentCheckout 保存外部收银台信息。
@@ -1068,6 +1232,26 @@ func (s *Service) UpdatePlan(ctx context.Context, planID uint, input PlanUpdateI
 		return nil, mapPlanMutationError(err)
 	}
 	return billingPlanMutationView(plan, price), nil
+}
+
+// ReorderPlans 调整周期套餐展示顺序。
+func (s *Service) ReorderPlans(ctx context.Context, planIDs []uint) error {
+	if len(planIDs) == 0 {
+		return ErrInvalidBillingPlan
+	}
+	seen := make(map[uint]struct{}, len(planIDs))
+	ordered := make([]uint, 0, len(planIDs))
+	for _, id := range planIDs {
+		if id == 0 {
+			return ErrInvalidBillingPlan
+		}
+		if _, exists := seen[id]; exists {
+			return ErrInvalidBillingPlan
+		}
+		seen[id] = struct{}{}
+		ordered = append(ordered, id)
+	}
+	return mapPlanMutationError(s.repo.ReorderPlans(ctx, ordered))
 }
 
 func billingPlanMutationView(plan *domainbilling.Plan, price *domainbilling.Price) *BillingPlanView {

@@ -60,6 +60,8 @@ function ChatModelIdentity({
   density?: "default" | "compact";
 }) {
   const platformModelName = model.platformModelName.trim();
+  const displayName = model.displayName?.trim() || platformModelName;
+  const showPlatformName = displayName !== platformModelName;
   const identity = React.useMemo(
     () =>
       resolveModelIdentity({
@@ -74,7 +76,7 @@ function ChatModelIdentity({
 
   return (
     <div className={cn("flex min-w-0 items-center", compact ? "gap-2" : "gap-2.5")}>
-      <LobeHubIcon iconUrl={iconURL} label={platformModelName} />
+      <LobeHubIcon iconUrl={iconURL} label={displayName} />
       <div className="min-w-0 flex-1 overflow-hidden">
         <div className={cn("flex items-center", compact ? "gap-1" : "gap-1.5")}>
           <p
@@ -83,9 +85,12 @@ function ChatModelIdentity({
               compact ? "text-[12.5px] leading-4" : "text-[13px] leading-4.5",
             )}
           >
-            {platformModelName}
+            {displayName}
           </p>
         </div>
+        {showPlatformName && !compact ? (
+          <p className="truncate text-[11px] leading-4 text-muted-foreground">{platformModelName}</p>
+        ) : null}
       </div>
     </div>
   );
@@ -359,6 +364,8 @@ function ChatModelMenuItem({
   pricingTooltipSide: "right";
 }) {
   const platformModelName = model.platformModelName.trim();
+  const displayName = model.displayName?.trim() || platformModelName;
+  const showPlatformName = displayName !== platformModelName;
   const identity = React.useMemo(
     () =>
       resolveModelIdentity({
@@ -373,16 +380,19 @@ function ChatModelMenuItem({
   return (
     <div
       data-selected={selected}
-      className="group flex h-7 items-center rounded-md text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-within:bg-accent focus-within:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+      className="group flex min-h-7 items-center rounded-md text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-within:bg-accent focus-within:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
     >
       <button
         type="button"
-        className="flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md bg-transparent py-0 pl-2 pr-1 text-left text-[11px] font-medium leading-none text-inherit outline-none"
+        className="flex min-h-7 min-w-0 flex-1 items-center gap-2 rounded-md bg-transparent py-1 pl-2 pr-1 text-left text-[11px] font-medium leading-none text-inherit outline-none"
         onClick={onSelect}
       >
-        <LobeHubIcon iconUrl={iconURL} label={platformModelName} />
+        <LobeHubIcon iconUrl={iconURL} label={displayName} />
         <span className="min-w-0 flex-1 truncate leading-4">
-          {platformModelName}
+          <span className="block truncate">{displayName}</span>
+          {showPlatformName ? (
+            <span className="block truncate text-[10px] font-normal leading-3 text-muted-foreground/80">{platformModelName}</span>
+          ) : null}
         </span>
         <span className="flex size-3 shrink-0 items-center justify-center">
           {selected ? <Check className="size-3 text-current" strokeWidth={1.7} /> : null}

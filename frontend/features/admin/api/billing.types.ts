@@ -87,6 +87,10 @@ export type AdminBillingPlanData = {
   plan: AdminBillingPlanDTO;
 };
 
+export type AdminBillingPlanOrderData = {
+  plans: AdminBillingPlanDTO[];
+};
+
 export type AdminBillingMode = "self" | "period" | "usage";
 
 export type NativeToolPricingDTO = {
@@ -164,6 +168,65 @@ export type AdminRedemptionCodeDTO = {
   createdByUserID: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type AdminCouponCodeDTO = {
+  id: number;
+  code?: string;
+  codeHint: string;
+  scope: "all" | "topup" | "subscription" | string;
+  discountType: "percent" | "amount" | string;
+  discountPercent: number;
+  discountAmountCents: number;
+  discountAmountUSD: number;
+  minAmountCents: number;
+  minAmountUSD: number;
+  maxDiscountCents: number;
+  maxDiscountUSD: number;
+  planID: number;
+  maxRedemptions: number | null;
+  perUserLimit: number;
+  redeemedCount: number;
+  remainingRedemptions: number | null;
+  status: "active" | "inactive" | "deleted" | string;
+  expiresAt: string | null;
+  description: string;
+  createdByUserID: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateAdminCouponCodeRequest = {
+  code?: string;
+  scope?: "all" | "topup" | "subscription";
+  discountType?: "percent" | "amount";
+  discountPercent?: number;
+  discountAmountUSD?: number;
+  minAmountUSD?: number;
+  maxDiscountUSD?: number;
+  planID?: number;
+  maxRedemptions?: number | null;
+  perUserLimit?: number;
+  expiresAt?: string | null;
+  description?: string;
+};
+
+export type UpdateAdminCouponCodeRequest = {
+  status?: "active" | "inactive";
+  maxRedemptions?: number | null;
+  perUserLimit?: number;
+  expiresAt?: string | null;
+  description?: string;
+};
+
+export type AdminCouponCodePage = PagePayload<AdminCouponCodeDTO>;
+
+export type AdminCouponCodeData = {
+  code: AdminCouponCodeDTO;
+};
+
+export type AdminCouponCodeDeleteData = {
+  deleted: boolean;
 };
 
 export type CreateAdminRedemptionCodeRequest = {

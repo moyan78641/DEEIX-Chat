@@ -5,6 +5,11 @@ import type {
   AdminBillingAccountData,
   AdminBillingPlanDTO,
   AdminBillingPlanData,
+  AdminBillingPlanOrderData,
+  AdminCouponCodeDTO,
+  AdminCouponCodeData,
+  AdminCouponCodeDeleteData,
+  AdminCouponCodePage,
   AdminRedemptionCodeDTO,
   AdminRedemptionCodeBatchDeleteData,
   AdminRedemptionCodeBatchDeleteRequest,
@@ -16,7 +21,9 @@ import type {
   AdminModelPricingData,
   AdminModelPricingPage,
   CreateAdminBillingPlanRequest,
+  CreateAdminCouponCodeRequest,
   CreateAdminRedemptionCodeRequest,
+  UpdateAdminCouponCodeRequest,
   UpdateAdminRedemptionCodeRequest,
   UpdateAdminBillingConfigRequest,
   UpdateAdminBillingPlanRequest,
@@ -33,6 +40,13 @@ type ListAdminModelPricingOptions = AdminPageOptions & {
 type ListAdminRedemptionCodeOptions = AdminPageOptions & {
   query?: string;
   mode?: string;
+  status?: string;
+  availability?: string;
+};
+
+type ListAdminCouponCodeOptions = AdminPageOptions & {
+  query?: string;
+  scope?: string;
   status?: string;
   availability?: string;
 };
@@ -60,6 +74,17 @@ export async function createAdminBillingPlan(
   return authedRequest<AdminBillingPlanData>(
     "/api/v1/admin/billing/plans",
     { method: "POST", accessToken, body: payload },
+    true,
+  );
+}
+
+export async function reorderAdminBillingPlans(
+  accessToken: string,
+  planIDs: number[],
+): Promise<AdminBillingPlanOrderData> {
+  return authedRequest<AdminBillingPlanOrderData>(
+    "/api/v1/admin/billing/plans/order",
+    { method: "POST", accessToken, body: { planIDs } },
     true,
   );
 }
@@ -161,6 +186,72 @@ export async function batchDeleteAdminRedemptionCodes(
   return authedRequest<AdminRedemptionCodeBatchDeleteData>(
     "/api/v1/admin/billing/redemption-codes/batch-delete",
     { method: "POST", accessToken, body: payload },
+    true,
+  );
+}
+
+export async function listAdminCouponCodes(
+  accessToken: string,
+  options: ListAdminCouponCodeOptions = {},
+): Promise<AdminCouponCodePage> {
+  const { page, pageSize } = resolveAdminPage(options);
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  if (options.query?.trim()) params.set("q", options.query.trim());
+  if (options.scope?.trim()) params.set("scope", options.scope.trim());
+  if (options.status?.trim()) params.set("status", options.status.trim());
+  if (options.availability?.trim()) params.set("availability", options.availability.trim());
+  const data = await authedRequest<PagePayload<AdminCouponCodeDTO>>(
+    `/api/v1/admin/billing/coupons?${params.toString()}`,
+    { accessToken },
+    true,
+  );
+  return normalizeAdminPagePayload(data);
+}
+
+export async function createAdminCouponCode(
+  accessToken: string,
+  payload: CreateAdminCouponCodeRequest,
+): Promise<AdminCouponCodeData> {
+  return authedRequest<AdminCouponCodeData>(
+    "/api/v1/admin/billing/coupons",
+    { method: "POST", accessToken, body: payload },
+    true,
+  );
+}
+
+export async function updateAdminCouponCode(
+  accessToken: string,
+  codeID: number,
+  payload: UpdateAdminCouponCodeRequest,
+): Promise<AdminCouponCodeData> {
+  return authedRequest<AdminCouponCodeData>(
+    `/api/v1/admin/billing/coupons/${codeID}`,
+    { method: "PATCH", accessToken, body: payload },
+    true,
+  );
+}
+
+export async function revealAdminCouponCode(
+  accessToken: string,
+  codeID: number,
+): Promise<AdminCouponCodeData> {
+  return authedRequest<AdminCouponCodeData>(
+    `/api/v1/admin/billing/coupons/${codeID}/code`,
+    { accessToken },
+    true,
+  );
+}
+
+export async function deleteAdminCouponCode(
+  accessToken: string,
+  codeID: number,
+): Promise<AdminCouponCodeDeleteData> {
+  return authedRequest<AdminCouponCodeDeleteData>(
+    `/api/v1/admin/billing/coupons/${codeID}`,
+    { method: "DELETE", accessToken },
     true,
   );
 }

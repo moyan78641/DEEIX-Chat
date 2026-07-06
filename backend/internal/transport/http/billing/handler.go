@@ -555,6 +555,263 @@ func (h *Handler) DeleteRedemptionCode(c *gin.Context) {
 	response.Success(c, RedemptionCodeDeleteDataResponse{Deleted: true})
 }
 
+// ListCouponCodes godoc
+// @Summary 管理员查询支付优惠码
+// @Description 分页查询支付优惠码配置
+// @Tags admin-billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param scope query string false "适用范围：all/topup/subscription"
+// @Param status query string false "状态：active/inactive"
+// @Param availability query string false "可用性：available/expired/exhausted"
+// @Param q query string false "搜索关键词"
+// @Param page query int false "页码"
+// @Param page_size query int false "每页数量"
+// @Success 200 {object} CouponCodeListResponseDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/billing/coupons [get]
+func (h *Handler) ListCouponCodes(c *gin.Context) {
+	page, pageSize := pageParams(c)
+	items, total, err := h.service.ListCouponCodes(c.Request.Context(), appbilling.CouponCodeListInput{
+		Scope:        c.Query("scope"),
+		Status:       c.Query("status"),
+		Availability: c.Query("availability"),
+		Query:        c.Query("q"),
+		Page:         page,
+		PageSize:     pageSize,
+	})
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "list coupon codes failed")
+		return
+	}
+	response.SuccessPage(c, total, toCouponCodeResponses(items))
+}
+
+// CreateCouponCode godoc
+// @Summary 管理员创建支付优惠码
+// @Description 创建支付优惠码，明文只在创建响应或按需查看时返回
+// @Tags admin-billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body CreateCouponCodeRequest true "优惠码配置"
+// @Success 200 {object} CouponCodeResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 409 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/billing/coupons [post]
+func (h *Handler) CreateCouponCode(c *gin.Context) {
+	var req CreateCouponCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.InvalidRequestBody(c, err)
+		return
+	}
+	actorUserID := middleware.MustUserID(c)
+	item, err := h.service.CreateCouponCode(c.Request.Context(), actorUserID, appbilling.CouponCodeInput{
+		Code:              req.Code,
+		Scope:             req.Scope,
+		DiscountType:      req.DiscountType,
+		DiscountPercent:   req.DiscountPercent,
+		DiscountAmountUSD: req.DiscountAmountUSD,
+		MinAmountUSD:      req.MinAmountUSD,
+		MaxDiscountUSD:    req.MaxDiscountUSD,
+		PlanID:            req.PlanID,
+		MaxRedemptions:    req.MaxRedemptions,
+		PerUserLimit:      req.PerUserLimit,
+		ExpiresAt:         req.ExpiresAt,
+		Description:       req.Description,
+	})
+	if err != nil {
+		writeCouponCodeError(c, err)
+		return
+	}
+	h.recordAudit(
+		c,
+		actorUserID,
+		"create_coupon_code",
+		"billing_coupon_code",
+		item.CodeHint,
+		map[string]interface{}{
+			"scope":               req.Scope,
+			"discount_type":       req.DiscountType,
+			"discount_percent":    req.DiscountPercent,
+			"discount_amount_usd": req.DiscountAmountUSD,
+			"min_amount_usd":      req.MinAmountUSD,
+			"max_discount_usd":    req.MaxDiscountUSD,
+			"plan_id":             req.PlanID,
+			"max_redemptions":     req.MaxRedemptions,
+			"per_user_limit":      req.PerUserLimit,
+		},
+	)
+	response.Success(c, CouponCodeDataResponse{Code: toCouponCodeResponse(*item)})
+}
+
+func writeCouponCodeError(c *gin.Context, err error) {
+	var validationErr appbilling.CouponCodeValidationError
+	if errors.As(err, &validationErr) {
+		response.ErrorWithDetails(c, http.StatusBadRequest, "billing.invalid_coupon_code", err.Error(), validationErr)
+		return
+	}
+	if errors.Is(err, appbilling.ErrCouponCodeConflict) {
+		response.ErrorFrom(c, http.StatusConflict, err)
+		return
+	}
+	if errors.Is(err, appbilling.ErrCouponCodeUnavailable) {
+		response.ErrorFrom(c, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, appbilling.ErrInvalidCouponCode) ||
+		errors.Is(err, appbilling.ErrCouponCodeExhausted) ||
+		errors.Is(err, appbilling.ErrCouponUserLimitExceeded) ||
+		errors.Is(err, appbilling.ErrCouponCodePlaintextUnavailable) {
+		response.ErrorFrom(c, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, appbilling.ErrRedemptionCodeHashUnavailable) {
+		response.ErrorFrom(c, http.StatusInternalServerError, err)
+		return
+	}
+	response.Error(c, http.StatusInternalServerError, "coupon code operation failed")
+}
+
+// RevealCouponCode godoc
+// @Summary 管理员按需复制优惠码明文
+// @Description 解密单个优惠码明文用于复制；列表接口不会返回明文
+// @Tags admin-billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "优惠码ID"
+// @Success 200 {object} CouponCodeResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 404 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/billing/coupons/{id}/code [get]
+func (h *Handler) RevealCouponCode(c *gin.Context) {
+	codeID, err := strconv.ParseUint(c.Param("id"), 10, strconv.IntSize)
+	if err != nil || codeID == 0 {
+		response.Error(c, http.StatusBadRequest, "invalid coupon code id")
+		return
+	}
+	item, err := h.service.RevealCouponCode(c.Request.Context(), uint(codeID))
+	if err != nil {
+		if errors.Is(err, appbilling.ErrCouponCodeUnavailable) {
+			response.Error(c, http.StatusNotFound, "coupon code not found")
+			return
+		}
+		if errors.Is(err, appbilling.ErrCouponCodePlaintextUnavailable) {
+			response.ErrorFrom(c, http.StatusBadRequest, err)
+			return
+		}
+		response.ErrorFrom(c, http.StatusBadRequest, err)
+		return
+	}
+	actorUserID := middleware.MustUserID(c)
+	h.recordAudit(
+		c,
+		actorUserID,
+		"reveal_coupon_code",
+		"billing_coupon_code",
+		strconv.FormatUint(codeID, 10),
+		map[string]interface{}{"code_hint": item.CodeHint},
+	)
+	c.Header("Cache-Control", "no-store")
+	response.Success(c, CouponCodeDataResponse{Code: toCouponCodeResponse(*item)})
+}
+
+// PatchCouponCode godoc
+// @Summary 管理员更新支付优惠码
+// @Description 更新优惠码状态、次数限制、过期时间和说明，不允许修改优惠规则本身
+// @Tags admin-billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "优惠码ID"
+// @Param body body PatchCouponCodeRequest true "优惠码更新字段"
+// @Success 200 {object} CouponCodeResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/billing/coupons/{id} [patch]
+func (h *Handler) PatchCouponCode(c *gin.Context) {
+	codeID, err := strconv.ParseUint(c.Param("id"), 10, strconv.IntSize)
+	if err != nil || codeID == 0 {
+		response.Error(c, http.StatusBadRequest, "invalid coupon code id")
+		return
+	}
+	var req PatchCouponCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.InvalidRequestBody(c, err)
+		return
+	}
+	item, err := h.service.UpdateCouponCode(c.Request.Context(), uint(codeID), appbilling.CouponCodeUpdateInput{
+		Status:            req.Status,
+		MaxRedemptionsSet: req.MaxRedemptions.Set,
+		MaxRedemptions:    req.MaxRedemptions.Value,
+		PerUserLimit:      req.PerUserLimit,
+		ExpiresAtSet:      req.ExpiresAt.Set,
+		ExpiresAt:         req.ExpiresAt.Value,
+		Description:       req.Description,
+	})
+	if err != nil {
+		writeCouponCodeError(c, err)
+		return
+	}
+	actorUserID := middleware.MustUserID(c)
+	h.recordAudit(
+		c,
+		actorUserID,
+		"update_coupon_code",
+		"billing_coupon_code",
+		strconv.FormatUint(codeID, 10),
+		map[string]interface{}{
+			"status":          req.Status,
+			"max_redemptions": req.MaxRedemptions.Value,
+			"per_user_limit":  req.PerUserLimit,
+		},
+	)
+	response.Success(c, CouponCodeDataResponse{Code: toCouponCodeResponse(*item)})
+}
+
+// DeleteCouponCode godoc
+// @Summary 管理员删除支付优惠码
+// @Description 软删除支付优惠码，历史使用记录保留，删除后不可再使用
+// @Tags admin-billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "优惠码ID"
+// @Success 200 {object} CouponCodeDeleteResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 404 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/billing/coupons/{id} [delete]
+func (h *Handler) DeleteCouponCode(c *gin.Context) {
+	codeID, err := strconv.ParseUint(c.Param("id"), 10, strconv.IntSize)
+	if err != nil || codeID == 0 {
+		response.Error(c, http.StatusBadRequest, "invalid coupon code id")
+		return
+	}
+	if err := h.service.DeleteCouponCode(c.Request.Context(), uint(codeID)); err != nil {
+		if errors.Is(err, appbilling.ErrCouponCodeUnavailable) {
+			response.Error(c, http.StatusNotFound, "coupon code not found")
+			return
+		}
+		response.ErrorFrom(c, http.StatusBadRequest, err)
+		return
+	}
+	actorUserID := middleware.MustUserID(c)
+	h.recordAudit(
+		c,
+		actorUserID,
+		"delete_coupon_code",
+		"billing_coupon_code",
+		strconv.FormatUint(codeID, 10),
+		map[string]interface{}{"deleted": true},
+	)
+	response.Success(c, CouponCodeDeleteDataResponse{Deleted: true})
+}
+
 // BatchDeleteRedemptionCodes godoc
 // @Summary 管理员批量删除兑换码
 // @Description 批量软删除兑换码，历史兑换记录保留，删除后不可再兑换
@@ -753,6 +1010,45 @@ func (h *Handler) UpdatePlan(c *gin.Context) {
 	)
 
 	response.Success(c, BillingPlanDataResponse{Plan: toPlanListResponse([]appbilling.BillingPlanView{*item})[0]})
+}
+
+// ReorderPlans godoc
+// @Summary 管理员调整套餐展示顺序
+// @Description 按传入的套餐 ID 顺序更新 sort_order
+// @Tags admin-billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body ReorderBillingPlansRequest true "套餐顺序"
+// @Success 200 {object} BillingPlanOrderResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/billing/plans/order [post]
+func (h *Handler) ReorderPlans(c *gin.Context) {
+	var req ReorderBillingPlansRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.InvalidRequestBody(c, err)
+		return
+	}
+	if err := h.service.ReorderPlans(c.Request.Context(), req.PlanIDs); err != nil {
+		writePlanMutationError(c, err, "reorder billing plans failed")
+		return
+	}
+	userID := middleware.MustUserID(c)
+	h.recordAudit(
+		c,
+		userID,
+		"reorder_billing_plans",
+		"billing_plan",
+		"order",
+		map[string]interface{}{"plan_ids": req.PlanIDs},
+	)
+	items, err := h.service.ListPlans(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "list plans failed")
+		return
+	}
+	response.Success(c, BillingPlanOrderDataResponse{Plans: toPlanListResponse(items)})
 }
 
 func writePlanMutationError(c *gin.Context, err error, fallback string) {

@@ -968,6 +968,7 @@ func (h *Handler) CreateModel(c *gin.Context) {
 
 	item, err := h.service.CreateModel(c.Request.Context(), appchannel.CreateModelInput{
 		PlatformModelName:  req.PlatformModelName,
+		DisplayName:        req.DisplayName,
 		Vendor:             req.Vendor,
 		KindsJSON:          req.KindsJSON,
 		Icon:               req.Icon,
@@ -1032,6 +1033,7 @@ func (h *Handler) UpdateModel(c *gin.Context) {
 
 	item, err := h.service.UpdateModel(c.Request.Context(), modelID, appchannel.UpdateModelInput{
 		PlatformModelName:  req.PlatformModelName,
+		DisplayName:        req.DisplayName,
 		Vendor:             req.Vendor,
 		KindsJSON:          req.KindsJSON,
 		Icon:               req.Icon,

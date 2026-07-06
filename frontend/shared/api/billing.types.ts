@@ -29,8 +29,17 @@ export type CreateCheckoutRequest = {
   cycles?: number;
   paymentProvider?: "stripe" | "epay" | string;
   epayType?: string;
+  couponCode?: string;
   successURL?: string;
   cancelURL?: string;
+  termsAccepted?: boolean;
+  privacyAccepted?: boolean;
+};
+
+export type BalanceSubscriptionPurchaseRequest = {
+  priceID: number;
+  cycles?: number;
+  couponCode?: string;
   termsAccepted?: boolean;
   privacyAccepted?: boolean;
 };
@@ -43,6 +52,10 @@ export type CheckoutDTO = {
   checkoutURL: string;
   externalCheckoutID: string;
   baseAmountCents: number;
+  originalBaseAmountCents: number;
+  discountAmountCents: number;
+  couponID: number;
+  couponCode: string;
   baseCurrency: string;
   payAmountCents: number;
   payCurrency: string;
@@ -54,6 +67,13 @@ export type CheckoutDTO = {
 
 export type CheckoutData = {
   checkout: CheckoutDTO;
+};
+
+export type BalanceSubscriptionPurchaseData = {
+  checkout: CheckoutDTO;
+  account: BillingAccountData["account"];
+  subscription: BillingSubscriptionDTO;
+  overview: BillingOverviewData["overview"];
 };
 
 export type BillingMode = "self" | "period" | "usage";
