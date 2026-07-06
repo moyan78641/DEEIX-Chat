@@ -162,6 +162,24 @@ export type BillingOverviewData = {
   };
 };
 
+export type AffiliateOverviewDTO = {
+  inviteCode: string;
+  commissionRatePercent: number;
+  commissionRate: number;
+  referralCount: number;
+  availableCommissionUSD: number;
+  availableCommissionNanousd: number;
+  withdrawnCommissionUSD: number;
+  withdrawnCommissionNanousd: number;
+  totalCommissionUSD: number;
+  totalCommissionNanousd: number;
+  status: string;
+};
+
+export type AffiliateOverviewData = {
+  affiliate: AffiliateOverviewDTO;
+};
+
 export type BillingSubscriptionDTO = {
   id: number;
   userID: number;

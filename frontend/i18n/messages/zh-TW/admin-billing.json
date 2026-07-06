@@ -255,6 +255,8 @@
     "platformModel": "平臺模型",
     "free": "免費",
     "pricingMode": "計費模式",
+    "pricingMultiplier": "倍率",
+    "pricingMultiplierHint": "可選。預設 1x；例如 0.5 表示按基礎價格的 50% 計費，2 表示 2 倍計費。",
     "basePrice": "基礎單價",
     "updatedAt": "更新時間",
     "empty": "暫無模型定價配置",

@@ -492,6 +492,17 @@
       "balance": "賬戶餘額 {value}",
       "topUp": "充值"
     },
+    "affiliate": {
+      "title": "邀請返利",
+      "description": "僅一級邀請有效：被邀請使用者充值後，你將獲得對應比例的可提現返利。",
+      "inviteCode": "邀請碼",
+      "commissionRate": "返利比例",
+      "referralCount": "邀請人數",
+      "availableCommission": "可提現返利",
+      "copyLink": "複製邀請連結",
+      "copied": "邀請連結已複製",
+      "copyFailed": "複製失敗"
+    },
     "selfMode": {
       "title": "計費模式",
       "value": "自用模式"

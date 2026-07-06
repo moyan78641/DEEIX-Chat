@@ -340,6 +340,29 @@ func (r *billingRepositoryStub) ListModelPricing(context.Context, string, int, i
 func (r *billingRepositoryStub) UpsertModelPricing(_ context.Context, item *domainbilling.ModelPricing) (*domainbilling.ModelPricing, error) {
 	return item, nil
 }
+func (r *billingRepositoryStub) GetOrCreateAffiliateProfile(_ context.Context, userID uint) (*domainbilling.AffiliateProfile, error) {
+	return &domainbilling.AffiliateProfile{
+		UserID:                userID,
+		InviteCode:            "TESTCODE",
+		CommissionRatePercent: 10,
+		Status:                domainbilling.AffiliateStatusActive,
+	}, nil
+}
+func (r *billingRepositoryStub) GetAffiliateProfileByInviteCode(context.Context, string) (*domainbilling.AffiliateProfile, error) {
+	return nil, repository.ErrNotFound
+}
+func (r *billingRepositoryStub) CreateAffiliateReferral(context.Context, *domainbilling.AffiliateReferral) (*domainbilling.AffiliateReferral, error) {
+	panic("not used")
+}
+func (r *billingRepositoryStub) GetAffiliateReferralByInvitee(context.Context, uint) (*domainbilling.AffiliateReferral, error) {
+	return nil, repository.ErrNotFound
+}
+func (r *billingRepositoryStub) CountAffiliateReferrals(context.Context, uint) (int64, error) {
+	return 0, nil
+}
+func (r *billingRepositoryStub) SumAffiliateCommissions(context.Context, uint) (int64, int64, int64, error) {
+	return 0, 0, 0, nil
+}
 func (r *billingRepositoryStub) ListUsageByUser(context.Context, uint, repository.UsageListFilter, int, int) ([]domainbilling.UsageLedger, int64, error) {
 	panic("not used")
 }

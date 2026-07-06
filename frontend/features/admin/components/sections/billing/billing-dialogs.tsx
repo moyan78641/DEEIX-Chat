@@ -31,6 +31,7 @@ import {
   normalizePricingMode,
   parseIntValue,
   parsePrice,
+  parsePricingMultiplier,
   stringifyTieredPricing,
   type PlanFormState,
   type PricingMode,
@@ -48,6 +49,7 @@ function pricingFormToJSON(form: PricingFormState): string {
     currency: "USD",
     isFree: form.isFree,
     pricingMode,
+    pricingMultiplier: parsePricingMultiplier(form.pricingMultiplier),
     inputUSDPerMTokens: pricingMode === "token" ? parsePrice(form.input) : 0,
     cacheReadUSDPerMTokens: pricingMode === "token" ? parsePrice(form.cacheRead) : 0,
     cacheWriteUSDPerMTokens: pricingMode === "token" ? parsePrice(form.cacheWrite) : 0,
@@ -66,6 +68,15 @@ function readPricingNumber(payload: PricingJSONValue, key: string): string {
   }
   const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(parsed) && parsed >= 0 ? String(parsed) : "0";
+}
+
+function readPricingMultiplier(payload: PricingJSONValue): string {
+  const value = payload.pricingMultiplier;
+  if (value === undefined || value === null || value === "") {
+    return "1";
+  }
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? String(parsed) : "1";
 }
 
 function readPricingMode(value: unknown): PricingMode | null {
@@ -114,6 +125,7 @@ function pricingFormFromJSON(current: PricingFormState, raw: string, messages: {
     ...current,
     pricingMode,
     isFree: typeof payload.isFree === "boolean" ? payload.isFree : current.isFree,
+    pricingMultiplier: readPricingMultiplier(payload),
     input: pricingMode === "token" ? readPricingNumber(payload, "inputUSDPerMTokens") : "0",
     cacheRead: pricingMode === "token" ? readPricingNumber(payload, "cacheReadUSDPerMTokens") : "0",
     cacheWrite: pricingMode === "token" ? readPricingNumber(payload, "cacheWriteUSDPerMTokens") : "0",
@@ -386,6 +398,19 @@ export function PricingBillingDialog({
                         <Switch size="sm" checked={form.isFree} onCheckedChange={(checked) => setForm({ ...form, isFree: checked })} />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">{t("modelPricing.pricingMultiplier")}</p>
+                    <Input
+                      value={form.pricingMultiplier}
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      placeholder="1"
+                      onChange={(event) => setForm({ ...form, pricingMultiplier: event.target.value })}
+                    />
+                    <p className="text-[11px] text-muted-foreground">{t("modelPricing.pricingMultiplierHint")}</p>
                   </div>
 
                   {form.pricingMode === "token" ? (

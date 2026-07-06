@@ -255,6 +255,8 @@
     "platformModel": "Platform model",
     "free": "Free",
     "pricingMode": "Pricing mode",
+    "pricingMultiplier": "Multiplier",
+    "pricingMultiplierHint": "Optional. Defaults to 1x; use 0.5 for 50% of the base price, or 2 for double pricing.",
     "basePrice": "Base price",
     "updatedAt": "Updated at",
     "empty": "No model pricing settings",

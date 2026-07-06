@@ -111,6 +111,18 @@ func composeGroupRatePercent(base billingRateMultiplier, percent int) billingRat
 	}
 }
 
+// composeModelPricingMultiplierPercent 将模型自身倍率叠加到基础倍率。
+func composeModelPricingMultiplierPercent(base billingRateMultiplier, percent int) billingRateMultiplier {
+	if percent <= 0 || percent == 100 {
+		return base
+	}
+	base = normalizeBillingRateMultiplier(base)
+	return billingRateMultiplier{
+		Numerator:   base.Numerator * int64(percent),
+		Denominator: base.Denominator * 100,
+	}
+}
+
 type platformModelIdentityResolver interface {
 	ResolvePlatformModelIdentity(ctx context.Context, platformModelName string) (PlatformModelIdentity, error)
 }
@@ -223,6 +235,7 @@ type ModelPricingInput struct {
 	Currency                    string
 	IsFree                      bool
 	PricingMode                 string
+	PricingMultiplierPercent    *int
 	InputNanousdPerMTokens      int64
 	CacheReadNanousdPerMTokens  int64
 	CacheWriteNanousdPerMTokens int64
@@ -2059,12 +2072,15 @@ func (s *Service) BuildUsageLedger(ctx context.Context, input UsagePricingInput)
 	var tieredTiers []tieredPricingTier
 	pricingMode := domainbilling.PricingModeToken
 	isFreeModel := pricing != nil && pricing.IsFree
+	modelPricingMultiplierPercent := 100
 	if pricing != nil {
 		currency = pricing.Currency
 		pricingMode = normalizePricingMode(pricing.PricingMode)
+		modelPricingMultiplierPercent = normalizePricingMultiplierPercent(pricing.PricingMultiplierPercent)
 		tieredPricingJSON = strings.TrimSpace(pricing.TieredPricingJSON)
 	}
 	if !input.ServiceOnly && mode != "self" && pricing != nil && !pricing.IsFree {
+		rateMultiplier = composeModelPricingMultiplierPercent(rateMultiplier, modelPricingMultiplierPercent)
 		switch pricingMode {
 		case domainbilling.PricingModeCall:
 			baseCallNanousdPerCall = pricing.CallNanousdPerCall
@@ -2222,6 +2238,7 @@ func (s *Service) BuildUsageLedger(ctx context.Context, input UsagePricingInput)
 		"billing_service_tier":                     billingServiceTier,
 		"fast_mode":                                fastMode,
 		"rate_multiplier":                          billingRateMultiplierValue(rateMultiplier),
+		"model_pricing_multiplier_percent":         modelPricingMultiplierPercent,
 		"billing_mode":                             mode,
 		"pricing_mode":                             pricingMode,
 		"is_free_model":                            isFreeModel,
@@ -2403,6 +2420,8 @@ func toPublicModelPricing(item domainbilling.ModelPricing) PublicModelPricing {
 		Currency:                firstNonEmpty(item.Currency, "USD"),
 		IsFree:                  item.IsFree,
 		Mode:                    mode,
+		Multiplier:              float64(normalizePricingMultiplierPercent(item.PricingMultiplierPercent)) / 100,
+		MultiplierPercent:       normalizePricingMultiplierPercent(item.PricingMultiplierPercent),
 		InputUSDPerMTokens:      nanousdToUSD(item.InputNanousdPerMTokens),
 		CacheReadUSDPerMTokens:  nanousdToUSD(item.CacheReadNanousdPerMTokens),
 		CacheWriteUSDPerMTokens: nanousdToUSD(item.CacheWriteNanousdPerMTokens),
@@ -2470,6 +2489,13 @@ func (s *Service) UpsertModelPricing(ctx context.Context, input ModelPricingInpu
 	var callNanousdPerCall int64
 	var durationNanousdPerSecond int64
 	tieredPricingJSON := "{}"
+	multiplierPercent := 100
+	if input.PricingMultiplierPercent != nil {
+		if *input.PricingMultiplierPercent <= 0 {
+			return nil, ErrInvalidModelPricing
+		}
+		multiplierPercent = normalizePricingMultiplierPercent(*input.PricingMultiplierPercent)
+	}
 	switch pricingMode {
 	case domainbilling.PricingModeCall:
 		callNanousdPerCall = clampNonNegative(input.CallNanousdPerCall)
@@ -2492,6 +2518,7 @@ func (s *Service) UpsertModelPricing(ctx context.Context, input ModelPricingInpu
 		Currency:                    "USD",
 		IsFree:                      input.IsFree,
 		PricingMode:                 pricingMode,
+		PricingMultiplierPercent:    multiplierPercent,
 		InputNanousdPerMTokens:      inputNanousdPerMTokens,
 		CacheReadNanousdPerMTokens:  cacheReadNanousdPerMTokens,
 		CacheWriteNanousdPerMTokens: cacheWriteNanousdPerMTokens,
@@ -2658,6 +2685,8 @@ func (s *Service) buildUsageServiceItem(ctx context.Context, input ServiceUsageI
 	if billingMode == "self" || pricing == nil || pricing.IsFree {
 		return item, nil
 	}
+	rateMultiplier = composeModelPricingMultiplierPercent(rateMultiplier, normalizePricingMultiplierPercent(pricing.PricingMultiplierPercent))
+	item.RateMultiplier = billingRateMultiplierValue(rateMultiplier)
 	item.PricingMode = normalizePricingMode(pricing.PricingMode)
 	switch item.PricingMode {
 	case domainbilling.PricingModeCall:
@@ -3086,6 +3115,71 @@ func (s *Service) SetBillingAccountBalance(ctx context.Context, input BillingAcc
 	return s.repo.SetBillingAccountBalance(ctx, input.UserID, usdToNanousd(input.BalanceUSD), input.RefNo, input.Description)
 }
 
+// GetAffiliateOverview 查询或创建当前用户邀请返利信息。
+func (s *Service) GetAffiliateOverview(ctx context.Context, userID uint) (*AffiliateOverview, error) {
+	if userID == 0 {
+		return nil, repository.ErrInvalidInput
+	}
+	profile, err := s.repo.GetOrCreateAffiliateProfile(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	referralCount, err := s.repo.CountAffiliateReferrals(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	available, withdrawn, total, err := s.repo.SumAffiliateCommissions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &AffiliateOverview{
+		Profile:                    *profile,
+		ReferralCount:              referralCount,
+		AvailableCommissionNanousd: available,
+		WithdrawnCommissionNanousd: withdrawn,
+		TotalCommissionNanousd:     total,
+	}, nil
+}
+
+// BindAffiliateReferral 使用邀请码绑定一级邀请关系；空邀请码会被忽略。
+func (s *Service) BindAffiliateReferral(ctx context.Context, inviteeUserID uint, inviteCode string) error {
+	code := normalizeAffiliateInviteCode(inviteCode)
+	if code == "" {
+		return nil
+	}
+	if inviteeUserID == 0 {
+		return repository.ErrInvalidInput
+	}
+	if existing, err := s.repo.GetAffiliateReferralByInvitee(ctx, inviteeUserID); err == nil && existing != nil {
+		return nil
+	} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return err
+	}
+	profile, err := s.repo.GetAffiliateProfileByInviteCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) || errors.Is(err, repository.ErrInvalidInput) {
+			return ErrInvalidAffiliateInvite
+		}
+		return err
+	}
+	if profile.UserID == 0 || profile.UserID == inviteeUserID {
+		return ErrInvalidAffiliateInvite
+	}
+	_, err = s.repo.CreateAffiliateReferral(ctx, &domainbilling.AffiliateReferral{
+		InviterUserID: profile.UserID,
+		InviteeUserID: inviteeUserID,
+		InviteCode:    code,
+		Status:        domainbilling.AffiliateStatusActive,
+	})
+	if err != nil {
+		if errors.Is(err, repository.ErrDuplicate) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
 func toBillingAccountView(account *domainbilling.BillingAccount) *BillingAccountView {
 	if account == nil {
 		return nil
@@ -3196,6 +3290,17 @@ func normalizeBillingRateMultiplier(multiplier billingRateMultiplier) billingRat
 		return billingRateMultiplier{Numerator: 1, Denominator: 1}
 	}
 	return multiplier
+}
+
+func normalizePricingMultiplierPercent(value int) int {
+	if value <= 0 {
+		return 100
+	}
+	return value
+}
+
+func normalizeAffiliateInviteCode(value string) string {
+	return strings.ToUpper(strings.TrimSpace(value))
 }
 
 func billingRateMultiplierValue(multiplier billingRateMultiplier) float64 {

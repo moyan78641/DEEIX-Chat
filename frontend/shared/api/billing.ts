@@ -1,6 +1,7 @@
 import { authedRequest } from "@/shared/api/authed-client";
 import type { PagePayload } from "@/shared/api/common.types";
 import type {
+  AffiliateOverviewData,
   BalanceSubscriptionPurchaseData,
   BalanceSubscriptionPurchaseRequest,
   BillingAccountData,
@@ -33,6 +34,10 @@ export async function getBillingAccount(accessToken: string): Promise<BillingAcc
 
 export async function getBillingOverview(accessToken: string): Promise<BillingOverviewData> {
   return authedRequest<BillingOverviewData>("/api/v1/billing/overview", { accessToken }, true);
+}
+
+export async function getAffiliateOverview(accessToken: string): Promise<AffiliateOverviewData> {
+  return authedRequest<AffiliateOverviewData>("/api/v1/billing/affiliate", { accessToken }, true);
 }
 
 export async function listBillingUsage(

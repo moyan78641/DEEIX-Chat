@@ -235,6 +235,7 @@ type ModelPricing struct {
 	Currency                    string `gorm:"size:16;not null;default:'USD';comment:计费币种"`
 	IsFree                      bool   `gorm:"not null;default:false;index:idx_billing_model_prices_is_free;comment:是否免费模型"`
 	PricingMode                 string `gorm:"size:16;not null;default:'token';comment:计费模式(token/call/duration/tiered)"`
+	PricingMultiplierPercent    int    `gorm:"not null;default:100;comment:模型计费倍率百分比(100=1.0x)"`
 	InputNanousdPerMTokens      int64  `gorm:"not null;default:0;comment:输入token单价(每百万token,纳美元)"`
 	CacheReadNanousdPerMTokens  int64  `gorm:"not null;default:0;comment:缓存读取token单价(每百万token,纳美元)"`
 	CacheWriteNanousdPerMTokens int64  `gorm:"not null;default:0;comment:缓存写入token单价(每百万token,纳美元)"`
@@ -247,6 +248,53 @@ type ModelPricing struct {
 // TableName 指定表名。
 func (ModelPricing) TableName() string {
 	return "billing_model_prices"
+}
+
+// AffiliateProfile 记录用户邀请返利配置。
+type AffiliateProfile struct {
+	BaseModel
+	UserID                uint   `gorm:"not null;uniqueIndex:idx_affiliate_profiles_user_id;comment:用户ID"`
+	InviteCode            string `gorm:"size:32;not null;uniqueIndex:idx_affiliate_profiles_invite_code;comment:邀请码"`
+	CommissionRatePercent int    `gorm:"not null;default:10;comment:一级充值返利比例百分比"`
+	Status                string `gorm:"size:32;not null;default:'active';index:idx_affiliate_profiles_status;comment:状态(active/inactive)"`
+}
+
+// TableName 指定表名。
+func (AffiliateProfile) TableName() string {
+	return "billing_affiliate_profiles"
+}
+
+// AffiliateReferral 记录一级邀请绑定关系。
+type AffiliateReferral struct {
+	BaseModel
+	InviterUserID uint   `gorm:"not null;index:idx_affiliate_referrals_inviter_user_id;comment:邀请人用户ID"`
+	InviteeUserID uint   `gorm:"not null;uniqueIndex:idx_affiliate_referrals_invitee_user_id;comment:被邀请用户ID"`
+	InviteCode    string `gorm:"size:32;not null;index:idx_affiliate_referrals_invite_code;comment:绑定时使用的邀请码"`
+	Status        string `gorm:"size:32;not null;default:'active';index:idx_affiliate_referrals_status;comment:状态(active/inactive)"`
+}
+
+// TableName 指定表名。
+func (AffiliateReferral) TableName() string {
+	return "billing_affiliate_referrals"
+}
+
+// AffiliateCommission 记录一次充值产生的一级返利。
+type AffiliateCommission struct {
+	BaseModel
+	InviterUserID         uint   `gorm:"not null;index:idx_affiliate_commissions_inviter_user_id;comment:邀请人用户ID"`
+	InviteeUserID         uint   `gorm:"not null;index:idx_affiliate_commissions_invitee_user_id;comment:被邀请用户ID"`
+	PaymentOrderID        uint   `gorm:"not null;uniqueIndex:idx_affiliate_commissions_payment_order_id;comment:来源支付订单ID"`
+	PaymentOrderNo        string `gorm:"size:64;not null;index:idx_affiliate_commissions_order_no;comment:来源支付订单号"`
+	BaseAmountCents       int64  `gorm:"not null;default:0;comment:返利计算基准金额(USD分)"`
+	CommissionRatePercent int    `gorm:"not null;default:0;comment:返利比例百分比"`
+	CommissionNanousd     int64  `gorm:"not null;default:0;comment:返利金额(纳美元)"`
+	Status                string `gorm:"size:32;not null;default:'available';index:idx_affiliate_commissions_status;comment:状态(available/withdrawn/reversed)"`
+	SnapshotJSON          string `gorm:"type:text;not null;default:'{}';comment:返利快照JSON"`
+}
+
+// TableName 指定表名。
+func (AffiliateCommission) TableName() string {
+	return "billing_affiliate_commissions"
 }
 
 // UsageLedger 记录每日消费与Token使用量，保留计费快照用于审计追溯。

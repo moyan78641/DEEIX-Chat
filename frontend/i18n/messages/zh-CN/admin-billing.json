@@ -255,6 +255,8 @@
     "platformModel": "平台模型",
     "free": "免费",
     "pricingMode": "计费模式",
+    "pricingMultiplier": "倍率",
+    "pricingMultiplierHint": "可选。默认 1x；例如 0.5 表示按基础价格的 50% 计费，2 表示 2 倍计费。",
     "basePrice": "基础单价",
     "updatedAt": "更新时间",
     "empty": "暂无模型定价配置",

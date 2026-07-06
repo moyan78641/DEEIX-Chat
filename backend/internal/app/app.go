@@ -205,6 +205,7 @@ func NewApp() (*App, error) {
 	authService.SetAuditWriter(auditService)
 	settingsService.SetAuthSafetyService(authService)
 	authService.SetSubscriptionResolver(billingService)
+	authService.SetAffiliateBinder(billingService)
 	bootstrapSuperAdmin, err := authService.EnsureBootstrapSuperAdmin(context.Background())
 	if err != nil {
 		return nil, err

@@ -135,6 +135,48 @@ func TestBuildUsageLedgerAppliesGroupRateMultiplier(t *testing.T) {
 	}
 }
 
+func TestBuildUsageLedgerAppliesModelPricingMultiplier(t *testing.T) {
+	repo := &billingRepositoryStub{
+		mode: "usage",
+		pricing: &domainbilling.ModelPricing{
+			PlatformModelName:           "gpt-test",
+			Currency:                    "USD",
+			PricingMode:                 domainbilling.PricingModeToken,
+			PricingMultiplierPercent:    50,
+			InputNanousdPerMTokens:      1_000_000_000,
+			OutputNanousdPerMTokens:     2_000_000_000,
+			CacheReadNanousdPerMTokens:  500_000_000,
+			CacheWriteNanousdPerMTokens: 700_000_000,
+		},
+	}
+	service := NewService(repo)
+
+	ledger, err := service.BuildUsageLedger(context.Background(), UsagePricingInput{
+		UserID:            1,
+		PlatformModelName: "gpt-test",
+		InputTokens:       1_000_000,
+		OutputTokens:      1_000_000,
+	})
+	if err != nil {
+		t.Fatalf("BuildUsageLedger: %v", err)
+	}
+	// (1B input + 2B output) * 0.5 = 1.5B
+	if ledger.BilledNanousd != 1_500_000_000 {
+		t.Fatalf("expected 50%% model multiplier, got billed=%d (want 1500000000)", ledger.BilledNanousd)
+	}
+
+	var snapshot map[string]interface{}
+	if err := json.Unmarshal([]byte(ledger.PricingSnapshotJSON), &snapshot); err != nil {
+		t.Fatalf("unmarshal snapshot: %v", err)
+	}
+	if snapshot["model_pricing_multiplier_percent"] != float64(50) {
+		t.Fatalf("expected model_pricing_multiplier_percent=50, got %v", snapshot["model_pricing_multiplier_percent"])
+	}
+	if snapshot["rate_multiplier"] != 0.5 {
+		t.Fatalf("expected rate_multiplier=0.5, got %v", snapshot["rate_multiplier"])
+	}
+}
+
 func TestBuildUsageLedgerResolvesGroupRateByPlatformModelID(t *testing.T) {
 	repo := &billingRepositoryStub{
 		mode: "usage",

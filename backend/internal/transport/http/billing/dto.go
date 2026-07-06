@@ -60,17 +60,18 @@ type BalanceSubscriptionPurchaseRequest struct {
 
 // UpsertModelPricingRequest 保存模型计费单价。金额单位均为美元。
 type UpsertModelPricingRequest struct {
-	PlatformModelName       string  `json:"platformModelName" binding:"required,max=128"`
-	Currency                string  `json:"currency" binding:"omitempty,max=16"`
-	IsFree                  bool    `json:"isFree"`
-	PricingMode             string  `json:"pricingMode" binding:"omitempty,oneof=token call duration tiered"`
-	InputUSDPerMTokens      float64 `json:"inputUSDPerMTokens" binding:"min=0"`
-	CacheReadUSDPerMTokens  float64 `json:"cacheReadUSDPerMTokens" binding:"min=0"`
-	CacheWriteUSDPerMTokens float64 `json:"cacheWriteUSDPerMTokens" binding:"min=0"`
-	OutputUSDPerMTokens     float64 `json:"outputUSDPerMTokens" binding:"min=0"`
-	CallUSDPerCall          float64 `json:"callUSDPerCall" binding:"min=0"`
-	DurationUSDPerSecond    float64 `json:"durationUSDPerSecond" binding:"min=0"`
-	TieredPricingJSON       string  `json:"tieredPricingJSON" binding:"max=20000"`
+	PlatformModelName       string   `json:"platformModelName" binding:"required,max=128"`
+	Currency                string   `json:"currency" binding:"omitempty,max=16"`
+	IsFree                  bool     `json:"isFree"`
+	PricingMode             string   `json:"pricingMode" binding:"omitempty,oneof=token call duration tiered"`
+	PricingMultiplier       *float64 `json:"pricingMultiplier" binding:"omitempty,gt=0"`
+	InputUSDPerMTokens      float64  `json:"inputUSDPerMTokens" binding:"min=0"`
+	CacheReadUSDPerMTokens  float64  `json:"cacheReadUSDPerMTokens" binding:"min=0"`
+	CacheWriteUSDPerMTokens float64  `json:"cacheWriteUSDPerMTokens" binding:"min=0"`
+	OutputUSDPerMTokens     float64  `json:"outputUSDPerMTokens" binding:"min=0"`
+	CallUSDPerCall          float64  `json:"callUSDPerCall" binding:"min=0"`
+	DurationUSDPerSecond    float64  `json:"durationUSDPerSecond" binding:"min=0"`
+	TieredPricingJSON       string   `json:"tieredPricingJSON" binding:"max=20000"`
 }
 
 // BillingConfigRequest 保存计费全局配置。
@@ -608,6 +609,8 @@ type ModelPricingResponse struct {
 	Currency                    string    `json:"currency"`
 	IsFree                      bool      `json:"isFree"`
 	PricingMode                 string    `json:"pricingMode"`
+	PricingMultiplier           float64   `json:"pricingMultiplier"`
+	PricingMultiplierPercent    int       `json:"pricingMultiplierPercent"`
 	InputUSDPerMTokens          float64   `json:"inputUSDPerMTokens"`
 	CacheReadUSDPerMTokens      float64   `json:"cacheReadUSDPerMTokens"`
 	CacheWriteUSDPerMTokens     float64   `json:"cacheWriteUSDPerMTokens"`
@@ -628,6 +631,26 @@ type ModelPricingResponse struct {
 // ModelPricingDataResponse 模型单价操作响应。
 type ModelPricingDataResponse struct {
 	ModelPricing ModelPricingResponse `json:"modelPricing"`
+}
+
+// AffiliateOverviewResponse 当前用户邀请返利信息响应。
+type AffiliateOverviewResponse struct {
+	InviteCode                 string  `json:"inviteCode"`
+	CommissionRatePercent      int     `json:"commissionRatePercent"`
+	CommissionRate             float64 `json:"commissionRate"`
+	ReferralCount              int64   `json:"referralCount"`
+	AvailableCommissionUSD     float64 `json:"availableCommissionUSD"`
+	AvailableCommissionNanousd int64   `json:"availableCommissionNanousd"`
+	WithdrawnCommissionUSD     float64 `json:"withdrawnCommissionUSD"`
+	WithdrawnCommissionNanousd int64   `json:"withdrawnCommissionNanousd"`
+	TotalCommissionUSD         float64 `json:"totalCommissionUSD"`
+	TotalCommissionNanousd     int64   `json:"totalCommissionNanousd"`
+	Status                     string  `json:"status"`
+}
+
+// AffiliateOverviewDataResponse 邀请返利包装响应。
+type AffiliateOverviewDataResponse struct {
+	Affiliate AffiliateOverviewResponse `json:"affiliate"`
 }
 
 // BillingConfigResponse 计费全局配置响应。
@@ -1342,6 +1365,8 @@ func toModelPricingResponse(item appbilling.ModelPricingView) ModelPricingRespon
 		Currency:                    item.Currency,
 		IsFree:                      item.IsFree,
 		PricingMode:                 item.PricingMode,
+		PricingMultiplier:           float64(item.PricingMultiplierPercent) / 100,
+		PricingMultiplierPercent:    item.PricingMultiplierPercent,
 		InputUSDPerMTokens:          nanousdToUSD(item.InputNanousdPerMTokens),
 		CacheReadUSDPerMTokens:      nanousdToUSD(item.CacheReadNanousdPerMTokens),
 		CacheWriteUSDPerMTokens:     nanousdToUSD(item.CacheWriteNanousdPerMTokens),
@@ -1361,11 +1386,17 @@ func toModelPricingResponse(item appbilling.ModelPricingView) ModelPricingRespon
 }
 
 func modelPricingInputFromRequest(req UpsertModelPricingRequest) appbilling.ModelPricingInput {
+	var pricingMultiplierPercent *int
+	if req.PricingMultiplier != nil {
+		value := int(*req.PricingMultiplier*100 + 0.5)
+		pricingMultiplierPercent = &value
+	}
 	return appbilling.ModelPricingInput{
 		PlatformModelName:           req.PlatformModelName,
 		Currency:                    req.Currency,
 		IsFree:                      req.IsFree,
 		PricingMode:                 req.PricingMode,
+		PricingMultiplierPercent:    pricingMultiplierPercent,
 		InputNanousdPerMTokens:      usdToNanousd(req.InputUSDPerMTokens),
 		CacheReadNanousdPerMTokens:  usdToNanousd(req.CacheReadUSDPerMTokens),
 		CacheWriteNanousdPerMTokens: usdToNanousd(req.CacheWriteUSDPerMTokens),
@@ -1373,6 +1404,22 @@ func modelPricingInputFromRequest(req UpsertModelPricingRequest) appbilling.Mode
 		CallNanousdPerCall:          usdToNanousd(req.CallUSDPerCall),
 		DurationNanousdPerSecond:    usdToNanousd(req.DurationUSDPerSecond),
 		TieredPricingJSON:           req.TieredPricingJSON,
+	}
+}
+
+func toAffiliateOverviewResponse(item appbilling.AffiliateOverview) AffiliateOverviewResponse {
+	return AffiliateOverviewResponse{
+		InviteCode:                 item.Profile.InviteCode,
+		CommissionRatePercent:      item.Profile.CommissionRatePercent,
+		CommissionRate:             float64(item.Profile.CommissionRatePercent) / 100,
+		ReferralCount:              item.ReferralCount,
+		AvailableCommissionUSD:     nanousdToUSD(item.AvailableCommissionNanousd),
+		AvailableCommissionNanousd: item.AvailableCommissionNanousd,
+		WithdrawnCommissionUSD:     nanousdToUSD(item.WithdrawnCommissionNanousd),
+		WithdrawnCommissionNanousd: item.WithdrawnCommissionNanousd,
+		TotalCommissionUSD:         nanousdToUSD(item.TotalCommissionNanousd),
+		TotalCommissionNanousd:     item.TotalCommissionNanousd,
+		Status:                     item.Profile.Status,
 	}
 }
 

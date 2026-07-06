@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	appbilling "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/billing"
 	userapp "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/application/user"
 	domainuser "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/domain/user"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/config"
@@ -151,7 +152,7 @@ func (s *Service) RequestEmailRegistration(ctx context.Context, email string, tu
 	}, nil
 }
 
-func (s *Service) RegisterWithEmail(ctx context.Context, email string, password string, code string, turnstileToken string, remoteIP string, requestID string, auditCtx requestmeta.SessionAuditContext) (*LoginResult, error) {
+func (s *Service) RegisterWithEmail(ctx context.Context, email string, password string, code string, turnstileToken string, inviteCode string, remoteIP string, requestID string, auditCtx requestmeta.SessionAuditContext) (*LoginResult, error) {
 	cfg := s.cfg.Snapshot()
 	if !cfg.EmailLoginEnabled || !cfg.EmailRegistrationEnabled {
 		return nil, fmt.Errorf("email registration is disabled")
@@ -229,6 +230,19 @@ func (s *Service) RegisterWithEmail(ctx context.Context, email string, password 
 		PasswordOrigin:    domainuser.PasswordOriginLocalRegister,
 	}, 0, 0, nil, false); err != nil {
 		return nil, err
+	}
+	if s.affiliateBinder != nil {
+		if err = s.affiliateBinder.BindAffiliateReferral(ctx, userItem.ID, inviteCode); err != nil {
+			if !errors.Is(err, appbilling.ErrInvalidAffiliateInvite) {
+				return nil, err
+			}
+			if s.logger != nil {
+				s.logger.Warn("ignore invalid affiliate invite code",
+					zap.String("invite_code", strings.TrimSpace(inviteCode)),
+					zap.Error(err),
+				)
+			}
+		}
 	}
 	if verification != nil {
 		if err = s.repo.MarkContactVerificationVerified(ctx, verification.ID, now); err != nil {

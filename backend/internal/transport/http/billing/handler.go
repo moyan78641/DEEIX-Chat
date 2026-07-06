@@ -261,6 +261,16 @@ func (h *Handler) GetBillingAccount(c *gin.Context) {
 	response.Success(c, BillingAccountDataResponse{Account: toBillingAccountResponse(account)})
 }
 
+// GetAffiliateOverview 查询当前用户邀请返利信息。
+func (h *Handler) GetAffiliateOverview(c *gin.Context) {
+	overview, err := h.service.GetAffiliateOverview(c.Request.Context(), middleware.MustUserID(c))
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "get affiliate overview failed")
+		return
+	}
+	response.Success(c, AffiliateOverviewDataResponse{Affiliate: toAffiliateOverviewResponse(*overview)})
+}
+
 // UpdateBillingAccountBalance godoc
 // @Summary 管理员设置用户按量余额
 // @Description 设置指定用户的按量计费余额，金额单位为美元

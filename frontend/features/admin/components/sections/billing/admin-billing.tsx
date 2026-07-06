@@ -107,6 +107,7 @@ import {
   parseEPayTypesJSON,
   parseIntValue,
   parsePrice,
+  parsePricingMultiplier,
   paymentPatchItems,
   paymentProviderSetting,
   paymentSettingsChanged,
@@ -147,6 +148,14 @@ function formatNativeToolPriceInput(priceNanousd: number): string {
     return "0";
   }
   return String(priceNanousd / 1_000_000_000);
+}
+
+function formatPricingMultiplierLabel(value: number | null | undefined): string {
+  const multiplier = Number(value);
+  if (!Number.isFinite(multiplier) || multiplier <= 0) {
+    return "1x";
+  }
+  return `${Number(multiplier.toFixed(2)).toString()}x`;
 }
 
 function nativeToolPriceInputToNanousd(value: string): number | null {
@@ -1588,6 +1597,7 @@ export function AdminBillingPage() {
         platformModelName: form.platformModelName,
         currency: "USD",
         pricingMode: form.pricingMode,
+        pricingMultiplier: parsePricingMultiplier(form.pricingMultiplier),
         inputUSDPerMTokens: form.pricingMode === "token" ? parsePrice(form.input) : 0,
         cacheReadUSDPerMTokens: form.pricingMode === "token" ? parsePrice(form.cacheRead) : 0,
         cacheWriteUSDPerMTokens: form.pricingMode === "token" ? parsePrice(form.cacheWrite) : 0,
@@ -1697,6 +1707,7 @@ export function AdminBillingPage() {
         platformModelName: row.platformModelName,
         currency: row.pricing?.currency || "USD",
         pricingMode,
+        pricingMultiplier: row.pricing?.pricingMultiplier || 1,
         inputUSDPerMTokens: pricingMode === "token" ? row.pricing?.inputUSDPerMTokens ?? 0 : 0,
         cacheReadUSDPerMTokens: pricingMode === "token" ? row.pricing?.cacheReadUSDPerMTokens ?? 0 : 0,
         cacheWriteUSDPerMTokens: pricingMode === "token" ? row.pricing?.cacheWriteUSDPerMTokens ?? 0 : 0,
@@ -2715,15 +2726,16 @@ export function AdminBillingPage() {
                 <TableHead className="min-w-[210px]">{t("modelPricing.platformModel")}</TableHead>
                 <TableHead>{t("modelPricing.free")}</TableHead>
                 <TableHead>{t("modelPricing.pricingMode")}</TableHead>
+                <TableHead>{t("modelPricing.pricingMultiplier")}</TableHead>
                 <TableHead className="min-w-[260px]">{t("modelPricing.basePrice")}</TableHead>
                 <TableHead>{t("modelPricing.updatedAt")}</TableHead>
                 <TableHead stickyEnd className="w-[56px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {modelPricingInitialLoading ? <TableLoadingRow colSpan={6} /> : null}
-              {!loading && pageRows.length === 0 ? <TableEmptyRow colSpan={6}>{t("modelPricing.empty")}</TableEmptyRow> : null}
-              {showModelPricingRows ? <VirtualTablePaddingRow colSpan={6} height={modelPricingVirtualRows.paddingTop} /> : null}
+              {modelPricingInitialLoading ? <TableLoadingRow colSpan={7} /> : null}
+              {!loading && pageRows.length === 0 ? <TableEmptyRow colSpan={7}>{t("modelPricing.empty")}</TableEmptyRow> : null}
+              {showModelPricingRows ? <VirtualTablePaddingRow colSpan={7} height={modelPricingVirtualRows.paddingTop} /> : null}
               {showModelPricingRows
                 ? modelPricingVirtualRows.rows.map(({ item: row }) => {
                     const identity = resolveModelIdentity({
@@ -2759,6 +2771,9 @@ export function AdminBillingPage() {
                         <TableCell className="py-1.5">
                           {row.pricing ? t(`pricingModes.${normalizePricingMode(row.pricing.pricingMode)}`) : <span className="text-muted-foreground">-</span>}
                         </TableCell>
+                        <TableCell className="py-1.5 font-mono text-xs text-muted-foreground">
+                          {row.pricing ? formatPricingMultiplierLabel(row.pricing.pricingMultiplier) : "1x"}
+                        </TableCell>
                         <TableCell className="py-1.5">
                           <PricingUnitCell pricing={row.pricing} />
                         </TableCell>
@@ -2783,7 +2798,7 @@ export function AdminBillingPage() {
                     );
                   })
                 : null}
-              {showModelPricingRows ? <VirtualTablePaddingRow colSpan={6} height={modelPricingVirtualRows.paddingBottom} /> : null}
+              {showModelPricingRows ? <VirtualTablePaddingRow colSpan={7} height={modelPricingVirtualRows.paddingBottom} /> : null}
             </TableBody>
           </Table>
 

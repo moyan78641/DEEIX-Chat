@@ -49,7 +49,7 @@ import {
   SettingsSection,
   SettingsSectionSeparator,
 } from "@/shared/components/settings-layout";
-import { resolveModelOptionIconUrl, resolveModelOptionLabel } from "@/shared/lib/model-option-display";
+import { resolveModelOptionIconUrl } from "@/shared/lib/model-option-display";
 import { parseKindsJSON } from "@/shared/model/llm-schema";
 import { platformModifierLabel, platformSendShortcut } from "@/shared/lib/platform-shortcuts";
 import type { SendShortcut } from "@/features/settings/types/settings";
@@ -440,7 +440,7 @@ export function SettingsChat() {
         items
           .filter((model) => model.platformModelName.trim() && parseKindsJSON(model.kindsJSON).includes("chat"))
           .map((model) => ({
-            label: resolveModelOptionLabel(model.platformModelName),
+            label: model.displayName?.trim() || model.platformModelName,
             value: model.platformModelName,
             iconUrl: resolveModelOptionIconUrl({
               platformModelName: model.platformModelName,

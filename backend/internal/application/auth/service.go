@@ -43,6 +43,7 @@ type Service struct {
 	repo                 repository.AuthRepository
 	geoResolver          *geoip.Client
 	subscriptionResolver subscriptionResolver
+	affiliateBinder      affiliateBinder
 	providerHTTPClient   *http.Client
 	logger               *zap.Logger
 	storeProvider        appstorage.Provider
@@ -56,6 +57,10 @@ type subscriptionResolver interface {
 		userID uint,
 		now time.Time,
 	) (*billing.UserSubscriptionSnapshot, error)
+}
+
+type affiliateBinder interface {
+	BindAffiliateReferral(ctx context.Context, inviteeUserID uint, inviteCode string) error
 }
 
 type auditWriter interface {
@@ -99,6 +104,11 @@ func newAuthOutboundHTTPClient(env string, ssrfProtectionEnabled bool) *http.Cli
 // SetSubscriptionResolver 注入订阅派生解析能力。
 func (s *Service) SetSubscriptionResolver(resolver subscriptionResolver) {
 	s.subscriptionResolver = resolver
+}
+
+// SetAffiliateBinder 注入邀请返利绑定能力。
+func (s *Service) SetAffiliateBinder(binder affiliateBinder) {
+	s.affiliateBinder = binder
 }
 
 // SetLogger 注入结构化日志记录器。

@@ -616,6 +616,8 @@ type PublicModelPricingResponse struct {
 	Currency                string                           `json:"currency"`
 	IsFree                  bool                             `json:"isFree"`
 	Mode                    string                           `json:"mode"`
+	Multiplier              float64                          `json:"multiplier"`
+	MultiplierPercent       int                              `json:"multiplierPercent"`
 	InputUSDPerMTokens      float64                          `json:"inputUSDPerMTokens"`
 	CacheReadUSDPerMTokens  float64                          `json:"cacheReadUSDPerMTokens"`
 	CacheWriteUSDPerMTokens float64                          `json:"cacheWriteUSDPerMTokens"`
@@ -813,6 +815,8 @@ func toPublicModelPricingResponse(v *appbilling.PublicModelPricing) *PublicModel
 		Currency:                v.Currency,
 		IsFree:                  v.IsFree,
 		Mode:                    v.Mode,
+		Multiplier:              v.Multiplier,
+		MultiplierPercent:       v.MultiplierPercent,
 		InputUSDPerMTokens:      v.InputUSDPerMTokens,
 		CacheReadUSDPerMTokens:  v.CacheReadUSDPerMTokens,
 		CacheWriteUSDPerMTokens: v.CacheWriteUSDPerMTokens,

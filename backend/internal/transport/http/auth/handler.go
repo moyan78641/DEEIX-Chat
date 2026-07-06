@@ -187,6 +187,7 @@ func (h *Handler) CompleteEmailRegistration(c *gin.Context) {
 		req.Password,
 		req.Code,
 		req.TurnstileToken,
+		req.InviteCode,
 		c.ClientIP(),
 		middleware.MustRequestID(c),
 		middleware.ResolveSessionAuditContext(c),

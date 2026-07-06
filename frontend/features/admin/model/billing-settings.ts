@@ -35,6 +35,7 @@ export type PricingFormState = {
   output: string;
   call: string;
   duration: string;
+  pricingMultiplier: string;
   tieredTiers: TieredPricingTierForm[];
   isFree: boolean;
 };
@@ -54,6 +55,7 @@ export type ModelPricingExportEntry = {
   currency: string;
   isFree: boolean;
   pricingMode: PricingMode;
+  pricingMultiplier?: number;
   inputUSDPerMTokens: number;
   cacheReadUSDPerMTokens: number;
   cacheWriteUSDPerMTokens: number;
@@ -228,6 +230,7 @@ export function createFormState(row: BillingModelPricingRow): PricingFormState {
     output: String(pricing?.outputUSDPerMTokens ?? 0),
     call: String(pricing?.callUSDPerCall ?? 0),
     duration: String(pricing?.durationUSDPerSecond ?? 0),
+    pricingMultiplier: String(pricing?.pricingMultiplier || 1),
     tieredTiers: parseTieredPricingJSON(pricing?.tieredPricingJSON),
     isFree: pricing?.isFree ?? row.isFree,
   };
@@ -257,6 +260,14 @@ export function parsePrice(value: string): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
     return 0;
+  }
+  return parsed;
+}
+
+export function parsePricingMultiplier(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 1;
   }
   return parsed;
 }
@@ -301,6 +312,25 @@ function numberFromPricingField(
   if (!Number.isFinite(parsed) || parsed < 0) {
     errors.push(messages.invalidNumber(platformModelName, key));
     return 0;
+  }
+  return parsed;
+}
+
+function optionalPositiveNumberFromPricingField(
+  entry: Record<string, unknown>,
+  key: string,
+  errors: string[],
+  platformModelName: string,
+  messages: ModelPricingImportMessages,
+): number | undefined {
+  const value = entry[key];
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    errors.push(messages.invalidNumber(platformModelName, key));
+    return undefined;
   }
   return parsed;
 }
@@ -369,6 +399,7 @@ export function buildModelPricingExportObject(pricingItems: AdminModelPricingDTO
       currency: item.currency || "USD",
       isFree: item.isFree,
       pricingMode,
+      pricingMultiplier: item.pricingMultiplier || 1,
       inputUSDPerMTokens: pricingMode === "token" ? item.inputUSDPerMTokens : 0,
       cacheReadUSDPerMTokens: pricingMode === "token" ? item.cacheReadUSDPerMTokens : 0,
       cacheWriteUSDPerMTokens: pricingMode === "token" ? item.cacheWriteUSDPerMTokens : 0,
@@ -407,6 +438,7 @@ export function createOptimisticModelPricing(row: BillingModelPricingRow, payloa
   const outputUSDPerMTokens = pricingMode === "token" ? payload.outputUSDPerMTokens : 0;
   const callUSDPerCall = pricingMode === "call" ? payload.callUSDPerCall : 0;
   const durationUSDPerSecond = pricingMode === "duration" ? payload.durationUSDPerSecond : 0;
+  const pricingMultiplier = payload.pricingMultiplier || 1;
   return {
     id: row.pricing?.id ?? 0,
     platformModelName: payload.platformModelName,
@@ -415,6 +447,8 @@ export function createOptimisticModelPricing(row: BillingModelPricingRow, payloa
     currency: payload.currency || row.pricing?.currency || "USD",
     isFree: payload.isFree,
     pricingMode,
+    pricingMultiplier,
+    pricingMultiplierPercent: Math.round(pricingMultiplier * 100),
     inputUSDPerMTokens,
     cacheReadUSDPerMTokens,
     cacheWriteUSDPerMTokens,
@@ -496,6 +530,7 @@ export function parseModelPricingImportJSON(
       currency: typeof rawEntry.currency === "string" && rawEntry.currency.trim() ? rawEntry.currency.trim() : "USD",
       isFree: typeof rawEntry.isFree === "boolean" ? rawEntry.isFree : false,
       pricingMode,
+      pricingMultiplier: optionalPositiveNumberFromPricingField(rawEntry, "pricingMultiplier", entryErrors, platformModelName, messages) ?? 1,
       inputUSDPerMTokens: pricingMode === "token" ? numberFromPricingField(rawEntry, "inputUSDPerMTokens", entryErrors, platformModelName, messages) : 0,
       cacheReadUSDPerMTokens: pricingMode === "token" ? numberFromPricingField(rawEntry, "cacheReadUSDPerMTokens", entryErrors, platformModelName, messages) : 0,
       cacheWriteUSDPerMTokens: pricingMode === "token" ? numberFromPricingField(rawEntry, "cacheWriteUSDPerMTokens", entryErrors, platformModelName, messages) : 0,

@@ -2,6 +2,8 @@ package billing
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"math"
@@ -12,7 +14,7 @@ import (
 
 	domainbilling "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/domain/billing"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/persistence/dberror"
-	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/persistence/models"
+	model "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/persistence/models"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/repository"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -1270,6 +1272,9 @@ func (r *Repo) MarkPaymentOrderPaidAndCreditBalance(
 		}).Error; err != nil {
 			return translateError(err)
 		}
+		if err := createAffiliateCommissionForTopUp(tx, order); err != nil {
+			return err
+		}
 		if err := tx.Where("order_no = ?", orderNo).First(&order).Error; err != nil {
 			return translateError(err)
 		}
@@ -1904,6 +1909,7 @@ func (r *Repo) UpsertModelPricing(ctx context.Context, item *domainbilling.Model
 		"currency":                         normalizeCurrency(item.Currency),
 		"is_free":                          item.IsFree,
 		"pricing_mode":                     normalizePricingMode(item.PricingMode),
+		"pricing_multiplier_percent":       normalizePricingMultiplierPercent(item.PricingMultiplierPercent),
 		"input_nanousd_per_m_tokens":       clampNonNegative(item.InputNanousdPerMTokens),
 		"cache_read_nanousd_per_m_tokens":  clampNonNegative(item.CacheReadNanousdPerMTokens),
 		"cache_write_nanousd_per_m_tokens": clampNonNegative(item.CacheWriteNanousdPerMTokens),
@@ -1928,6 +1934,131 @@ func (r *Repo) UpsertModelPricing(ctx context.Context, item *domainbilling.Model
 	}
 	result := toDomainModelPricing(record)
 	return &result, nil
+}
+
+// GetOrCreateAffiliateProfile 查询或创建用户邀请返利档案。
+func (r *Repo) GetOrCreateAffiliateProfile(ctx context.Context, userID uint) (*domainbilling.AffiliateProfile, error) {
+	if userID == 0 {
+		return nil, repository.ErrInvalidInput
+	}
+	var result domainbilling.AffiliateProfile
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var profile model.AffiliateProfile
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", userID).First(&profile).Error
+		if err == nil {
+			result = toDomainAffiliateProfile(profile)
+			return nil
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return translateError(err)
+		}
+		var createErr error
+		profile, createErr = createAffiliateProfileWithUniqueCode(tx, userID)
+		if createErr != nil {
+			return createErr
+		}
+		result = toDomainAffiliateProfile(profile)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetAffiliateProfileByInviteCode 按邀请码查询邀请人档案。
+func (r *Repo) GetAffiliateProfileByInviteCode(ctx context.Context, inviteCode string) (*domainbilling.AffiliateProfile, error) {
+	code := normalizeInviteCode(inviteCode)
+	if code == "" {
+		return nil, repository.ErrInvalidInput
+	}
+	var profile model.AffiliateProfile
+	if err := r.db.WithContext(ctx).Where("invite_code = ? AND status = ?", code, domainbilling.AffiliateStatusActive).First(&profile).Error; err != nil {
+		return nil, translateError(err)
+	}
+	result := toDomainAffiliateProfile(profile)
+	return &result, nil
+}
+
+// CreateAffiliateReferral 创建一级邀请绑定关系。
+func (r *Repo) CreateAffiliateReferral(ctx context.Context, item *domainbilling.AffiliateReferral) (*domainbilling.AffiliateReferral, error) {
+	if item == nil || item.InviterUserID == 0 || item.InviteeUserID == 0 || item.InviterUserID == item.InviteeUserID {
+		return nil, repository.ErrInvalidInput
+	}
+	code := normalizeInviteCode(item.InviteCode)
+	if code == "" {
+		return nil, repository.ErrInvalidInput
+	}
+	record := model.AffiliateReferral{
+		InviterUserID: item.InviterUserID,
+		InviteeUserID: item.InviteeUserID,
+		InviteCode:    code,
+		Status:        firstNonEmpty(strings.TrimSpace(item.Status), domainbilling.AffiliateStatusActive),
+	}
+	if err := r.db.WithContext(ctx).Create(&record).Error; err != nil {
+		return nil, translateError(err)
+	}
+	result := toDomainAffiliateReferral(record)
+	return &result, nil
+}
+
+// GetAffiliateReferralByInvitee 查询被邀请人的一级绑定关系。
+func (r *Repo) GetAffiliateReferralByInvitee(ctx context.Context, inviteeUserID uint) (*domainbilling.AffiliateReferral, error) {
+	if inviteeUserID == 0 {
+		return nil, repository.ErrInvalidInput
+	}
+	var record model.AffiliateReferral
+	if err := r.db.WithContext(ctx).Where("invitee_user_id = ?", inviteeUserID).First(&record).Error; err != nil {
+		return nil, translateError(err)
+	}
+	result := toDomainAffiliateReferral(record)
+	return &result, nil
+}
+
+// CountAffiliateReferrals 统计一级邀请人数。
+func (r *Repo) CountAffiliateReferrals(ctx context.Context, inviterUserID uint) (int64, error) {
+	if inviterUserID == 0 {
+		return 0, repository.ErrInvalidInput
+	}
+	var total int64
+	err := r.db.WithContext(ctx).Model(&model.AffiliateReferral{}).
+		Where("inviter_user_id = ? AND status = ?", inviterUserID, domainbilling.AffiliateStatusActive).
+		Count(&total).Error
+	return total, translateError(err)
+}
+
+// SumAffiliateCommissions 汇总邀请返利。
+func (r *Repo) SumAffiliateCommissions(ctx context.Context, inviterUserID uint) (int64, int64, int64, error) {
+	if inviterUserID == 0 {
+		return 0, 0, 0, repository.ErrInvalidInput
+	}
+	type sumRow struct {
+		Status string
+		Total  int64
+	}
+	rows := make([]sumRow, 0)
+	if err := r.db.WithContext(ctx).Model(&model.AffiliateCommission{}).
+		Select("status, COALESCE(SUM(commission_nanousd), 0) AS total").
+		Where("inviter_user_id = ?", inviterUserID).
+		Group("status").
+		Scan(&rows).Error; err != nil {
+		return 0, 0, 0, translateError(err)
+	}
+	var available int64
+	var withdrawn int64
+	var total int64
+	for _, row := range rows {
+		if row.Status != domainbilling.AffiliateCommissionStatusReversed {
+			total += row.Total
+		}
+		switch row.Status {
+		case domainbilling.AffiliateCommissionStatusAvailable:
+			available += row.Total
+		case domainbilling.AffiliateCommissionStatusWithdrawn:
+			withdrawn += row.Total
+		}
+	}
+	return available, withdrawn, total, nil
 }
 
 // ListUsageByUser 分页查询账本。
@@ -2312,6 +2443,7 @@ func toDomainModelPricing(item model.ModelPricing) domainbilling.ModelPricing {
 		Currency:                    item.Currency,
 		IsFree:                      item.IsFree,
 		PricingMode:                 normalizePricingMode(item.PricingMode),
+		PricingMultiplierPercent:    normalizePricingMultiplierPercent(item.PricingMultiplierPercent),
 		InputNanousdPerMTokens:      item.InputNanousdPerMTokens,
 		CacheReadNanousdPerMTokens:  item.CacheReadNanousdPerMTokens,
 		CacheWriteNanousdPerMTokens: item.CacheWriteNanousdPerMTokens,
@@ -2321,6 +2453,47 @@ func toDomainModelPricing(item model.ModelPricing) domainbilling.ModelPricing {
 		TieredPricingJSON:           item.TieredPricingJSON,
 		CreatedAt:                   item.CreatedAt,
 		UpdatedAt:                   item.UpdatedAt,
+	}
+}
+
+func toDomainAffiliateProfile(item model.AffiliateProfile) domainbilling.AffiliateProfile {
+	return domainbilling.AffiliateProfile{
+		ID:                    item.ID,
+		UserID:                item.UserID,
+		InviteCode:            item.InviteCode,
+		CommissionRatePercent: item.CommissionRatePercent,
+		Status:                item.Status,
+		CreatedAt:             item.CreatedAt,
+		UpdatedAt:             item.UpdatedAt,
+	}
+}
+
+func toDomainAffiliateReferral(item model.AffiliateReferral) domainbilling.AffiliateReferral {
+	return domainbilling.AffiliateReferral{
+		ID:            item.ID,
+		InviterUserID: item.InviterUserID,
+		InviteeUserID: item.InviteeUserID,
+		InviteCode:    item.InviteCode,
+		Status:        item.Status,
+		CreatedAt:     item.CreatedAt,
+		UpdatedAt:     item.UpdatedAt,
+	}
+}
+
+func toDomainAffiliateCommission(item model.AffiliateCommission) domainbilling.AffiliateCommission {
+	return domainbilling.AffiliateCommission{
+		ID:                    item.ID,
+		InviterUserID:         item.InviterUserID,
+		InviteeUserID:         item.InviteeUserID,
+		PaymentOrderID:        item.PaymentOrderID,
+		PaymentOrderNo:        item.PaymentOrderNo,
+		BaseAmountCents:       item.BaseAmountCents,
+		CommissionRatePercent: item.CommissionRatePercent,
+		CommissionNanousd:     item.CommissionNanousd,
+		Status:                item.Status,
+		SnapshotJSON:          item.SnapshotJSON,
+		CreatedAt:             item.CreatedAt,
+		UpdatedAt:             item.UpdatedAt,
 	}
 }
 
@@ -3301,6 +3474,122 @@ func subscriptionPlanRank(plan model.BillingPlan) int {
 		return plan.SortOrder
 	}
 	return int(plan.ID)
+}
+
+func createAffiliateProfileWithUniqueCode(tx *gorm.DB, userID uint) (model.AffiliateProfile, error) {
+	var lastErr error
+	for i := 0; i < 8; i++ {
+		code, err := generateAffiliateInviteCode()
+		if err != nil {
+			return model.AffiliateProfile{}, err
+		}
+		profile := model.AffiliateProfile{
+			UserID:                userID,
+			InviteCode:            code,
+			CommissionRatePercent: 10,
+			Status:                domainbilling.AffiliateStatusActive,
+		}
+		err = tx.Create(&profile).Error
+		if err == nil {
+			return profile, nil
+		}
+		lastErr = err
+		if !dberror.IsUniqueConstraint(err) {
+			return model.AffiliateProfile{}, translateError(err)
+		}
+	}
+	return model.AffiliateProfile{}, translateError(lastErr)
+}
+
+func generateAffiliateInviteCode() (string, error) {
+	var random [5]byte
+	if _, err := rand.Read(random[:]); err != nil {
+		return "", err
+	}
+	return strings.ToUpper(hex.EncodeToString(random[:])), nil
+}
+
+func normalizeInviteCode(value string) string {
+	return strings.ToUpper(strings.TrimSpace(value))
+}
+
+func normalizePricingMultiplierPercent(value int) int {
+	if value <= 0 {
+		return 100
+	}
+	return value
+}
+
+func createAffiliateCommissionForTopUp(tx *gorm.DB, order model.PaymentOrder) error {
+	if order.ID == 0 || order.UserID == 0 || order.OrderType != domainbilling.PaymentOrderTypeTopUp {
+		return nil
+	}
+	if order.BaseAmountCents <= 0 {
+		return nil
+	}
+	var referral model.AffiliateReferral
+	if err := tx.Where("invitee_user_id = ? AND status = ?", order.UserID, domainbilling.AffiliateStatusActive).First(&referral).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return translateError(err)
+	}
+	if referral.InviterUserID == 0 || referral.InviterUserID == order.UserID {
+		return nil
+	}
+	var profile model.AffiliateProfile
+	if err := tx.Where("user_id = ? AND status = ?", referral.InviterUserID, domainbilling.AffiliateStatusActive).First(&profile).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return translateError(err)
+	}
+	ratePercent := profile.CommissionRatePercent
+	if ratePercent <= 0 {
+		return nil
+	}
+	commissionNanousd := centsToNanousd(order.BaseAmountCents) * int64(ratePercent) / 100
+	if commissionNanousd <= 0 {
+		return nil
+	}
+	commission := model.AffiliateCommission{
+		InviterUserID:         referral.InviterUserID,
+		InviteeUserID:         order.UserID,
+		PaymentOrderID:        order.ID,
+		PaymentOrderNo:        order.OrderNo,
+		BaseAmountCents:       order.BaseAmountCents,
+		CommissionRatePercent: ratePercent,
+		CommissionNanousd:     commissionNanousd,
+		Status:                domainbilling.AffiliateCommissionStatusAvailable,
+		SnapshotJSON:          affiliateCommissionSnapshotJSON(order, referral, profile, commissionNanousd),
+	}
+	if err := tx.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "payment_order_id"}},
+		DoNothing: true,
+	}).Create(&commission).Error; err != nil {
+		return translateError(err)
+	}
+	return nil
+}
+
+func affiliateCommissionSnapshotJSON(order model.PaymentOrder, referral model.AffiliateReferral, profile model.AffiliateProfile, commissionNanousd int64) string {
+	payload := map[string]interface{}{
+		"order_id":                order.ID,
+		"order_no":                order.OrderNo,
+		"invite_code":             referral.InviteCode,
+		"inviter_user_id":         referral.InviterUserID,
+		"invitee_user_id":         order.UserID,
+		"base_amount_cents":       order.BaseAmountCents,
+		"original_amount_cents":   order.OriginalBaseAmountCents,
+		"discount_amount_cents":   order.DiscountAmountCents,
+		"commission_rate_percent": profile.CommissionRatePercent,
+		"commission_nanousd":      commissionNanousd,
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return "{}"
+	}
+	return string(raw)
 }
 
 func redemptionSnapshotJSON(code model.RedemptionCode) string {

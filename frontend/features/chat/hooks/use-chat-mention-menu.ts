@@ -326,7 +326,7 @@ function filterModels(modelOptions: ChatModelOption[], query: string): ChatMenti
       id: `model:${model.platformModelName}`,
       kind: "model" as const,
       label: model.displayName?.trim() || model.platformModelName,
-      description: [model.displayName?.trim() ? model.platformModelName : "", model.vendor].filter(Boolean).join(" - "),
+      description: model.vendor?.trim() || "",
       model,
       selected: false,
     }));

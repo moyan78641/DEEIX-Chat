@@ -299,6 +299,7 @@ type ModelPricing struct {
 	Currency                    string
 	IsFree                      bool
 	PricingMode                 string
+	PricingMultiplierPercent    int
 	InputNanousdPerMTokens      int64
 	CacheReadNanousdPerMTokens  int64
 	CacheWriteNanousdPerMTokens int64
@@ -308,6 +309,58 @@ type ModelPricing struct {
 	TieredPricingJSON           string
 	CreatedAt                   time.Time
 	UpdatedAt                   time.Time
+}
+
+const (
+	// AffiliateStatusActive 表示邀请返利关系启用。
+	AffiliateStatusActive = "active"
+	// AffiliateStatusInactive 表示邀请返利关系停用。
+	AffiliateStatusInactive = "inactive"
+
+	// AffiliateCommissionStatusAvailable 表示返利可提现。
+	AffiliateCommissionStatusAvailable = "available"
+	// AffiliateCommissionStatusWithdrawn 表示返利已提现。
+	AffiliateCommissionStatusWithdrawn = "withdrawn"
+	// AffiliateCommissionStatusReversed 表示返利已冲正。
+	AffiliateCommissionStatusReversed = "reversed"
+)
+
+// AffiliateProfile 表示用户邀请返利配置。
+type AffiliateProfile struct {
+	ID                    uint
+	UserID                uint
+	InviteCode            string
+	CommissionRatePercent int
+	Status                string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
+// AffiliateReferral 表示一级邀请绑定关系。
+type AffiliateReferral struct {
+	ID            uint
+	InviterUserID uint
+	InviteeUserID uint
+	InviteCode    string
+	Status        string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// AffiliateCommission 表示一次返利记录。
+type AffiliateCommission struct {
+	ID                    uint
+	InviterUserID         uint
+	InviteeUserID         uint
+	PaymentOrderID        uint
+	PaymentOrderNo        string
+	BaseAmountCents       int64
+	CommissionRatePercent int
+	CommissionNanousd     int64
+	Status                string
+	SnapshotJSON          string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 // UsageLedger 表示用量账本。

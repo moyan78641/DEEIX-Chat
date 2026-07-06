@@ -78,6 +78,7 @@ type EmailRegistrationCompleteRequest struct {
 	Password        string `json:"password" binding:"required,min=8,max=128"`
 	Code            string `json:"code" binding:"omitempty,len=6"`
 	TurnstileToken  string `json:"turnstileToken" binding:"omitempty,max=2048"`
+	InviteCode      string `json:"inviteCode" binding:"omitempty,max=32"`
 	TermsAccepted   bool   `json:"termsAccepted"`
 	PrivacyAccepted bool   `json:"privacyAccepted"`
 }

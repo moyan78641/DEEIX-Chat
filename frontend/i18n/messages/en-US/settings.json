@@ -492,6 +492,17 @@
       "balance": "Account balance {value}",
       "topUp": "Top up"
     },
+    "affiliate": {
+      "title": "Affiliate rewards",
+      "description": "One-level referrals only: when an invited user tops up, you receive the configured withdrawable commission.",
+      "inviteCode": "Invite code",
+      "commissionRate": "Commission rate",
+      "referralCount": "Referrals",
+      "availableCommission": "Available commission",
+      "copyLink": "Copy invite link",
+      "copied": "Invite link copied",
+      "copyFailed": "Copy failed"
+    },
     "selfMode": {
       "title": "Billing mode",
       "value": "Self-use mode"

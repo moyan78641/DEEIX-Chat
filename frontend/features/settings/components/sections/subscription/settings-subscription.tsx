@@ -3,14 +3,17 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
+import { Copy } from "lucide-react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useAppLocale } from "@/i18n/app-i18n-provider";
 import { useLocalizedErrorMessage } from "@/i18n/use-localized-error";
 import { useAuthSession } from "@/shared/auth/auth-session-context";
 import {
   createBillingCheckout,
+  getAffiliateOverview,
   getBillingConfig,
   getBillingOverview,
   listBillingDailyUsage,
@@ -29,6 +32,7 @@ import type {
   BillingUsageDailyDTO,
   BillingUsageLedgerDTO,
   BillingUsageMonthlyDTO,
+  AffiliateOverviewDTO,
   PaymentQuoteDTO,
 } from "@/shared/api/billing.types";
 import type { BillingPlanDTO, BillingPlanPriceDTO } from "@/shared/api/billing.types";
@@ -84,6 +88,82 @@ function SubscriptionTrendSkeleton() {
 type BillingRuntimeConfig = BillingConfigData["config"];
 type PaymentProvider = "stripe" | "epay";
 
+function buildAffiliateInviteURL(inviteCode: string): string {
+  const code = inviteCode.trim();
+  if (!code) {
+    return "";
+  }
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}/login?ref=${encodeURIComponent(code)}`;
+}
+
+function AffiliateOverviewSection({
+  affiliate,
+  billingDisplay,
+}: {
+  affiliate: AffiliateOverviewDTO | null;
+  billingDisplay: BillingDisplayOptions;
+}) {
+  const t = useTranslations("settings.subscriptionPage.affiliate");
+  const inviteURL = React.useMemo(() => buildAffiliateInviteURL(affiliate?.inviteCode ?? ""), [affiliate?.inviteCode]);
+  const handleCopy = React.useCallback(async () => {
+    if (!inviteURL) return;
+    try {
+      await navigator.clipboard.writeText(inviteURL);
+      toast.success(t("copied"));
+    } catch {
+      toast.error(t("copyFailed"));
+    }
+  }, [inviteURL, t]);
+
+  if (!affiliate) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-3 px-0.5 xl:px-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-medium">{t("title")}</p>
+          <p className="text-xs leading-5 text-muted-foreground">{t("description")}</p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          disabled={!inviteURL}
+          onClick={() => void handleCopy()}
+        >
+          <Copy className="size-3.5" />
+          {t("copyLink")}
+        </Button>
+      </div>
+
+      <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-md bg-muted/35 px-3 py-2">
+          <p className="text-muted-foreground">{t("inviteCode")}</p>
+          <p className="mt-1 truncate font-mono font-medium text-foreground">{affiliate.inviteCode || "-"}</p>
+        </div>
+        <div className="rounded-md bg-muted/35 px-3 py-2">
+          <p className="text-muted-foreground">{t("commissionRate")}</p>
+          <p className="mt-1 font-medium text-foreground">{affiliate.commissionRatePercent}%</p>
+        </div>
+        <div className="rounded-md bg-muted/35 px-3 py-2">
+          <p className="text-muted-foreground">{t("referralCount")}</p>
+          <p className="mt-1 font-medium tabular-nums text-foreground">{affiliate.referralCount}</p>
+        </div>
+        <div className="rounded-md bg-muted/35 px-3 py-2">
+          <p className="text-muted-foreground">{t("availableCommission")}</p>
+          <p className="mt-1 font-medium tabular-nums text-foreground">
+            {formatAccountBalance(affiliate.availableCommissionUSD, billingDisplay)}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function SettingsSubscription() {
   const t = useTranslations("settings.subscriptionPage");
   const resolveErrorMessage = useLocalizedErrorMessage();
@@ -93,6 +173,7 @@ export function SettingsSubscription() {
   const [billingPlans, setBillingPlans] = React.useState<BillingPlanDTO[]>([]);
   const [billingConfig, setBillingConfig] = React.useState<BillingRuntimeConfig | null>(null);
   const [billingOverview, setBillingOverview] = React.useState<BillingOverviewData["overview"] | null>(null);
+  const [affiliateOverview, setAffiliateOverview] = React.useState<AffiliateOverviewDTO | null>(null);
   const [usageLedgers, setUsageLedgers] = React.useState<BillingUsageLedgerDTO[]>([]);
   const [dailyUsage, setDailyUsage] = React.useState<BillingUsageDailyDTO[]>([]);
   const [monthlyUsage, setMonthlyUsage] = React.useState<BillingUsageMonthlyDTO[]>([]);
@@ -194,23 +275,26 @@ export function SettingsSubscription() {
       getBillingConfig(accessToken),
       listBillingPlans(accessToken),
       getBillingOverview(accessToken),
+      getAffiliateOverview(accessToken).catch(() => null),
       listBillingDailyUsage(accessToken),
       listBillingMonthlyUsage(accessToken, 12),
     ])
-      .then(([configData, plans, overviewData, dailyUsageData, monthlyUsageData]) => ({
+      .then(([configData, plans, overviewData, affiliateData, dailyUsageData, monthlyUsageData]) => ({
         viewer: user,
         config: configData.config,
         plans,
         overview: overviewData.overview,
+        affiliate: affiliateData?.affiliate ?? null,
         dailyUsage: dailyUsageData,
         monthlyUsage: monthlyUsageData,
       }))
-      .then(({ viewer: nextViewer, config, plans, overview, dailyUsage: nextDailyUsage, monthlyUsage: nextMonthlyUsage }) => {
+      .then(({ viewer: nextViewer, config, plans, overview, affiliate, dailyUsage: nextDailyUsage, monthlyUsage: nextMonthlyUsage }) => {
         if (!mounted) return;
         setViewer(nextViewer);
         setBillingConfig(config);
         setBillingPlans(plans);
         setBillingOverview(overview);
+        setAffiliateOverview(affiliate);
         setDailyUsage(nextDailyUsage ?? []);
         setMonthlyUsage(nextMonthlyUsage ?? []);
       })
@@ -653,6 +737,13 @@ export function SettingsSubscription() {
         onConfirmPayment={() => void handleConfirmPayment()}
         onBalancePurchase={() => void handleBalancePurchase()}
       />
+
+      {billingMode !== "self" ? (
+        <AffiliateOverviewSection
+          affiliate={affiliateOverview}
+          billingDisplay={billingDisplay}
+        />
+      ) : null}
 
       <section className="space-y-6 px-0.5 md:space-y-7 xl:space-y-8 xl:px-1">
         <Separator />

@@ -34,6 +34,42 @@ type UseLoginPageInput = {
 };
 
 const VERIFICATION_CODE_RESEND_COOLDOWN_MS = 60_000;
+const AFFILIATE_INVITE_STORAGE_KEY = "deeix_affiliate_invite_code";
+
+function normalizeInviteCode(value: string | null | undefined): string {
+  return (value ?? "").trim().slice(0, 32);
+}
+
+function readStoredInviteCode(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return normalizeInviteCode(window.localStorage.getItem(AFFILIATE_INVITE_STORAGE_KEY));
+  } catch {
+    return "";
+  }
+}
+
+function rememberInviteCodeFromURL(): string {
+  if (typeof window === "undefined") return "";
+  const params = new URLSearchParams(window.location.search);
+  const code = normalizeInviteCode(params.get("ref") || params.get("aff") || params.get("invite"));
+  if (!code) return readStoredInviteCode();
+  try {
+    window.localStorage.setItem(AFFILIATE_INVITE_STORAGE_KEY, code);
+  } catch {
+    // ignore storage failures
+  }
+  return code;
+}
+
+function clearStoredInviteCode() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(AFFILIATE_INVITE_STORAGE_KEY);
+  } catch {
+    // ignore storage failures
+  }
+}
 
 function parseSecurityVerificationMethods(value: string | null): SecurityVerificationMethod[] {
   if (!value) {
@@ -69,6 +105,7 @@ export function useLoginPage({ nextPath, loginLegalConsentAccepted = true, regis
   const [registerPassword, setRegisterPassword] = React.useState("");
   const [registerCode, setRegisterCode] = React.useState("");
   const [registerDebugCode, setRegisterDebugCode] = React.useState("");
+  const [registerInviteCode, setRegisterInviteCode] = React.useState("");
   const [resetEmail, setResetEmail] = React.useState("");
   const [resetPassword, setResetPassword] = React.useState("");
   const [resetCode, setResetCode] = React.useState("");
@@ -159,6 +196,10 @@ export function useLoginPage({ nextPath, loginLegalConsentAccepted = true, regis
   React.useEffect(() => {
     document.title = settings.title?.trim() || t("title");
   }, [settings.title, t]);
+
+  React.useEffect(() => {
+    setRegisterInviteCode(rememberInviteCodeFromURL());
+  }, []);
 
   React.useEffect(() => {
     if (mode === "login" && !passwordLoginEnabled && loginProviders.length === 0 && canShowRegister) {
@@ -356,7 +397,9 @@ export function useLoginPage({ nextPath, loginLegalConsentAccepted = true, regis
             termsAccepted: registerLegalConsentAccepted,
             privacyAccepted: registerLegalConsentAccepted,
           },
+          registerInviteCode,
         );
+        clearStoredInviteCode();
         completeAuth(result.accessToken, result.sessionID);
       } catch (error) {
         toast.error(resolveErrorMessage(error, t("toasts.registerFailed")));
@@ -367,7 +410,7 @@ export function useLoginPage({ nextPath, loginLegalConsentAccepted = true, regis
         setSubmitting(false);
       }
     },
-    [completeAuth, emailVerificationEnabled, registerCode, registerEmail, registerLegalConsentAccepted, registerPassword, registerTurnstileRequired, registerTurnstileToken, resetRegisterTurnstile, resolveErrorMessage, submitting, t],
+    [completeAuth, emailVerificationEnabled, registerCode, registerEmail, registerInviteCode, registerLegalConsentAccepted, registerPassword, registerTurnstileRequired, registerTurnstileToken, resetRegisterTurnstile, resolveErrorMessage, submitting, t],
   );
 
   const onPasswordResetSubmit = React.useCallback(

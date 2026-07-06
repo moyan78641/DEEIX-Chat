@@ -147,10 +147,11 @@ export async function completeEmailRegistration(
   code: string,
   turnstileToken?: string,
   legalConsent?: { termsAccepted: boolean; privacyAccepted: boolean },
+  inviteCode?: string,
 ): Promise<LoginData> {
   return apiRequest<LoginData>("/api/v1/auth/register/email/complete", {
     method: "POST",
-    body: { email, password, code, turnstileToken, ...(legalConsent ?? {}) },
+    body: { email, password, code, turnstileToken, inviteCode, ...(legalConsent ?? {}) },
   });
 }
 

@@ -61,7 +61,6 @@ function ChatModelIdentity({
 }) {
   const platformModelName = model.platformModelName.trim();
   const displayName = model.displayName?.trim() || platformModelName;
-  const showPlatformName = displayName !== platformModelName;
   const identity = React.useMemo(
     () =>
       resolveModelIdentity({
@@ -88,9 +87,6 @@ function ChatModelIdentity({
             {displayName}
           </p>
         </div>
-        {showPlatformName && !compact ? (
-          <p className="truncate text-[11px] leading-4 text-muted-foreground">{platformModelName}</p>
-        ) : null}
       </div>
     </div>
   );
@@ -346,6 +342,13 @@ function formatTokenQuantity(value: number): string {
   return String(value);
 }
 
+function formatPricingMultiplier(value: number | undefined): string {
+  if (!Number.isFinite(value) || !value || Math.abs(value - 1) < 0.0001) {
+    return "";
+  }
+  return `${Number(value.toFixed(2)).toString()}x`;
+}
+
 function ChatModelMenuItem({
   model,
   selected,
@@ -365,7 +368,7 @@ function ChatModelMenuItem({
 }) {
   const platformModelName = model.platformModelName.trim();
   const displayName = model.displayName?.trim() || platformModelName;
-  const showPlatformName = displayName !== platformModelName;
+  const multiplierLabel = formatPricingMultiplier(model.pricing?.multiplier);
   const identity = React.useMemo(
     () =>
       resolveModelIdentity({
@@ -390,10 +393,12 @@ function ChatModelMenuItem({
         <LobeHubIcon iconUrl={iconURL} label={displayName} />
         <span className="min-w-0 flex-1 truncate leading-4">
           <span className="block truncate">{displayName}</span>
-          {showPlatformName ? (
-            <span className="block truncate text-[10px] font-normal leading-3 text-muted-foreground/80">{platformModelName}</span>
-          ) : null}
         </span>
+        {multiplierLabel ? (
+          <span className="shrink-0 rounded border border-border/60 px-1 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
+            {multiplierLabel}
+          </span>
+        ) : null}
         <span className="flex size-3 shrink-0 items-center justify-center">
           {selected ? <Check className="size-3 text-current" strokeWidth={1.7} /> : null}
         </span>

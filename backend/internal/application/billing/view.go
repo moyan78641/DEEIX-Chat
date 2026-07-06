@@ -73,6 +73,8 @@ type PublicModelPricing struct {
 	Currency                string
 	IsFree                  bool
 	Mode                    string
+	Multiplier              float64
+	MultiplierPercent       int
 	InputUSDPerMTokens      float64
 	CacheReadUSDPerMTokens  float64
 	CacheWriteUSDPerMTokens float64
@@ -90,4 +92,13 @@ type PublicModelPricingTier struct {
 	CacheReadUSDPerMTokens  float64
 	CacheWriteUSDPerMTokens float64
 	OutputUSDPerMTokens     float64
+}
+
+// AffiliateOverview 表示当前用户的邀请返利概览。
+type AffiliateOverview struct {
+	Profile                    domainbilling.AffiliateProfile
+	ReferralCount              int64
+	AvailableCommissionNanousd int64
+	WithdrawnCommissionNanousd int64
+	TotalCommissionNanousd     int64
 }

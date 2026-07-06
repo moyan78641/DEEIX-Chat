@@ -492,6 +492,17 @@
       "balance": "账户余额 {value}",
       "topUp": "充值"
     },
+    "affiliate": {
+      "title": "邀请返利",
+      "description": "一级邀请有效：被邀请用户充值后，你将获得对应比例的可提现返利。",
+      "inviteCode": "邀请码",
+      "commissionRate": "返利比例",
+      "referralCount": "邀请人数",
+      "availableCommission": "可提现返利",
+      "copyLink": "复制邀请链接",
+      "copied": "邀请链接已复制",
+      "copyFailed": "复制失败"
+    },
     "selfMode": {
       "title": "计费模式",
       "value": "自用模式"

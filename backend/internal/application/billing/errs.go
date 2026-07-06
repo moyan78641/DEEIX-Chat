@@ -67,4 +67,6 @@ var (
 	ErrCouponCodeExhausted = errors.New("coupon code exhausted")
 	// ErrCouponUserLimitExceeded 当前用户已达到优惠码使用次数上限。
 	ErrCouponUserLimitExceeded = errors.New("coupon user limit exceeded")
+	// ErrInvalidAffiliateInvite 邀请码不存在或不可绑定。
+	ErrInvalidAffiliateInvite = errors.New("invalid affiliate invite")
 )

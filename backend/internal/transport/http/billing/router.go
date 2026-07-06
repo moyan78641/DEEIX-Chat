@@ -20,6 +20,7 @@ func (m *Module) RegisterRoutes(authRequired *gin.RouterGroup) {
 	authRequired.POST("/billing/payments/quote", m.Handler.QuotePayment)
 	authRequired.POST("/billing/payments/checkout", m.Handler.CreateCheckout)
 	authRequired.POST("/billing/redemptions", m.Handler.RedeemCode)
+	authRequired.GET("/billing/affiliate", m.Handler.GetAffiliateOverview)
 	authRequired.GET("/billing/usage", m.Handler.ListUsage)
 	authRequired.GET("/billing/usage/monthly", m.Handler.ListMonthlyUsage)
 	authRequired.GET("/billing/usage/daily", m.Handler.ListDailyUsage)
