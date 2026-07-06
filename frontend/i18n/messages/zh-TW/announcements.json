@@ -1,0 +1,22 @@
+{
+  "title": "公告",
+  "types": {
+    "critical": "緊急",
+    "warning": "警告",
+    "info": "提示",
+    "normal": "普通",
+    "general": "常規"
+  },
+  "sort": {
+    "default": "預設",
+    "type": "型別",
+    "time": "時間"
+  },
+  "loading": "正在載入公告...",
+  "empty": "暫無當前公告",
+  "openFailed": "公告載入失敗",
+  "dismissAllToday": "今日不再顯示",
+  "dismissFailed": "公告狀態儲存失敗",
+  "closeFailed": "公告關閉狀態儲存失敗",
+  "close": "關閉"
+}

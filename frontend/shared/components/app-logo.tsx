@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
-
 import { useTheme } from "@/shared/components/theme-provider";
+import { useSiteProfile } from "@/shared/site/site-profile-context";
 
 type AppLogoProps = {
   alt?: string;
@@ -13,21 +12,24 @@ type AppLogoProps = {
 };
 
 export function AppLogo({
-  alt = "DEEIX Chat",
+  alt,
   width,
   height,
   priority,
   className,
 }: AppLogoProps) {
   const { resolvedTheme } = useTheme();
+  const { profile } = useSiteProfile();
+  const src = resolvedTheme === "dark" ? profile.logoDarkURL || profile.logoURL : profile.logoURL;
 
   return (
-    <Image
-      src={resolvedTheme === "dark" ? "/logo-white.svg" : "/logo.svg"}
-      alt={alt}
+    // eslint-disable-next-line @next/next/no-img-element -- site logo may be configured as an arbitrary external URL.
+    <img
+      src={src}
+      alt={alt ?? profile.name}
       width={width}
       height={height}
-      priority={priority}
+      loading={priority ? "eager" : "lazy"}
       className={className}
     />
   );

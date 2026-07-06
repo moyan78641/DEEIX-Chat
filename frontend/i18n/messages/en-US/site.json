@@ -1,0 +1,16 @@
+{
+  "home": {
+    "navLabel": "Home navigation",
+    "nav": {
+      "product": "Workspace"
+    },
+    "eyebrow": "Multi-model AI workspace",
+    "promptPlaceholder": "Ask a question, analyze a file, or describe the task you want to finish...",
+    "modeResearch": "Research",
+    "draftHint": "Your draft will continue in the signed-in workspace",
+    "startChat": "Start chat",
+    "signIn": "Sign in",
+    "terms": "Terms",
+    "privacy": "Privacy"
+  }
+}

@@ -7,6 +7,7 @@ export const ADMIN_SECTIONS = [
   { id: "billing", label: "Billing", href: "/billing" },
   { id: "announcements", label: "Announcements", href: "/announcements" },
   { id: "logs", label: "Logs", href: "/logs" },
+  { id: "site-settings", label: "Site", href: "/site" },
   { id: "login-settings", label: "Login & auth", href: "/login" },
   { id: "conversation-settings", label: "Conversation", href: "/conversation" },
   { id: "chat-files", label: "Files & retrieval", href: "/chat-files" },

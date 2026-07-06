@@ -40,10 +40,14 @@ export function isPasswordReuseNotAllowedError(error: unknown): boolean {
   return error instanceof ApiError && error.errorCode === AUTH_ERROR_CODES.passwordReuseNotAllowed;
 }
 
-export async function login(username: string, password: string): Promise<LoginData> {
+export async function login(
+  username: string,
+  password: string,
+  legalConsent?: { termsAccepted: boolean; privacyAccepted: boolean },
+): Promise<LoginData> {
   return apiRequest<LoginData>("/api/v1/auth/login", {
     method: "POST",
-    body: { username, password },
+    body: { username, password, ...(legalConsent ?? {}) },
   });
 }
 
@@ -137,10 +141,16 @@ export async function startEmailRegistration(email: string, turnstileToken?: str
   });
 }
 
-export async function completeEmailRegistration(email: string, password: string, code: string, turnstileToken?: string): Promise<LoginData> {
+export async function completeEmailRegistration(
+  email: string,
+  password: string,
+  code: string,
+  turnstileToken?: string,
+  legalConsent?: { termsAccepted: boolean; privacyAccepted: boolean },
+): Promise<LoginData> {
   return apiRequest<LoginData>("/api/v1/auth/register/email/complete", {
     method: "POST",
-    body: { email, password, code, turnstileToken },
+    body: { email, password, code, turnstileToken, ...(legalConsent ?? {}) },
   });
 }
 

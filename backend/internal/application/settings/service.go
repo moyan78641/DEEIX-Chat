@@ -137,6 +137,7 @@ func (s *Service) RuntimeValuesByNamespace(ctx context.Context, namespace string
 // validNamespaces 合法的 namespace 集合。
 var validNamespaces = map[string]bool{
 	"auth":    true,
+	"site":    true,
 	"billing": true,
 	"chat":    true,
 	"storage": true,
@@ -261,6 +262,27 @@ func validatePatchItem(item PatchItem) error {
 		return validateOptionalHTTPURL(value, key)
 	case "auth:login_page_title":
 		return validateStringMax(value, 80, key)
+	case "site:name", "site:short_name":
+		if value == "" {
+			return fmt.Errorf("%s cannot be empty", key)
+		}
+		return validateStringMax(value, 80, key)
+	case "site:description", "site:home_title", "site:home_subtitle", "site:footer_text",
+		"site:agreement_title_en_us", "site:agreement_title_zh_cn", "site:agreement_title_zh_tw",
+		"site:terms_title_en_us", "site:terms_title_zh_cn", "site:terms_title_zh_tw",
+		"site:privacy_title_en_us", "site:privacy_title_zh_cn", "site:privacy_title_zh_tw":
+		return validateStringMax(value, 280, key)
+	case "site:agreement_content_en_us", "site:agreement_content_zh_cn", "site:agreement_content_zh_tw",
+		"site:terms_content_en_us", "site:terms_content_zh_cn", "site:terms_content_zh_tw",
+		"site:privacy_content_en_us", "site:privacy_content_zh_cn", "site:privacy_content_zh_tw":
+		return validateStringMax(value, 20000, key)
+	case "site:logo_url", "site:logo_dark_url", "site:favicon_url", "site:terms_url", "site:privacy_url":
+		if err := validateStringMax(value, 512, key); err != nil {
+			return err
+		}
+		return validateOptionalPublicAssetURL(value, key)
+	case "site:contact_email":
+		return validateStringMax(value, 128, key)
 	case "chat:model_option_policy_mode":
 		switch value {
 		case "allowlist", "denylist", "disabled":
@@ -935,6 +957,20 @@ func validateOptionalHTTPURL(value string, key string) error {
 		return fmt.Errorf("%s must start with http:// or https://", key)
 	}
 	return nil
+}
+
+func validateOptionalPublicAssetURL(value string, key string) error {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	if strings.HasPrefix(trimmed, "/") && !strings.HasPrefix(trimmed, "//") {
+		return nil
+	}
+	if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
+		return nil
+	}
+	return fmt.Errorf("%s must be an absolute http(s) URL or a local path", key)
 }
 
 func validateEmailDomainList(value string, key string) error {

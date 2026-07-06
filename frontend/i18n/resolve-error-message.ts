@@ -1,16 +1,19 @@
 import enErrors from "@/i18n/messages/en-US/errors.json";
 import zhErrors from "@/i18n/messages/zh-CN/errors.json";
+import zhTWErrors from "@/i18n/messages/zh-TW/errors.json";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, normalizeAppLocale, resolveBrowserLocale, type AppLocale } from "@/i18n/config";
 import { ApiError } from "@/shared/api/http-client";
 
-const ERROR_MESSAGES: Record<AppLocale, unknown> = {
+const ERROR_MESSAGES: Partial<Record<AppLocale, unknown>> = {
   "en-US": enErrors,
   "zh-CN": zhErrors,
+  "zh-TW": zhTWErrors,
 };
 
-const FALLBACK_MESSAGES: Record<AppLocale, string> = {
+const FALLBACK_MESSAGES: Partial<Record<AppLocale, string>> = {
   "en-US": "Request failed. Please try again later.",
   "zh-CN": "请求失败，请稍后重试。",
+  "zh-TW": "請求失敗，請稍後重試。",
 };
 
 type RequestBodyFieldError = {
@@ -27,7 +30,15 @@ type RedemptionCodeErrorDetails = {
   reason?: unknown;
 };
 
-const REQUEST_FIELD_LABELS: Record<AppLocale, Record<string, string>> = {
+function isChineseLocale(locale: AppLocale): boolean {
+  return locale === "zh-CN" || locale === "zh-TW";
+}
+
+function fallbackMessageLocale(locale: AppLocale): AppLocale {
+  return locale === "zh-TW" ? "zh-CN" : DEFAULT_LOCALE;
+}
+
+const REQUEST_FIELD_LABELS: Partial<Record<AppLocale, Record<string, string>>> = {
   "en-US": {
     apiKeys: "API keys",
     avatarURL: "Avatar URL",
@@ -88,7 +99,7 @@ const REQUEST_FIELD_LABELS: Record<AppLocale, Record<string, string>> = {
   },
 };
 
-const SETTINGS_FIELD_LABELS: Record<AppLocale, Record<string, string>> = {
+const SETTINGS_FIELD_LABELS: Partial<Record<AppLocale, Record<string, string>>> = {
   "en-US": {
     "auth:auto_link_verified_email": "Auto-link same email",
     "auth:email_login_enabled": "Email sign-in",
@@ -219,7 +230,7 @@ function readClientLocale(): AppLocale {
 }
 
 function lookupErrorMessage(locale: AppLocale, errorCode: string): string | undefined {
-  let current: unknown = ERROR_MESSAGES[locale];
+  let current: unknown = ERROR_MESSAGES[locale] ?? ERROR_MESSAGES[fallbackMessageLocale(locale)] ?? ERROR_MESSAGES[DEFAULT_LOCALE];
   for (const segment of toErrorMessagePath(errorCode)) {
     if (!current || typeof current !== "object" || !Object.prototype.hasOwnProperty.call(current, segment)) {
       return undefined;
@@ -238,7 +249,7 @@ function isRequestBodyFieldError(item: unknown): item is RequestBodyFieldError {
 }
 
 function resolveRequestFieldLabel(locale: AppLocale, field: string): string {
-  return REQUEST_FIELD_LABELS[locale][field] ?? field;
+  return REQUEST_FIELD_LABELS[locale]?.[field] ?? REQUEST_FIELD_LABELS[fallbackMessageLocale(locale)]?.[field] ?? REQUEST_FIELD_LABELS[DEFAULT_LOCALE]?.[field] ?? field;
 }
 
 function resolveRequestFieldError(locale: AppLocale, item: RequestBodyFieldError): string | undefined {
@@ -248,7 +259,7 @@ function resolveRequestFieldError(locale: AppLocale, item: RequestBodyFieldError
   if (!field || !rule) return undefined;
 
   const label = resolveRequestFieldLabel(locale, field);
-  if (locale === "zh-CN") {
+  if (isChineseLocale(locale)) {
     switch (rule) {
       case "required":
       case "required_without":
@@ -300,17 +311,17 @@ function resolveRequestBodyValidationMessage(error: ApiError, locale: AppLocale)
     .map((item) => resolveRequestFieldError(locale, item))
     .filter((item): item is string => Boolean(item));
 
-  return messages.length > 0 ? messages.join(locale === "zh-CN" ? "" : " ") : undefined;
+  return messages.length > 0 ? messages.join(isChineseLocale(locale) ? "" : " ") : undefined;
 }
 
 function resolveSettingsFieldLabel(locale: AppLocale, key: string): string {
-  return SETTINGS_FIELD_LABELS[locale][key] ?? key;
+  return SETTINGS_FIELD_LABELS[locale]?.[key] ?? SETTINGS_FIELD_LABELS[fallbackMessageLocale(locale)]?.[key] ?? SETTINGS_FIELD_LABELS[DEFAULT_LOCALE]?.[key] ?? key;
 }
 
 function resolveSettingsReason(locale: AppLocale, label: string, reason: string): string {
   const normalized = reason.trim();
   if (!normalized) return "";
-  if (locale === "zh-CN") {
+  if (isChineseLocale(locale)) {
     const integerRange = normalized.match(/^must be an integer between (.+) and (.+)$/);
     if (integerRange) return `${label}必须是 ${integerRange[1]} 到 ${integerRange[2]} 之间的整数。`;
     const optionalZeroRange = normalized.match(/^must be empty, 0, or between (.+) and (.+)$/);
@@ -377,7 +388,7 @@ function resolveSettingsValidationMessage(error: ApiError, locale: AppLocale): s
     return undefined;
   }
   const detail = raw.replace(/^invalid setting:\s*/i, "").trim();
-  const dependencyMessages: Record<AppLocale, Record<string, string>> = {
+  const dependencyMessages: Partial<Record<AppLocale, Record<string, string>>> = {
     "en-US": {
       "auth:third_party_login_enabled must be enabled before disabling username and email login": "Enable third-party sign-in before disabling both username and email sign-in.",
       "embedding service must be enabled and configured before enabling rag or semantic enhancement": "Enable and configure embedding before enabling RAG or semantic context.",
@@ -386,8 +397,12 @@ function resolveSettingsValidationMessage(error: ApiError, locale: AppLocale): s
       "auth:third_party_login_enabled must be enabled before disabling username and email login": "关闭用户名和邮箱登录前，必须先启用第三方登录。",
       "embedding service must be enabled and configured before enabling rag or semantic enhancement": "启用 RAG 或语义增强前，必须先启用并配置向量服务。",
     },
+    "zh-TW": {
+      "auth:third_party_login_enabled must be enabled before disabling username and email login": "關閉使用者名稱和電子郵件登入前，必須先啟用第三方登入。",
+      "embedding service must be enabled and configured before enabling rag or semantic enhancement": "啟用 RAG 或語義增強前，必須先啟用並設定向量服務。",
+    },
   };
-  const dependencyMessage = dependencyMessages[locale][detail.toLowerCase()];
+  const dependencyMessage = dependencyMessages[locale]?.[detail.toLowerCase()] ?? dependencyMessages[fallbackMessageLocale(locale)]?.[detail.toLowerCase()];
   if (dependencyMessage) return dependencyMessage;
 
   const match = detail.match(/^([a-z]+:[a-z0-9_]+)\s+(.+)$/);
@@ -444,5 +459,5 @@ export function resolveLocalizedErrorMessage(error: unknown, fallback?: string):
     }
   }
 
-  return fallback || FALLBACK_MESSAGES[locale];
+  return fallback || FALLBACK_MESSAGES[locale] || FALLBACK_MESSAGES[fallbackMessageLocale(locale)] || FALLBACK_MESSAGES[DEFAULT_LOCALE] || "Request failed. Please try again later.";
 }

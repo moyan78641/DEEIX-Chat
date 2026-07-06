@@ -10,6 +10,7 @@ import { DevtoolsBrandBanner } from "@/shared/components/devtools-brand-banner";
 import { ThemeProvider } from "@/shared/components/theme-provider";
 import { PWAServiceWorkerRegister } from "@/shared/components/pwa-service-worker-register";
 import { pwaAsset } from "@/shared/pwa/assets";
+import { SiteProfileProvider } from "@/shared/site/site-profile-context";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -80,15 +81,17 @@ export default function RootLayout({
       >
         <AppI18nProvider>
           <ThemeProvider>
-            <FontSizeProvider>
-              <ChatFontProvider>
-                <WorkspaceShell>{children}</WorkspaceShell>
-                <AppVersionGuard />
-                <PWAServiceWorkerRegister />
-                <Toaster />
-                <DevtoolsBrandBanner />
-              </ChatFontProvider>
-            </FontSizeProvider>
+            <SiteProfileProvider>
+              <FontSizeProvider>
+                <ChatFontProvider>
+                  <WorkspaceShell>{children}</WorkspaceShell>
+                  <AppVersionGuard />
+                  <PWAServiceWorkerRegister />
+                  <Toaster />
+                  <DevtoolsBrandBanner />
+                </ChatFontProvider>
+              </FontSizeProvider>
+            </SiteProfileProvider>
           </ThemeProvider>
         </AppI18nProvider>
       </body>

@@ -1,0 +1,147 @@
+{
+  "actions": {
+    "cancel": "取消",
+    "confirm": "確認",
+    "save": "儲存",
+    "saving": "儲存中",
+    "delete": "刪除",
+    "edit": "編輯",
+    "close": "關閉",
+    "copy": "複製",
+    "copied": "已複製",
+    "retry": "重試",
+    "refresh": "重新整理",
+    "search": "搜尋",
+    "reset": "重置",
+    "create": "建立",
+    "update": "更新",
+    "open": "開啟",
+    "back": "返回",
+    "continue": "繼續"
+  },
+  "states": {
+    "loading": "載入中",
+    "empty": "暫無資料",
+    "unknown": "未知",
+    "active": "啟用",
+    "inactive": "停用",
+    "enabled": "已啟用",
+    "disabled": "已停用",
+    "unsaved": "未儲存",
+    "success": "成功",
+    "failed": "失敗"
+  },
+  "locale": {
+    "label": "語言",
+    "english": "English",
+    "chinese": "簡體中文",
+    "traditionalChinese": "繁體中文"
+  },
+  "legalConsent": {
+    "prefix": "我已閱讀並同意",
+    "terms": "服務條款",
+    "privacy": "隱私政策",
+    "and": "和",
+    "empty": "暫無內容。"
+  },
+  "errors": {
+    "unknown": "操作失敗，請稍後重試。",
+    "sessionExpired": "登入狀態已失效，請重新登入。",
+    "copyFailed": "複製失敗，請手動選擇內容複製。"
+  },
+  "navigation": {
+    "newChat": "新對話",
+    "search": "搜尋",
+    "recent": "對話",
+    "files": "檔案",
+    "skillsPrompt": "Skills & Prompts",
+    "searchTitle": "搜尋",
+    "searchDescription": "搜尋相關對話 ID、標題、標籤和模型",
+    "searchPlaceholder": "搜尋對話 ID、標題、標籤或模型",
+    "searchLoading": "正在搜尋相關內容...",
+    "searchEmpty": "沒有找到匹配的結果",
+    "sidebarTitle": "側邊欄",
+    "mobileSidebarDescription": "顯示移動端側邊欄。",
+    "openSidebar": "開啟側邊欄",
+    "toggleSidebar": "切換側邊欄",
+    "settings": "設定",
+    "announcements": "公告",
+    "language": "語言",
+    "upgradePlan": "升級計劃",
+    "admin": "管理後臺",
+    "logout": "登出",
+    "loggingOut": "登出中",
+    "fallbackUser": "使用者",
+    "today": "今天",
+    "yesterday": "昨天"
+  },
+  "time": {
+    "todayTime": "{time}",
+    "thisYearDateTime": "{month}月{day}日 {time}",
+    "fullDateTime": "{year}年{month}月{day}日 {time}"
+  },
+  "table": {
+    "search": "搜尋",
+    "searchPlaceholder": "搜尋關鍵詞",
+    "clearSearch": "清空搜尋",
+    "filter": "篩選",
+    "sort": "排序",
+    "bulk": "批次",
+    "refresh": "重新整理",
+    "selectedItems": "已選 {count} 項",
+    "pagination": "共 {total} 條，第 {page} / {pageCount} 頁",
+    "pageSize": "{size} 條 / 頁",
+    "previousPage": "上一頁",
+    "nextPage": "下一頁"
+  },
+  "select": {
+    "placeholder": "請選擇",
+    "searchPlaceholder": "搜尋",
+    "empty": "沒有匹配的選項"
+  },
+  "input": {
+    "configuredPasswordPlaceholder": "已配置，留空不修改"
+  },
+  "runtime": {
+    "status": {
+      "running": "執行中",
+      "restarting": "重啟中",
+      "created": "已建立",
+      "paused": "已暫停",
+      "unhealthy": "異常",
+      "failed": "失敗",
+      "unavailable": "不可達",
+      "unconfigured": "未配置",
+      "stopped": "已停止"
+    },
+    "detail": {
+      "status": "狀態",
+      "connection": "連線",
+      "reachable": "可達",
+      "unreachable": "不可達",
+      "detail": "詳情"
+    }
+  },
+  "modelSelect": {
+    "searchPlaceholder": "搜尋模型",
+    "empty": "沒有匹配的模型"
+  },
+  "timeZoneSelect": {
+    "placeholder": "選擇時區",
+    "searchPlaceholder": "搜尋時區",
+    "empty": "沒有匹配的時區"
+  },
+  "dateRange": {
+    "placeholder": "選擇日期範圍",
+    "clear": "清空"
+  },
+  "jsonEditor": {
+    "errors": "{count} 個錯誤",
+    "format": "格式化",
+    "loading": "載入編輯器…"
+  },
+  "appVersion": {
+    "title": "檢測到新版本",
+    "description": "重新整理網頁後即可使用最新版本。"
+  }
+}

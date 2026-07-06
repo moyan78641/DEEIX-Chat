@@ -1,0 +1,119 @@
+{
+  "groups": {
+    "identity": "站點身份",
+    "assets": "品牌素材",
+    "home": "公開首頁",
+    "links": "連結",
+    "legal": "服務條款與隱私政策"
+  },
+  "actions": {
+    "upload": "上傳"
+  },
+  "fields": {
+    "name": {
+      "label": "站點名稱",
+      "description": "展示在公開頁面等位置的主產品或站點名稱。"
+    },
+    "shortName": {
+      "label": "站點短名稱",
+      "description": "空間有限時使用的簡短名稱。"
+    },
+    "description": {
+      "label": "站點描述",
+      "description": "公開頁面和元資訊使用的簡短產品描述。"
+    },
+    "logoURL": {
+      "label": "淺色 Logo URL",
+      "description": "用於淺色背景的 Logo，支援站內路徑或完整 URL。"
+    },
+    "logoDarkURL": {
+      "label": "深色 Logo URL",
+      "description": "用於深色背景的 Logo，支援站內路徑或完整 URL。"
+    },
+    "faviconURL": {
+      "label": "瀏覽器圖示 URL",
+      "description": "瀏覽器圖示地址，支援上傳 PNG、ICO、SVG 等圖片。"
+    },
+    "homeTitle": {
+      "label": "首頁主標題",
+      "description": "公開首頁第一屏展示的主標題。"
+    },
+    "homeSubtitle": {
+      "label": "首頁副標題",
+      "description": "公開首頁主標題下方的說明文案。"
+    },
+    "footerText": {
+      "label": "頁尾文本",
+      "description": "公開頁面底部展示的小字。"
+    },
+    "contactEmail": {
+      "label": "聯絡郵箱",
+      "description": "公開展示的支援或聯絡郵箱。"
+    },
+    "termsURL": {
+      "label": "服務條款 URL",
+      "description": "可選的公開服務條款連結。"
+    },
+    "privacyURL": {
+      "label": "隱私政策 URL",
+      "description": "可選的公開隱私政策連結。"
+    },
+    "termsTitleEnUS": {
+      "label": "服務條款標題（English）",
+      "description": "英文介面展示的服務條款標題。"
+    },
+    "termsContentEnUS": {
+      "label": "服務條款內容（English）",
+      "description": "英文介面展示的服務條款正文。"
+    },
+    "privacyTitleEnUS": {
+      "label": "隱私政策標題（English）",
+      "description": "英文介面展示的隱私政策標題。"
+    },
+    "privacyContentEnUS": {
+      "label": "隱私政策內容（English）",
+      "description": "英文介面展示的隱私政策正文。"
+    },
+    "termsTitleZhCN": {
+      "label": "服務條款標題（簡體中文）",
+      "description": "簡體中文介面展示的服務條款標題。"
+    },
+    "termsContentZhCN": {
+      "label": "服務條款內容（簡體中文）",
+      "description": "簡體中文介面展示的服務條款正文。"
+    },
+    "privacyTitleZhCN": {
+      "label": "隱私政策標題（簡體中文）",
+      "description": "簡體中文介面展示的隱私政策標題。"
+    },
+    "privacyContentZhCN": {
+      "label": "隱私政策內容（簡體中文）",
+      "description": "簡體中文介面展示的隱私政策正文。"
+    },
+    "termsTitleZhTW": {
+      "label": "服務條款標題（繁體中文）",
+      "description": "繁體中文介面展示的服務條款標題。"
+    },
+    "termsContentZhTW": {
+      "label": "服務條款內容（繁體中文）",
+      "description": "繁體中文介面展示的服務條款正文。"
+    },
+    "privacyTitleZhTW": {
+      "label": "隱私政策標題（繁體中文）",
+      "description": "繁體中文介面展示的隱私政策標題。"
+    },
+    "privacyContentZhTW": {
+      "label": "隱私政策內容（繁體中文）",
+      "description": "繁體中文介面展示的隱私政策正文。"
+    }
+  },
+  "toast": {
+    "sessionExpired": "登入狀態已失效",
+    "signInAgain": "請重新登入後再繼續操作。",
+    "loadFailed": "載入站點設定失敗",
+    "saved": "站點設定已儲存",
+    "saveFailed": "儲存站點設定失敗",
+    "assetUploaded": "品牌素材已上傳",
+    "assetUploadFailed": "上傳品牌素材失敗"
+  }
+}

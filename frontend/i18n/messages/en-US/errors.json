@@ -9,6 +9,9 @@
     "defaultPermissionGroupUsersImplicit": "Default permission group members are managed automatically.",
     "permissionGroupReferencedByPlan": "This permission group is referenced by a billing plan. Unbind it before deleting."
   },
+  "legal": {
+    "consentRequired": "Please read and agree to the Terms of Service and Privacy Policy first."
+  },
   "auth": {
     "adminRequired": "Administrator permission is required.",
     "authorizationCodeRequired": "Authorization code is required.",

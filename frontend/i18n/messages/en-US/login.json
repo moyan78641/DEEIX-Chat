@@ -46,7 +46,8 @@
     "passwordResetCodeFailed": "Unable to send reset code.",
     "passwordResetFailed": "Password reset failed. Check your email, code, and new password.",
     "passwordResetSuccess": "Password reset. Sign in again.",
-    "registerFailed": "Registration failed. Please try again later."
+    "registerFailed": "Registration failed. Please try again later.",
+    "agreementRequired": "Please read and agree to the Terms of Service and Privacy Policy first."
   },
   "oauthCallback": {
     "missingParams": "The third-party sign-in callback is missing required parameters.",

@@ -1112,6 +1112,15 @@ func (s *Service) RecordUsageWithReservation(ctx context.Context, usage *domainb
 		}
 		plan, startAt, endAt, planErr := s.currentPeriodPlan(ctx, usage.UserID, usage.BillingAt)
 		if planErr != nil {
+			if errors.Is(planErr, repository.ErrNotFound) {
+				if err := s.repo.AddUsageAndSettleBalance(ctx, usage, reservation); err != nil {
+					if errors.Is(err, repository.ErrInsufficientBalance) {
+						return ErrUsageBalanceInsufficient
+					}
+					return err
+				}
+				return nil
+			}
 			return planErr
 		}
 		if err := s.repo.AddPeriodUsageAndSettleOverage(ctx, usage, startAt, endAt, plan.PeriodCreditNanousd, reservation); err != nil {
@@ -1156,19 +1165,23 @@ func (s *Service) ReserveUsageBalance(ctx context.Context, userID uint, platform
 		// 周期模式预扣只做调用前的余额风险控制；最终超额金额仍由入账事务在账户行锁下重算并兜底。
 		plan, startAt, endAt, planErr := s.currentPeriodPlan(ctx, userID, time.Now())
 		if planErr != nil {
-			return nil, planErr
+			if !errors.Is(planErr, repository.ErrNotFound) {
+				return nil, planErr
+			}
 		}
-		usedNanousd, usedErr := s.repo.SumBillableNanousd(ctx, userID, startAt, endAt)
-		if usedErr != nil {
-			return nil, usedErr
-		}
-		remainingNanousd := plan.PeriodCreditNanousd - usedNanousd
-		if remainingNanousd < 0 {
-			remainingNanousd = 0
-		}
-		reserveNanousd = prepaidNanousd - remainingNanousd
-		if reserveNanousd <= 0 {
-			return nil, nil
+		if planErr == nil {
+			usedNanousd, usedErr := s.repo.SumBillableNanousd(ctx, userID, startAt, endAt)
+			if usedErr != nil {
+				return nil, usedErr
+			}
+			remainingNanousd := plan.PeriodCreditNanousd - usedNanousd
+			if remainingNanousd < 0 {
+				remainingNanousd = 0
+			}
+			reserveNanousd = prepaidNanousd - remainingNanousd
+			if reserveNanousd <= 0 {
+				return nil, nil
+			}
 		}
 	}
 	reservation, err := s.repo.ReserveUsageBalance(ctx, userID, reserveNanousd, refNo)
@@ -1218,6 +1231,9 @@ func (s *Service) EnsureModelUsable(ctx context.Context, userID uint, platformMo
 
 	plan, startAt, endAt, err := s.currentPeriodPlan(ctx, userID, now)
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return s.ensureUsageBalance(ctx, userID)
+		}
 		return err
 	}
 	usedNanousd, err := s.repo.SumBillableNanousd(ctx, userID, startAt, endAt)
@@ -1261,14 +1277,13 @@ func (s *Service) currentPeriodPlan(
 	}
 	subscription, ok := selectCurrentSubscription(subscriptions, planMap, now)
 	if !ok {
-		plan, planErr := s.repo.GetActivePlanByCode(ctx, "free")
-		if planErr != nil {
-			return domainbilling.Plan{}, time.Time{}, time.Time{}, planErr
-		}
-		return *plan, monthStart, monthEnd, nil
+		return domainbilling.Plan{}, time.Time{}, time.Time{}, repository.ErrNotFound
 	}
 	plan, ok := planMap[subscription.PlanID]
 	if !ok {
+		return domainbilling.Plan{}, time.Time{}, time.Time{}, repository.ErrNotFound
+	}
+	if isFreePlanCode(plan.Code) {
 		return domainbilling.Plan{}, time.Time{}, time.Time{}, repository.ErrNotFound
 	}
 	return plan, monthStart, monthEnd, nil
@@ -2497,57 +2512,59 @@ func (s *Service) GetBillingOverview(ctx context.Context, userID uint, now time.
 		return nil, accountErr
 	}
 
-	plan, startAt, endAt, err := s.currentPeriodPlan(ctx, userID, now)
-	if err != nil {
-		return nil, err
-	}
-	usedNanousd, err := s.repo.SumBillableNanousd(ctx, userID, startAt, endAt)
-	if err != nil {
-		return nil, err
-	}
-	remainingNanousd := plan.PeriodCreditNanousd - usedNanousd
-	if remainingNanousd < 0 {
-		remainingNanousd = 0
-	}
-	planView := BillingPlanView{
-		ID:                  plan.ID,
-		Code:                plan.Code,
-		Name:                plan.Name,
-		Description:         plan.Description,
-		FeatureJSON:         plan.FeatureJSON,
-		PeriodCreditNanousd: plan.PeriodCreditNanousd,
-		DiscountPercent:     plan.DiscountPercent,
-		SortOrder:           plan.SortOrder,
-		IsActive:            plan.IsActive,
-	}
-	prices, priceErr := s.repo.ListActivePricesByPlanIDs(ctx, []uint{plan.ID})
-	if priceErr != nil {
-		return nil, priceErr
-	}
-	for _, price := range prices {
-		planView.Prices = append(planView.Prices, BillingPriceView{
-			ID:              price.ID,
-			PlanID:          price.PlanID,
-			Code:            price.Code,
-			BillingInterval: price.BillingInterval,
-			Currency:        price.Currency,
-			AmountCents:     price.AmountCents,
-			IsDefault:       price.IsDefault,
-		})
+	plan, startAt, endAt, planErr := s.currentPeriodPlan(ctx, userID, now)
+	if planErr != nil && !errors.Is(planErr, repository.ErrNotFound) {
+		return nil, planErr
 	}
 	subscriptions, planMap, err := s.listSubscriptionEntitlements(ctx, []uint{userID}, now)
 	if err != nil {
 		return nil, err
 	}
 
-	overview.Plan = &planView
 	overview.Account = toBillingAccountView(account)
-	overview.PeriodStartAt = &startAt
-	overview.PeriodEndAt = &endAt
-	overview.PeriodCreditNanousd = plan.PeriodCreditNanousd
-	overview.PeriodUsedNanousd = usedNanousd
-	overview.PeriodRemainingNanousd = remainingNanousd
 	overview.SubscriptionEntitlements = buildSubscriptionEntitlementViews(subscriptions, planMap, now)
+	if planErr == nil {
+		usedNanousd, usedErr := s.repo.SumBillableNanousd(ctx, userID, startAt, endAt)
+		if usedErr != nil {
+			return nil, usedErr
+		}
+		remainingNanousd := plan.PeriodCreditNanousd - usedNanousd
+		if remainingNanousd < 0 {
+			remainingNanousd = 0
+		}
+		planView := BillingPlanView{
+			ID:                  plan.ID,
+			Code:                plan.Code,
+			Name:                plan.Name,
+			Description:         plan.Description,
+			FeatureJSON:         plan.FeatureJSON,
+			PeriodCreditNanousd: plan.PeriodCreditNanousd,
+			DiscountPercent:     plan.DiscountPercent,
+			SortOrder:           plan.SortOrder,
+			IsActive:            plan.IsActive,
+		}
+		prices, priceErr := s.repo.ListActivePricesByPlanIDs(ctx, []uint{plan.ID})
+		if priceErr != nil {
+			return nil, priceErr
+		}
+		for _, price := range prices {
+			planView.Prices = append(planView.Prices, BillingPriceView{
+				ID:              price.ID,
+				PlanID:          price.PlanID,
+				Code:            price.Code,
+				BillingInterval: price.BillingInterval,
+				Currency:        price.Currency,
+				AmountCents:     price.AmountCents,
+				IsDefault:       price.IsDefault,
+			})
+		}
+		overview.Plan = &planView
+		overview.PeriodStartAt = &startAt
+		overview.PeriodEndAt = &endAt
+		overview.PeriodCreditNanousd = plan.PeriodCreditNanousd
+		overview.PeriodUsedNanousd = usedNanousd
+		overview.PeriodRemainingNanousd = remainingNanousd
+	}
 	return overview, nil
 }
 

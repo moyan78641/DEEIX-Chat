@@ -29,6 +29,8 @@ import {
 
 type UseLoginPageInput = {
   nextPath: string;
+  loginLegalConsentAccepted?: boolean;
+  registerLegalConsentAccepted?: boolean;
 };
 
 const VERIFICATION_CODE_RESEND_COOLDOWN_MS = 60_000;
@@ -49,7 +51,7 @@ function parseSecurityVerificationMethods(value: string | null): SecurityVerific
   }
 }
 
-export function useLoginPage({ nextPath }: UseLoginPageInput) {
+export function useLoginPage({ nextPath, loginLegalConsentAccepted = true, registerLegalConsentAccepted = false }: UseLoginPageInput) {
   const router = useRouter();
   const t = useTranslations("login");
   const resolveErrorMessage = useLocalizedErrorMessage();
@@ -199,7 +201,10 @@ export function useLoginPage({ nextPath }: UseLoginPageInput) {
         }
         const result = twoFactorChallengeToken
           ? await verifyTwoFactorLogin(twoFactorChallengeToken, submittedOTP, twoFactorVerificationMethod)
-          : await login(submittedUsername, submittedPassword);
+          : await login(submittedUsername, submittedPassword, {
+              termsAccepted: loginLegalConsentAccepted,
+              privacyAccepted: loginLegalConsentAccepted,
+            });
         if (result.twoFactorRequired) {
           const methods: SecurityVerificationMethod[] = result.verificationMethods?.length ? result.verificationMethods : ["two_factor"];
           setTwoFactorChallengeToken(result.twoFactorChallengeToken ?? "");
@@ -231,11 +236,16 @@ export function useLoginPage({ nextPath }: UseLoginPageInput) {
         setSubmitting(false);
       }
     },
-    [completeAuth, password, resolveErrorMessage, submitting, t, twoFactorChallengeToken, twoFactorCode, twoFactorVerificationMethod, username],
+    [completeAuth, loginLegalConsentAccepted, password, resolveErrorMessage, submitting, t, twoFactorChallengeToken, twoFactorCode, twoFactorVerificationMethod, username],
   );
 
   const handleProviderLogin = React.useCallback(async (slug: string, intent: ProviderAuthIntent = "login") => {
     try {
+      const legalConsentAccepted = intent === "register" ? registerLegalConsentAccepted : loginLegalConsentAccepted;
+      if (!legalConsentAccepted) {
+        toast.error(t("toasts.agreementRequired"));
+        return;
+      }
       const params = new URLSearchParams();
       const redirectURI = `${window.location.origin}/auth/callback?provider=${encodeURIComponent(slug)}`;
       const pkce = await createProviderPKCE();
@@ -244,11 +254,13 @@ export function useLoginPage({ nextPath }: UseLoginPageInput) {
       params.set("next", resolvedNextPath);
       params.set("code_challenge", pkce.challenge);
       params.set("intent", intent);
+      params.set("termsAccepted", legalConsentAccepted ? "true" : "false");
+      params.set("privacyAccepted", legalConsentAccepted ? "true" : "false");
       window.location.href = `${resolveApiBaseURL()}/api/v1/auth/providers/${encodeURIComponent(slug)}/start?${params.toString()}`;
     } catch {
       toast.error(t("toasts.providerStartFailed"));
     }
-  }, [resolvedNextPath, t]);
+  }, [loginLegalConsentAccepted, registerLegalConsentAccepted, resolvedNextPath, t]);
 
   const requestRegisterCode = React.useCallback(async () => {
     if (!emailVerificationEnabled || sendingCode || registerCodeCooldownSeconds > 0) {
@@ -340,6 +352,10 @@ export function useLoginPage({ nextPath }: UseLoginPageInput) {
           registerPassword,
           emailVerificationEnabled ? registerCode : "",
           registerTurnstileRequired ? registerTurnstileToken : undefined,
+          {
+            termsAccepted: registerLegalConsentAccepted,
+            privacyAccepted: registerLegalConsentAccepted,
+          },
         );
         completeAuth(result.accessToken, result.sessionID);
       } catch (error) {
@@ -351,7 +367,7 @@ export function useLoginPage({ nextPath }: UseLoginPageInput) {
         setSubmitting(false);
       }
     },
-    [completeAuth, emailVerificationEnabled, registerCode, registerEmail, registerPassword, registerTurnstileRequired, registerTurnstileToken, resetRegisterTurnstile, resolveErrorMessage, submitting, t],
+    [completeAuth, emailVerificationEnabled, registerCode, registerEmail, registerLegalConsentAccepted, registerPassword, registerTurnstileRequired, registerTurnstileToken, resetRegisterTurnstile, resolveErrorMessage, submitting, t],
   );
 
   const onPasswordResetSubmit = React.useCallback(

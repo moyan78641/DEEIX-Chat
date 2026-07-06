@@ -1,0 +1,16 @@
+{
+  "home": {
+    "navLabel": "首頁導覽",
+    "nav": {
+      "product": "工作區"
+    },
+    "eyebrow": "多模型 AI 工作台",
+    "promptPlaceholder": "問一個問題、分析一份檔案，或描述你想完成的任務...",
+    "modeResearch": "研究",
+    "draftHint": "輸入內容會帶到登入後的新對話",
+    "startChat": "開始對話",
+    "signIn": "登入",
+    "terms": "服務條款",
+    "privacy": "隱私政策"
+  }
+}

@@ -63,6 +63,10 @@ func (h *Handler) CreateCheckout(c *gin.Context) {
 		response.InvalidRequestBody(c, err)
 		return
 	}
+	if !legalConsentAccepted(req.TermsAccepted, req.PrivacyAccepted) {
+		rejectMissingLegalConsent(c)
+		return
+	}
 	settings, err := h.resolvePaymentSettings(c.Request.Context())
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "resolve payment settings failed")

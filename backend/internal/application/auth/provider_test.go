@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -33,7 +34,7 @@ func TestResolveProviderUserLoginAutoRegistersWhenProviderRegistrationEnabled(t 
 		DefaultRole:         domainuser.RoleUser,
 	}
 
-	userItem, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "new@example.com", "New User", "", true, `{"sub":"sub-1"}`, providerIntentLogin)
+	userItem, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "new@example.com", "New User", "", true, `{"sub":"sub-1"}`, providerIntentLogin, true, true)
 	if err != nil {
 		t.Fatalf("expected login to auto-register, got %v", err)
 	}
@@ -48,6 +49,28 @@ func TestResolveProviderUserLoginAutoRegistersWhenProviderRegistrationEnabled(t 
 	}
 	if repo.identities[0].ProviderSubject != "sub-1" || repo.identities[0].UserID != userItem.ID {
 		t.Fatalf("created identity does not match user: %#v", repo.identities[0])
+	}
+}
+
+func TestResolveProviderUserLoginAutoRegistrationRequiresLegalConsent(t *testing.T) {
+	repo := &providerLoginRepo{}
+	service := NewService(config.Config{JWTSecret: "test-secret"}, repo, nil)
+	provider := domainuser.IdentityProvider{
+		ID:                  10,
+		Type:                domainuser.IdentityProviderTypeOIDC,
+		Name:                "Acme SSO",
+		Slug:                "acme",
+		LoginEnabled:        true,
+		RegistrationEnabled: true,
+		DefaultRole:         domainuser.RoleUser,
+	}
+
+	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "new@example.com", "New User", "", true, `{"sub":"sub-1"}`, providerIntentLogin, true, false)
+	if err == nil || err.Error() != "terms of service and privacy policy must be accepted" {
+		t.Fatalf("expected legal consent error, got %v", err)
+	}
+	if repo.createUserCount != 0 || len(repo.identities) != 0 {
+		t.Fatalf("expected no provisioning, users=%d identities=%d", repo.createUserCount, len(repo.identities))
 	}
 }
 
@@ -103,7 +126,7 @@ func TestResolveProviderUserAutoRegistrationAddsUsernameSuffixOnCollision(t *tes
 		DefaultRole:         domainuser.RoleUser,
 	}
 
-	userItem, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "new@example.com", "New User", "", true, `{"sub":"sub-1"}`, providerIntentLogin)
+	userItem, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "new@example.com", "New User", "", true, `{"sub":"sub-1"}`, providerIntentLogin, true, true)
 	if err != nil {
 		t.Fatalf("expected login to retry with suffixed username, got %v", err)
 	}
@@ -128,12 +151,132 @@ func TestResolveProviderUserLoginRequiresRegistrationEnabledForNewAccount(t *tes
 		DefaultRole:         domainuser.RoleUser,
 	}
 
-	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "new@example.com", "New User", "", true, `{"sub":"sub-1"}`, providerIntentLogin)
+	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "new@example.com", "New User", "", true, `{"sub":"sub-1"}`, providerIntentLogin, false, false)
 	if err == nil || err.Error() != "provider account is not registered" {
 		t.Fatalf("expected not registered error, got %v", err)
 	}
 	if repo.createUserCount != 0 || len(repo.identities) != 0 {
 		t.Fatalf("expected no provisioning, users=%d identities=%d", repo.createUserCount, len(repo.identities))
+	}
+}
+
+func TestBuildProviderAuthURLRequiresLegalConsentForRegister(t *testing.T) {
+	provider := &domainuser.IdentityProvider{
+		ID:                  10,
+		Type:                domainuser.IdentityProviderTypeOAuth2,
+		Name:                "Acme SSO",
+		Slug:                "acme",
+		LoginEnabled:        true,
+		RegistrationEnabled: true,
+		ClientID:            "client",
+		AuthURL:             "https://sso.example.com/oauth/authorize",
+		TokenURL:            "https://sso.example.com/oauth/token",
+		UserInfoURL:         "https://sso.example.com/oauth/userinfo",
+	}
+	service := NewService(config.Config{
+		JWTSecret:              "test-secret",
+		ThirdPartyLoginEnabled: true,
+	}, &providerLoginRepo{providersBySlug: map[string]*domainuser.IdentityProvider{"acme": provider}}, nil)
+	redirectURI := "http://localhost/auth/callback?provider=acme"
+	codeChallenge := strings.Repeat("a", 43)
+
+	_, err := service.BuildProviderAuthURL(context.Background(), "acme", redirectURI, "/chat", codeChallenge, providerIntentRegister, false, true)
+	if err == nil || err.Error() != "terms of service and privacy policy must be accepted" {
+		t.Fatalf("expected legal consent error, got %v", err)
+	}
+
+	authURL, err := service.BuildProviderAuthURL(context.Background(), "acme", redirectURI, "/chat", codeChallenge, providerIntentRegister, true, true)
+	if err != nil {
+		t.Fatalf("expected register auth url with consent, got %v", err)
+	}
+	parsed, err := url.Parse(authURL)
+	if err != nil {
+		t.Fatalf("parse auth url: %v", err)
+	}
+	state, err := service.verifyProviderState("acme", redirectURI, parsed.Query().Get("state"))
+	if err != nil {
+		t.Fatalf("verify provider state: %v", err)
+	}
+	if state.Intent != providerIntentRegister || !state.TermsAccepted || !state.PrivacyAccepted {
+		t.Fatalf("expected consent in register state, got %#v", state)
+	}
+}
+
+func TestBuildProviderAuthURLRequiresLegalConsentForLogin(t *testing.T) {
+	provider := &domainuser.IdentityProvider{
+		ID:                  10,
+		Type:                domainuser.IdentityProviderTypeOAuth2,
+		Name:                "Acme SSO",
+		Slug:                "acme",
+		LoginEnabled:        true,
+		RegistrationEnabled: true,
+		ClientID:            "client",
+		AuthURL:             "https://sso.example.com/oauth/authorize",
+		TokenURL:            "https://sso.example.com/oauth/token",
+		UserInfoURL:         "https://sso.example.com/oauth/userinfo",
+	}
+	service := NewService(config.Config{
+		JWTSecret:              "test-secret",
+		ThirdPartyLoginEnabled: true,
+	}, &providerLoginRepo{providersBySlug: map[string]*domainuser.IdentityProvider{"acme": provider}}, nil)
+	redirectURI := "http://localhost/auth/callback?provider=acme"
+	codeChallenge := strings.Repeat("a", 43)
+
+	_, err := service.BuildProviderAuthURL(context.Background(), "acme", redirectURI, "/chat", codeChallenge, providerIntentLogin, true, false)
+	if err == nil || err.Error() != "terms of service and privacy policy must be accepted" {
+		t.Fatalf("expected legal consent error, got %v", err)
+	}
+
+	authURL, err := service.BuildProviderAuthURL(context.Background(), "acme", redirectURI, "/chat", codeChallenge, providerIntentLogin, true, true)
+	if err != nil {
+		t.Fatalf("expected login auth url with consent, got %v", err)
+	}
+	parsed, err := url.Parse(authURL)
+	if err != nil {
+		t.Fatalf("parse auth url: %v", err)
+	}
+	state, err := service.verifyProviderState("acme", redirectURI, parsed.Query().Get("state"))
+	if err != nil {
+		t.Fatalf("verify provider state: %v", err)
+	}
+	if state.Intent != providerIntentLogin || !state.TermsAccepted || !state.PrivacyAccepted {
+		t.Fatalf("expected consent in login state, got %#v", state)
+	}
+}
+
+func TestCompleteProviderLoginRequiresLegalConsentInRegisterState(t *testing.T) {
+	provider := &domainuser.IdentityProvider{
+		ID:                  10,
+		Type:                domainuser.IdentityProviderTypeOAuth2,
+		Name:                "Acme SSO",
+		Slug:                "acme",
+		LoginEnabled:        true,
+		RegistrationEnabled: true,
+		ClientID:            "client",
+		AuthURL:             "https://sso.example.com/oauth/authorize",
+		TokenURL:            "https://sso.example.com/oauth/token",
+		UserInfoURL:         "https://sso.example.com/oauth/userinfo",
+	}
+	service := NewService(config.Config{
+		JWTSecret:              "test-secret",
+		ThirdPartyLoginEnabled: true,
+	}, &providerLoginRepo{providersBySlug: map[string]*domainuser.IdentityProvider{"acme": provider}}, nil)
+	redirectURI := "http://localhost/auth/callback?provider=acme"
+	codeVerifier := strings.Repeat("a", 43)
+	state, err := service.signProviderState(providerOAuthState{
+		Provider:      "acme",
+		RedirectURI:   redirectURI,
+		Intent:        providerIntentRegister,
+		CodeChallenge: providerCodeChallenge(codeVerifier),
+		ExpiresAt:     time.Now().Add(time.Minute).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("sign provider state: %v", err)
+	}
+
+	_, err = service.CompleteProviderLogin(context.Background(), "acme", "code", state, redirectURI, codeVerifier, providerIntentRegister, "request-id", requestmeta.SessionAuditContext{})
+	if err == nil || err.Error() != "terms of service and privacy policy must be accepted" {
+		t.Fatalf("expected legal consent error, got %v", err)
 	}
 }
 
@@ -155,7 +298,7 @@ func TestResolveProviderUserAutoLinksVerifiedProviderEmailBeforeProvisioning(t *
 		DefaultRole:         domainuser.RoleUser,
 	}
 
-	userItem, err := service.resolveProviderUser(context.Background(), provider, "sub-1", existing.Email, "Verified User", "", true, `{"sub":"sub-1"}`, providerIntentLogin)
+	userItem, err := service.resolveProviderUser(context.Background(), provider, "sub-1", existing.Email, "Verified User", "", true, `{"sub":"sub-1"}`, providerIntentLogin, false, false)
 	if err != nil {
 		t.Fatalf("expected verified email to auto-link, got %v", err)
 	}
@@ -188,7 +331,7 @@ func TestResolveProviderUserNormalizesProviderEmailBeforeAutoLink(t *testing.T) 
 		DefaultRole:         domainuser.RoleUser,
 	}
 
-	userItem, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "Verified@Example.com", "Verified User", "", true, `{"sub":"sub-1"}`, providerIntentLogin)
+	userItem, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "Verified@Example.com", "Verified User", "", true, `{"sub":"sub-1"}`, providerIntentLogin, false, false)
 	if err != nil {
 		t.Fatalf("expected normalized provider email to auto-link, got %v", err)
 	}
@@ -381,11 +524,13 @@ func TestCompleteProviderLoginAutoLinksGitHubVerifiedPrimaryEmail(t *testing.T) 
 	redirectURI := "http://localhost/auth/callback?provider=github"
 	codeVerifier := strings.Repeat("a", 43)
 	state, err := service.signProviderState(providerOAuthState{
-		Provider:      "github",
-		RedirectURI:   redirectURI,
-		Intent:        providerIntentLogin,
-		CodeChallenge: providerCodeChallenge(codeVerifier),
-		ExpiresAt:     time.Now().Add(time.Minute).Unix(),
+		Provider:        "github",
+		RedirectURI:     redirectURI,
+		Intent:          providerIntentLogin,
+		CodeChallenge:   providerCodeChallenge(codeVerifier),
+		TermsAccepted:   true,
+		PrivacyAccepted: true,
+		ExpiresAt:       time.Now().Add(time.Minute).Unix(),
 	})
 	if err != nil {
 		t.Fatalf("sign provider state: %v", err)
@@ -460,11 +605,13 @@ func TestCompleteProviderLoginReturnsErrorWhenGitHubEmailsUnavailable(t *testing
 	redirectURI := "http://localhost/auth/callback?provider=github"
 	codeVerifier := strings.Repeat("a", 43)
 	state, err := service.signProviderState(providerOAuthState{
-		Provider:      "github",
-		RedirectURI:   redirectURI,
-		Intent:        providerIntentLogin,
-		CodeChallenge: providerCodeChallenge(codeVerifier),
-		ExpiresAt:     time.Now().Add(time.Minute).Unix(),
+		Provider:        "github",
+		RedirectURI:     redirectURI,
+		Intent:          providerIntentLogin,
+		CodeChallenge:   providerCodeChallenge(codeVerifier),
+		TermsAccepted:   true,
+		PrivacyAccepted: true,
+		ExpiresAt:       time.Now().Add(time.Minute).Unix(),
 	})
 	if err != nil {
 		t.Fatalf("sign provider state: %v", err)
@@ -497,7 +644,7 @@ func TestResolveProviderUserReturnsStructuredEmailConflict(t *testing.T) {
 		DefaultRole:         domainuser.RoleUser,
 	}
 
-	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", existing.Email, "Consumer User", "", false, `{"sub":"sub-1"}`, providerIntentLogin)
+	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", existing.Email, "Consumer User", "", false, `{"sub":"sub-1"}`, providerIntentLogin, false, false)
 	var conflictErr *ProviderEmailConflictError
 	if !errors.As(err, &conflictErr) {
 		t.Fatalf("expected structured email conflict, got %v", err)
@@ -530,7 +677,7 @@ func TestResolveProviderUserRejectsInactiveBoundUserWithoutUpdatingIdentity(t *t
 		DefaultRole:         domainuser.RoleUser,
 	}
 
-	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "bound@example.com", "Bound User", "", true, `{"sub":"sub-1"}`, providerIntentLogin)
+	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "bound@example.com", "Bound User", "", true, `{"sub":"sub-1"}`, providerIntentLogin, false, false)
 	if err == nil || err.Error() != ErrInvalidCredentials.Error() {
 		t.Fatalf("expected inactive account rejection, got %v", err)
 	}
@@ -559,7 +706,7 @@ func TestResolveProviderUserRejectsInactiveAutoLinkUserWithoutBinding(t *testing
 		DefaultRole:         domainuser.RoleUser,
 	}
 
-	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", existing.Email, "Suspended User", "", true, `{"sub":"sub-1"}`, providerIntentLogin)
+	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", existing.Email, "Suspended User", "", true, `{"sub":"sub-1"}`, providerIntentLogin, false, false)
 	if err == nil || err.Error() != ErrInvalidCredentials.Error() {
 		t.Fatalf("expected inactive account rejection, got %v", err)
 	}
@@ -581,7 +728,7 @@ func TestResolveProviderUserReturnsIdentityCreateErrorWithoutCleanupCompensation
 		DefaultRole:         domainuser.RoleUser,
 	}
 
-	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "new@example.com", "New User", "", true, `{"sub":"sub-1"}`, providerIntentLogin)
+	_, err := service.resolveProviderUser(context.Background(), provider, "sub-1", "new@example.com", "New User", "", true, `{"sub":"sub-1"}`, providerIntentLogin, true, true)
 	if err == nil || err.Error() != "duplicate identity" {
 		t.Fatalf("expected identity creation error, got %v", err)
 	}

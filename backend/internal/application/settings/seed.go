@@ -9,7 +9,22 @@ import (
 const (
 	defaultAllowedMIMETypes = "image/jpeg,image/png,image/webp,image/gif,text/plain,text/markdown,text/csv,text/yaml,application/json,application/yaml,application/x-yaml,application/toml,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
 	defaultRAGModel         = "sentence-transformers/all-MiniLM-L6-v2"
+	defaultSiteName         = "DEEIX Chat"
+	defaultSiteShortName    = "DEEIX"
+	defaultSiteDescription  = "A multi-model AI conversation workspace."
 	defaultLoginPageTitle   = "Sign in to DEEIX Chat"
+	defaultTermsTitleEN     = "Terms of Service"
+	defaultTermsBodyEN      = "Please read these Terms of Service before using this service. By creating an account, signing in, subscribing, or making a payment, you agree to follow platform rules, applicable laws, and the billing terms shown before payment."
+	defaultPrivacyTitleEN   = "Privacy Policy"
+	defaultPrivacyBodyEN    = "Please read this Privacy Policy to understand how account information, usage data, billing records, and uploaded content may be processed to provide and secure this service."
+	defaultTermsTitleZH     = "服务条款"
+	defaultTermsBodyZH      = "使用本服务前，请阅读服务条款。创建账号、登录、订阅或付款，即表示你同意遵守平台规则、适用法律法规，以及支付前展示的计费条款。"
+	defaultPrivacyTitleZH   = "隐私政策"
+	defaultPrivacyBodyZH    = "请阅读隐私政策，了解本服务如何为提供、维护和保障服务而处理账号信息、使用数据、计费记录和上传内容。"
+	defaultTermsTitleTW     = "服務條款"
+	defaultTermsBodyTW      = "使用本服務前，請閱讀服務條款。建立帳號、登入、訂閱或付款，即表示你同意遵守平台規則、適用法律法規，以及付款前展示的計費條款。"
+	defaultPrivacyTitleTW   = "隱私政策"
+	defaultPrivacyBodyTW    = "請閱讀隱私政策，了解本服務如何為提供、維護和保障服務而處理帳號資訊、使用資料、計費記錄和上傳內容。"
 )
 
 // defaultSettings 返回所有动态配置的默认种子数据。
@@ -43,8 +58,34 @@ func defaultSettings() []domainsettings.SystemSetting {
 		{Namespace: "auth", Key: "turnstile_site_key", Value: "", ValueType: "string", Description: "Cloudflare Turnstile Site Key"},
 		{Namespace: "auth", Key: "turnstile_secret_key", Value: "", ValueType: "string", Description: "Cloudflare Turnstile Secret Key"},
 
+		// 站点品牌配置
+		{Namespace: "site", Key: "name", Value: defaultSiteName, ValueType: "string", Description: "站点名称"},
+		{Namespace: "site", Key: "short_name", Value: defaultSiteShortName, ValueType: "string", Description: "站点短名称"},
+		{Namespace: "site", Key: "description", Value: defaultSiteDescription, ValueType: "string", Description: "站点描述"},
+		{Namespace: "site", Key: "logo_url", Value: "/logo.svg", ValueType: "string", Description: "浅色主题 Logo URL"},
+		{Namespace: "site", Key: "logo_dark_url", Value: "/logo-white.svg", ValueType: "string", Description: "深色主题 Logo URL"},
+		{Namespace: "site", Key: "favicon_url", Value: "/favicon.ico", ValueType: "string", Description: "浏览器图标 URL"},
+		{Namespace: "site", Key: "home_title", Value: defaultSiteName, ValueType: "string", Description: "公开首页主标题"},
+		{Namespace: "site", Key: "home_subtitle", Value: "A private AI workspace for chat, files, tools, and usage-aware model access.", ValueType: "string", Description: "公开首页副标题"},
+		{Namespace: "site", Key: "footer_text", Value: "Powered by DEEIX Chat", ValueType: "string", Description: "公开页面页脚文本"},
+		{Namespace: "site", Key: "contact_email", Value: "support@deeix.com", ValueType: "string", Description: "联系邮箱"},
+		{Namespace: "site", Key: "terms_url", Value: "", ValueType: "string", Description: "服务条款 URL"},
+		{Namespace: "site", Key: "privacy_url", Value: "", ValueType: "string", Description: "隐私政策 URL"},
+		{Namespace: "site", Key: "terms_title_en_us", Value: defaultTermsTitleEN, ValueType: "string", Description: "服务条款标题（English）"},
+		{Namespace: "site", Key: "terms_content_en_us", Value: defaultTermsBodyEN, ValueType: "textarea", Description: "服务条款内容（English）"},
+		{Namespace: "site", Key: "privacy_title_en_us", Value: defaultPrivacyTitleEN, ValueType: "string", Description: "隐私政策标题（English）"},
+		{Namespace: "site", Key: "privacy_content_en_us", Value: defaultPrivacyBodyEN, ValueType: "textarea", Description: "隐私政策内容（English）"},
+		{Namespace: "site", Key: "terms_title_zh_cn", Value: defaultTermsTitleZH, ValueType: "string", Description: "服务条款标题（简体中文）"},
+		{Namespace: "site", Key: "terms_content_zh_cn", Value: defaultTermsBodyZH, ValueType: "textarea", Description: "服务条款内容（简体中文）"},
+		{Namespace: "site", Key: "privacy_title_zh_cn", Value: defaultPrivacyTitleZH, ValueType: "string", Description: "隐私政策标题（简体中文）"},
+		{Namespace: "site", Key: "privacy_content_zh_cn", Value: defaultPrivacyBodyZH, ValueType: "textarea", Description: "隐私政策内容（简体中文）"},
+		{Namespace: "site", Key: "terms_title_zh_tw", Value: defaultTermsTitleTW, ValueType: "string", Description: "服务条款标题（繁體中文）"},
+		{Namespace: "site", Key: "terms_content_zh_tw", Value: defaultTermsBodyTW, ValueType: "textarea", Description: "服务条款内容（繁體中文）"},
+		{Namespace: "site", Key: "privacy_title_zh_tw", Value: defaultPrivacyTitleTW, ValueType: "string", Description: "隐私政策标题（繁體中文）"},
+		{Namespace: "site", Key: "privacy_content_zh_tw", Value: defaultPrivacyBodyTW, ValueType: "textarea", Description: "隐私政策内容（繁體中文）"},
+
 		// 计费配置
-		{Namespace: "billing", Key: "mode", Value: "self", ValueType: "string", Description: "计费方式：self=自用模式，period=周期计费，usage=按量计费"},
+		{Namespace: "billing", Key: "mode", Value: "self", ValueType: "string", Description: "计费方式：self=自用模式，period=订阅额度+按量余额，usage=纯按量计费"},
 		{Namespace: "billing", Key: "prepaid_amount_usd", Value: "0", ValueType: "string", Description: "按量调用前要求账户保留的最低预付余额(美元)"},
 		{Namespace: "billing", Key: "native_tool_billing_enabled", Value: "true", ValueType: "bool", Description: "是否按官方默认价格计费模型原生工具调用"},
 		{Namespace: "billing", Key: "native_tool_pricing_json", Value: nativetool.DefaultPricingJSON(), ValueType: "json", Description: "官方原生工具计费覆盖 JSON，按 toolKey 配置 priceNanousd、unit、priceLabel、billable"},

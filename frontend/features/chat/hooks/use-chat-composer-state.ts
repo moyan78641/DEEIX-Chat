@@ -219,6 +219,10 @@ export function resolveConversationComposerKey(conversationID: string | null): s
   return conversationID?.trim() || NEW_CONVERSATION_COMPOSER_KEY;
 }
 
+export function writeNewConversationDraft(draft: string) {
+  ComposerStorageOps.writeEntry(NEW_CONVERSATION_COMPOSER_KEY, draft, []);
+}
+
 export function useChatComposerState(
   conversationID: string | null,
   { preserveDrafts = true, resetToken = 0 }: { preserveDrafts?: boolean; resetToken?: number } = {},

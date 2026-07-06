@@ -113,6 +113,8 @@ export function SettingsSubscription() {
   const [selectedEPayType, setSelectedEPayType] = React.useState("alipay");
   const [topUpDialogOpen, setTopUpDialogOpen] = React.useState(false);
   const [redemptionDialogOpen, setRedemptionDialogOpen] = React.useState(false);
+  const [topUpAgreementAccepted, setTopUpAgreementAccepted] = React.useState(false);
+  const [subscriptionAgreementAccepted, setSubscriptionAgreementAccepted] = React.useState(false);
   const [redemptionCode, setRedemptionCode] = React.useState("");
   const [redemptionLoading, setRedemptionLoading] = React.useState(false);
   const billingMode: BillingMode = billingConfig?.mode ?? "self";
@@ -257,6 +259,8 @@ export function SettingsSubscription() {
         epayType: paymentProvider === "epay" ? epayType : undefined,
         successURL: `${window.location.origin}/setting/subscription?payment=success`,
         cancelURL: `${window.location.origin}/setting/subscription?payment=cancel`,
+        termsAccepted: true,
+        privacyAccepted: true,
       });
       if (!data.checkout.checkoutURL) {
         toast.error(t("toasts.checkoutCreateFailed"), { description: t("toasts.checkoutURLMissing") });
@@ -273,7 +277,10 @@ export function SettingsSubscription() {
   const handleSubscribeFreePlan = React.useCallback(async (price: BillingPlanPriceDTO) => {
     setCheckoutPriceID(price.id);
     try {
-      await subscribeBillingPlan(accessToken, price.id);
+      await subscribeBillingPlan(accessToken, price.id, {
+        termsAccepted: true,
+        privacyAccepted: true,
+      });
       toast.success(t("toasts.planUpdated"));
       window.location.reload();
     } catch (error) {
@@ -284,6 +291,10 @@ export function SettingsSubscription() {
   }, [accessToken, resolveErrorMessage, t]);
 
   const handleTopUp = React.useCallback(async () => {
+    if (!topUpAgreementAccepted) {
+      toast.error(t("toasts.agreementRequired"));
+      return;
+    }
     const displayAmount = Number(topUpAmount);
     const amountMinorUnits = billingDisplayAmountToMinorUnits(displayAmount);
     if (!Number.isFinite(displayAmount) || displayAmount <= 0 || amountMinorUnits <= 0) {
@@ -300,6 +311,8 @@ export function SettingsSubscription() {
         epayType: selectedPaymentProvider === "epay" ? selectedEPayType : undefined,
         successURL: `${window.location.origin}/setting/subscription?payment=success`,
         cancelURL: `${window.location.origin}/setting/subscription?payment=cancel`,
+        termsAccepted: true,
+        privacyAccepted: true,
       });
       if (!data.checkout.checkoutURL) {
         toast.error(t("toasts.checkoutCreateFailed"), { description: t("toasts.checkoutURLMissing") });
@@ -311,7 +324,7 @@ export function SettingsSubscription() {
     } finally {
       setTopUpLoading(false);
     }
-  }, [accessToken, resolveErrorMessage, selectedEPayType, selectedPaymentProvider, t, topUpAmount]);
+  }, [accessToken, resolveErrorMessage, selectedEPayType, selectedPaymentProvider, t, topUpAgreementAccepted, topUpAmount]);
 
   const handleRedeemCode = React.useCallback(async () => {
     const code = redemptionCode.trim();
@@ -339,9 +352,9 @@ export function SettingsSubscription() {
   );
   const paymentDisabled = paymentProviders.length === 0;
   const currentPlan = React.useMemo(() => {
-    if (billingOverview?.plan) return billingOverview.plan;
+    if (billingOverview) return billingOverview.plan;
     return billingPlans.find((plan) => viewer?.subscriptionPlanID === plan.id || viewer?.subscriptionTier === plan.code) ?? null;
-  }, [billingOverview?.plan, billingPlans, viewer?.subscriptionPlanID, viewer?.subscriptionTier]);
+  }, [billingOverview, billingPlans, viewer?.subscriptionPlanID, viewer?.subscriptionTier]);
   const currentPrice = React.useMemo(() => resolveDefaultPrice(currentPlan), [currentPlan]);
   const protectedPaidPlanRank = React.useMemo(
     () => Math.max(
@@ -382,18 +395,26 @@ export function SettingsSubscription() {
         setPaymentDialogOpen(true);
         return;
       }
+      if (!subscriptionAgreementAccepted) {
+        toast.error(t("toasts.agreementRequired"));
+        return;
+      }
       await handleSubscribeFreePlan(price);
     },
-    [currentPlan, handleSubscribeFreePlan, paymentDisabled, protectedPaidPlanRank, t],
+    [currentPlan, handleSubscribeFreePlan, paymentDisabled, protectedPaidPlanRank, subscriptionAgreementAccepted, t],
   );
 
   const handleConfirmPayment = React.useCallback(async () => {
+    if (!subscriptionAgreementAccepted) {
+      toast.error(t("toasts.agreementRequired"));
+      return;
+    }
     if (!selectedPrice) {
       toast.error(t("toasts.noPlanSelected"), { description: t("toasts.noPlanSelectedDescription") });
       return;
     }
     await handleCheckout(selectedPrice, selectedPaymentProvider, selectedEPayType);
-  }, [handleCheckout, selectedEPayType, selectedPaymentProvider, selectedPrice, t]);
+  }, [handleCheckout, selectedEPayType, selectedPaymentProvider, selectedPrice, subscriptionAgreementAccepted, t]);
 
   const periodCredit = billingOverview?.periodCreditUSD ?? currentPlan?.periodCreditUSD ?? 0;
   const periodUsed = billingOverview?.periodUsedUSD ?? 0;
@@ -438,8 +459,18 @@ export function SettingsSubscription() {
         periodPercent={periodPercent}
         billingDisplay={billingDisplay}
         onOpenRedemptionDialog={() => setRedemptionDialogOpen(true)}
-        onOpenTopUpDialog={() => setTopUpDialogOpen(true)}
-        onPricingDialogOpenChange={setPricingDialogOpen}
+        agreementAccepted={subscriptionAgreementAccepted}
+        onAgreementAcceptedChange={setSubscriptionAgreementAccepted}
+        onOpenTopUpDialog={() => {
+          setTopUpAgreementAccepted(false);
+          setTopUpDialogOpen(true);
+        }}
+        onPricingDialogOpenChange={(open) => {
+          if (open) {
+            setSubscriptionAgreementAccepted(false);
+          }
+          setPricingDialogOpen(open);
+        }}
         onPaymentDialogOpenChange={setPaymentDialogOpen}
         onSelectPlan={(plan, price, isCurrent) => void handleSelectPlan(plan, price, isCurrent)}
         onPaymentProviderChange={setSelectedPaymentProvider}
@@ -503,6 +534,8 @@ export function SettingsSubscription() {
         epayTypes={epayTypes}
         billingDisplay={billingDisplay}
         epayLabels={epayLabels}
+        agreementAccepted={topUpAgreementAccepted}
+        onAgreementAcceptedChange={setTopUpAgreementAccepted}
         onAmountChange={setTopUpAmount}
         onPaymentProviderChange={setSelectedPaymentProvider}
         onEPayTypeChange={setSelectedEPayType}

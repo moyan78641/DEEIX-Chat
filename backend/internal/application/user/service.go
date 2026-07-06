@@ -11,7 +11,6 @@ import (
 	"time"
 	"unicode"
 
-	domainbilling "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/domain/billing"
 	domainuser "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/domain/user"
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/repository"
 	"github.com/google/uuid"
@@ -286,25 +285,25 @@ func (s *Service) CreateUser(
 			normalizedSubscriptionTier = defaultFreePlanCode
 		}
 
-		plan, planErr := s.repo.GetActivePlanByCode(ctx, normalizedSubscriptionTier)
-		if planErr != nil {
-			if errors.Is(planErr, repository.ErrNotFound) {
-				return nil, ErrInvalidSubscriptionTier
+		if normalizedSubscriptionTier != defaultFreePlanCode {
+			plan, planErr := s.repo.GetActivePlanByCode(ctx, normalizedSubscriptionTier)
+			if planErr != nil {
+				if errors.Is(planErr, repository.ErrNotFound) {
+					return nil, ErrInvalidSubscriptionTier
+				}
+				return nil, planErr
 			}
-			return nil, planErr
-		}
 
-		price, priceErr := s.repo.GetActiveDefaultPriceByPlanID(ctx, plan.ID)
-		if priceErr != nil {
-			if errors.Is(priceErr, repository.ErrNotFound) {
-				return nil, ErrInvalidSubscriptionTier
+			price, priceErr := s.repo.GetActiveDefaultPriceByPlanID(ctx, plan.ID)
+			if priceErr != nil {
+				if errors.Is(priceErr, repository.ErrNotFound) {
+					return nil, ErrInvalidSubscriptionTier
+				}
+				return nil, priceErr
 			}
-			return nil, priceErr
-		}
 
-		subscriptionPlanID = plan.ID
-		subscriptionPriceID = price.ID
-		if plan.Code != defaultFreePlanCode {
+			subscriptionPlanID = plan.ID
+			subscriptionPriceID = price.ID
 			if subscriptionExpiresAt == nil {
 				return nil, ErrSubscriptionExpiryRequired
 			}
@@ -313,8 +312,6 @@ func (s *Service) CreateUser(
 				return nil, ErrInvalidSubscriptionExpiry
 			}
 			normalizedSubscriptionEndAt = &expiresAt
-		} else if price.BillingInterval != domainbilling.IntervalLifetime {
-			autoRenew = true
 		}
 	}
 

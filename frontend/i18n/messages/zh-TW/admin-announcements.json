@@ -1,0 +1,72 @@
+{
+  "title": "公告",
+  "description": "維護登入後展示的站點宣告、模型調整和運營通知。",
+  "create": "建立",
+  "edit": "編輯",
+  "delete": "刪除",
+  "enable": "啟用",
+  "disable": "停用",
+  "deleting": "刪除中",
+  "searchPlaceholder": "搜尋標題或內容",
+  "statusFilter": "狀態",
+  "allStatuses": "全部",
+  "typeFilter": "型別",
+  "allTypes": "全部",
+  "pinnedFilter": "置頂",
+  "allPinned": "全部",
+  "createTitle": "建立公告",
+  "editTitle": "編輯公告",
+  "dialogDescription": "使用 Markdown 編寫公告內容，更新後用戶側會按新版本重新展示。",
+  "deleteTitle": "刪除公告",
+  "deleteDescription": "刪除後公告不再展示，此操作不會影響已登入使用者的其他資料。",
+  "empty": "暫無公告",
+  "previewEmpty": "預覽",
+  "status": {
+    "active": "啟用",
+    "inactive": "停用"
+  },
+  "pinned": {
+    "yes": "已置頂",
+    "no": "未置頂"
+  },
+  "types": {
+    "critical": "緊急",
+    "warning": "警告",
+    "info": "提示",
+    "normal": "普通",
+    "general": "常規"
+  },
+  "columns": {
+    "title": "公告",
+    "type": "型別",
+    "pinned": "置頂",
+    "status": "狀態",
+    "priority": "優先順序",
+    "window": "展示時間"
+  },
+  "fields": {
+    "title": "標題",
+    "priority": "優先順序",
+    "type": "型別",
+    "pinned": "置頂",
+    "status": "狀態",
+    "timeRange": "展示時間",
+    "alwaysActive": "長期有效",
+    "startsAt": "開始時間",
+    "expiresAt": "過期時間",
+    "contentMarkdown": "內容",
+    "preview": "預覽"
+  },
+  "toast": {
+    "loadFailed": "公告載入失敗",
+    "invalid": "請填寫標題和內容。",
+    "created": "公告已建立",
+    "createFailed": "建立公告失敗",
+    "updated": "公告已更新",
+    "updateFailed": "更新公告失敗",
+    "priorityInvalid": "優先順序必須是數字",
+    "statusFailed": "狀態更新失敗",
+    "deleted": "公告已刪除",
+    "deleteFailed": "刪除公告失敗"
+  }
+}

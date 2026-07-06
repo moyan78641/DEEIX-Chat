@@ -446,12 +446,17 @@ export function SettingsFieldEditor({
       <Field>
         <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-start md:gap-4 xl:gap-6">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <FieldLabel htmlFor={field.id}>{field.label}</FieldLabel>
-              {labelMetaNode}
-              {dirtyBadge}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <FieldLabel htmlFor={field.id}>{field.label}</FieldLabel>
+                  {labelMetaNode}
+                  {dirtyBadge}
+                </div>
+                {field.description ? <FieldDescription className="text-[11px]">{field.description}</FieldDescription> : null}
+              </div>
+              {labelAction ? <div className="shrink-0">{labelAction}</div> : null}
             </div>
-            {field.description ? <FieldDescription className="text-[11px]">{field.description}</FieldDescription> : null}
           </div>
 
           <div className="w-full min-w-0 md:w-44 md:shrink-0 xl:w-52">

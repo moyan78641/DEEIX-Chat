@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { SpinnerLabel } from "@/components/ui/spinner";
+import { AgreementCheckbox } from "@/shared/site/agreement-checkbox";
 import {
   billingDisplayAmountToUSD,
   billingDisplayInputSymbol,
@@ -50,6 +51,8 @@ type TopUpDialogProps = {
   onPaymentProviderChange: (provider: PaymentProvider) => void;
   onEPayTypeChange: (type: string) => void;
   onSubmit: () => void;
+  agreementAccepted: boolean;
+  onAgreementAcceptedChange: (accepted: boolean) => void;
 };
 
 export function TopUpDialog({
@@ -70,6 +73,8 @@ export function TopUpDialog({
   onPaymentProviderChange,
   onEPayTypeChange,
   onSubmit,
+  agreementAccepted,
+  onAgreementAcceptedChange,
 }: TopUpDialogProps) {
   const t = useTranslations("settings.subscriptionPage");
   const displayAmount = Number(amount);
@@ -151,11 +156,17 @@ export function TopUpDialog({
           </div>
         ) : null}
 
+        <AgreementCheckbox
+          checked={agreementAccepted}
+          disabled={billingLoading || topUpLoading || paymentDisabled}
+          onCheckedChange={onAgreementAcceptedChange}
+        />
+
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={topUpLoading}>
             {t("actions.cancel")}
           </Button>
-          <Button type="button" disabled={billingLoading || topUpLoading || paymentDisabled} onClick={onSubmit}>
+          <Button type="button" disabled={billingLoading || topUpLoading || paymentDisabled || !agreementAccepted} onClick={onSubmit}>
             {topUpLoading ? <SpinnerLabel>{t("actions.processing")}</SpinnerLabel> : t("topUp.confirm")}
           </Button>
         </DialogFooter>

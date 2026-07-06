@@ -3,6 +3,11 @@
   "pricing": "Model pricing",
   "usageLogs": "Usage logs",
   "subscription": "Subscription",
+  "tabs": {
+    "settings": "Billing settings",
+    "modelPricing": "Model pricing",
+    "toolPricing": "Tool pricing"
+  },
   "actions": {
     "importPricing": "Import",
     "exportPricing": "Export",
@@ -13,7 +18,7 @@
   "billingConfig": {
     "title": "Billing mode",
     "mode": "Billing mode",
-    "modeDescription": "Self-use records usage only. Subscription billing limits usage by plan credits. Usage billing calculates cost from model pricing.",
+    "modeDescription": "Self-use records usage only. Subscription billing uses plan credits first and falls back to usage balance; users without a subscription are billed from balance by default. Usage billing always deducts from balance.",
     "prepaidAmount": "Prepaid amount",
     "prepaidAmountDescription": "In usage billing and subscription overage billing, calls can start only when the account balance meets this amount. The final deduction still uses the actual bill.",
     "displayCurrency": "Display currency",
@@ -26,7 +31,7 @@
     },
     "modes": {
       "self": "Self-use",
-      "period": "Subscription billing",
+      "period": "Subscription + usage",
       "usage": "Usage billing"
     }
   },

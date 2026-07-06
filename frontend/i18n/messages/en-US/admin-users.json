@@ -9,6 +9,7 @@
     "billing": "Billing",
     "announcements": "Announcements",
     "logs": "Logs",
+    "siteSettings": "Site",
     "loginSettings": "Sign-in & auth",
     "conversationSettings": "Conversation",
     "chatFiles": "Files & retrieval",

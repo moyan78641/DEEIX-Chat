@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,8 +10,17 @@ import (
 	"testing"
 
 	"github.com/DEEIX-AI/DEEIX-Chat/backend/internal/infra/config"
+	settingshttp "github.com/DEEIX-AI/DEEIX-Chat/backend/internal/transport/http/settings"
 	"github.com/gin-gonic/gin"
 )
+
+type fakeSiteProfileProvider struct {
+	profile settingshttp.SiteProfileResponse
+}
+
+func (p fakeSiteProfileProvider) SiteProfile(context.Context) (settingshttp.SiteProfileResponse, error) {
+	return p.profile, nil
+}
 
 func TestVersionEndpointIsPublicAndUncached(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -62,6 +72,47 @@ func TestFrontendStaticFallbackServesExportedPage(t *testing.T) {
 	}
 	if got := recorder.Header().Get("Cache-Control"); got != "no-cache" {
 		t.Fatalf("expected exported page no-cache, got %q", got)
+	}
+}
+
+func TestFrontendStaticInjectsSiteProfileIntoExportedPage(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	root := t.TempDir()
+	html := `<!DOCTYPE html><html><head><title>DEEIX Chat</title><meta name="description" content="DEEIX Chat is a multi-model AI conversation system."/><meta name="application-name" content="DEEIX Chat"/><meta name="apple-mobile-web-app-title" content="DEEIX Chat"/><link rel="icon" href="/pwa/generated/icon.default.svg"/><link rel="apple-touch-icon" href="/pwa/generated/apple.default.png"/></head><body>index</body></html>`
+	if err := os.WriteFile(filepath.Join(root, "index.html"), []byte(html), 0o644); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	engine := gin.New()
+	registerFrontendStatic(engine, root, nil, fakeSiteProfileProvider{profile: settingshttp.SiteProfileResponse{
+		Name:        "Acme AI",
+		Description: "Private AI workspace",
+		FaviconURL:  "/api/v1/site-assets/site-0123456789abcdef01234567.ico",
+	}})
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	engine.ServeHTTP(recorder, request)
+
+	body := recorder.Body.String()
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	for _, want := range []string{
+		"<title>Acme AI</title>",
+		`<meta name="description" content="Private AI workspace"/>`,
+		`<meta name="application-name" content="Acme AI"/>`,
+		`<meta name="apple-mobile-web-app-title" content="Acme AI"/>`,
+		`id="deeix-site-profile"`,
+		`id="deeix-site-favicon"`,
+		`/api/v1/site-assets/site-0123456789abcdef01234567.ico`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("injected html missing %q:\n%s", want, body)
+		}
+	}
+	if !strings.Contains(body, "/pwa/generated/icon.default.svg") || !strings.Contains(body, "/pwa/generated/apple.default.png") {
+		t.Fatalf("expected Next-managed icon links to remain untouched:\n%s", body)
 	}
 }
 

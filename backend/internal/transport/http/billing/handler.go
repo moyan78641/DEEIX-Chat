@@ -737,6 +737,10 @@ func (h *Handler) Subscribe(c *gin.Context) {
 		response.InvalidRequestBody(c, err)
 		return
 	}
+	if !legalConsentAccepted(req.TermsAccepted, req.PrivacyAccepted) {
+		rejectMissingLegalConsent(c)
+		return
+	}
 
 	item, err := h.service.Subscribe(c.Request.Context(), userID, req.PriceID, req.Cycles)
 	if err != nil {

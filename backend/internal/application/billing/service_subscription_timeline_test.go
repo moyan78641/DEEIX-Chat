@@ -346,6 +346,75 @@ func TestEnsureModelUsableAllowsZeroCreditPeriodPlanWhenBalanceIsAvailable(t *te
 	}
 }
 
+func TestEnsureModelUsableAllowsPeriodModeWithoutSubscriptionWhenBalanceIsAvailable(t *testing.T) {
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	repo := &billingRepositoryStub{
+		mode:           "period",
+		prepaidNanousd: 300,
+		account:        &domainbilling.BillingAccount{UserID: 1, BalanceNanousd: 500, Currency: "USD", Status: "active"},
+		pricing: &domainbilling.ModelPricing{
+			PlatformModelName:       "gpt-test",
+			Currency:                "USD",
+			InputNanousdPerMTokens:  1,
+			OutputNanousdPerMTokens: 1,
+		},
+	}
+	service := NewService(repo)
+
+	if err := service.EnsureModelUsable(context.Background(), 1, "gpt-test", now); err != nil {
+		t.Fatalf("EnsureModelUsable() error = %v", err)
+	}
+}
+
+func TestEnsureModelUsableRejectsPeriodModeWithoutSubscriptionWhenBalanceIsInsufficient(t *testing.T) {
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	repo := &billingRepositoryStub{
+		mode:           "period",
+		prepaidNanousd: 300,
+		account:        &domainbilling.BillingAccount{UserID: 1, BalanceNanousd: 100, Currency: "USD", Status: "active"},
+		pricing: &domainbilling.ModelPricing{
+			PlatformModelName:       "gpt-test",
+			Currency:                "USD",
+			InputNanousdPerMTokens:  1,
+			OutputNanousdPerMTokens: 1,
+		},
+	}
+	service := NewService(repo)
+
+	err := service.EnsureModelUsable(context.Background(), 1, "gpt-test", now)
+	if !errors.Is(err, ErrUsageBalanceInsufficient) {
+		t.Fatalf("EnsureModelUsable() error = %v, want ErrUsageBalanceInsufficient", err)
+	}
+}
+
+func TestEnsureModelUsableTreatsFreePeriodSubscriptionAsUsageBalance(t *testing.T) {
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	endAt := now.Add(30 * 24 * time.Hour)
+	repo := &billingRepositoryStub{
+		mode:           "period",
+		prepaidNanousd: 300,
+		account:        &domainbilling.BillingAccount{UserID: 1, BalanceNanousd: 100, Currency: "USD", Status: "active"},
+		pricing: &domainbilling.ModelPricing{
+			PlatformModelName:       "gpt-test",
+			Currency:                "USD",
+			InputNanousdPerMTokens:  1,
+			OutputNanousdPerMTokens: 1,
+		},
+		plans: []domainbilling.Plan{
+			{ID: 1, Code: "free", Name: "Free", PeriodCreditNanousd: 1000, IsActive: true},
+		},
+		subscriptions: []domainbilling.Subscription{
+			{ID: 10, UserID: 1, PlanID: 1, Status: "active", CurrentPeriodStartAt: now, CurrentPeriodEndAt: &endAt},
+		},
+	}
+	service := NewService(repo)
+
+	err := service.EnsureModelUsable(context.Background(), 1, "gpt-test", now)
+	if !errors.Is(err, ErrUsageBalanceInsufficient) {
+		t.Fatalf("EnsureModelUsable() error = %v, want ErrUsageBalanceInsufficient", err)
+	}
+}
+
 func TestReserveUsageBalancePeriodModeReservesOnlyPotentialOverage(t *testing.T) {
 	now := time.Now()
 	endAt := now.Add(30 * 24 * time.Hour)
@@ -374,6 +443,51 @@ func TestReserveUsageBalancePeriodModeReservesOnlyPotentialOverage(t *testing.T)
 	}
 	if reservation == nil || reservation.AmountNanousd != 200 || repo.reservedNanousd != 200 {
 		t.Fatalf("reservation = %+v, reserved = %d, want 200", reservation, repo.reservedNanousd)
+	}
+}
+
+func TestReserveUsageBalancePeriodModeWithoutSubscriptionReservesPrepaidAmount(t *testing.T) {
+	repo := &billingRepositoryStub{
+		mode:           "period",
+		prepaidNanousd: 300,
+		pricing: &domainbilling.ModelPricing{
+			PlatformModelName:       "gpt-test",
+			Currency:                "USD",
+			InputNanousdPerMTokens:  1,
+			OutputNanousdPerMTokens: 1,
+		},
+	}
+	service := NewService(repo)
+
+	reservation, err := service.ReserveUsageBalance(context.Background(), 1, "gpt-test", "run_1")
+	if err != nil {
+		t.Fatalf("ReserveUsageBalance() error = %v", err)
+	}
+	if reservation == nil || reservation.AmountNanousd != 300 || repo.reservedNanousd != 300 {
+		t.Fatalf("reservation = %+v, reserved = %d, want 300", reservation, repo.reservedNanousd)
+	}
+}
+
+func TestGetBillingOverviewPeriodModeWithoutSubscriptionReturnsBalanceOnly(t *testing.T) {
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	repo := &billingRepositoryStub{
+		mode:    "period",
+		account: &domainbilling.BillingAccount{UserID: 1, BalanceNanousd: 500, Currency: "USD", Status: "active"},
+	}
+	service := NewService(repo)
+
+	overview, err := service.GetBillingOverview(context.Background(), 1, now)
+	if err != nil {
+		t.Fatalf("GetBillingOverview() error = %v", err)
+	}
+	if overview.Plan != nil {
+		t.Fatalf("overview.Plan = %+v, want nil", overview.Plan)
+	}
+	if overview.Account == nil || overview.Account.BalanceNanousd != 500 {
+		t.Fatalf("overview.Account = %+v, want balance 500", overview.Account)
+	}
+	if overview.PeriodCreditNanousd != 0 || overview.PeriodUsedNanousd != 0 || overview.PeriodRemainingNanousd != 0 {
+		t.Fatalf("period totals = credit %d used %d remaining %d, want all zero", overview.PeriodCreditNanousd, overview.PeriodUsedNanousd, overview.PeriodRemainingNanousd)
 	}
 }
 

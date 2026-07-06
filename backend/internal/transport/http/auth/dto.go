@@ -9,8 +9,10 @@ import (
 
 // LoginRequest 登录请求。
 type LoginRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=128"`
-	Password string `json:"password" binding:"required,min=6,max=128"`
+	Username        string `json:"username" binding:"required,min=3,max=128"`
+	Password        string `json:"password" binding:"required,min=6,max=128"`
+	TermsAccepted   bool   `json:"termsAccepted"`
+	PrivacyAccepted bool   `json:"privacyAccepted"`
 }
 
 type TwoFactorVerifyRequest struct {
@@ -72,10 +74,12 @@ type PasswordChangeVerificationStartResponse struct {
 }
 
 type EmailRegistrationCompleteRequest struct {
-	Email          string `json:"email" binding:"required,max=128,email"`
-	Password       string `json:"password" binding:"required,min=8,max=128"`
-	Code           string `json:"code" binding:"omitempty,len=6"`
-	TurnstileToken string `json:"turnstileToken" binding:"omitempty,max=2048"`
+	Email           string `json:"email" binding:"required,max=128,email"`
+	Password        string `json:"password" binding:"required,min=8,max=128"`
+	Code            string `json:"code" binding:"omitempty,len=6"`
+	TurnstileToken  string `json:"turnstileToken" binding:"omitempty,max=2048"`
+	TermsAccepted   bool   `json:"termsAccepted"`
+	PrivacyAccepted bool   `json:"privacyAccepted"`
 }
 
 type PasswordResetStartRequest struct {

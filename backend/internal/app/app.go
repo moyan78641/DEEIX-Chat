@@ -197,6 +197,7 @@ func NewApp() (*App, error) {
 	billingHandler := billinghttp.NewHandler(billingService, settingsService, runtimeCfg)
 	billingModule := billinghttp.NewModule(billingHandler)
 	objectStoreProvider := appstorage.NewRuntimeProvider(runtimeCfg, nil)
+	settingsHandler.SetObjectStoreProvider(objectStoreProvider)
 	geoResolver := geoip.New(runtimeCfg.Snapshot())
 	authService := auth.NewServiceWithRuntime(runtimeCfg, userRepo, geoResolver)
 	authService.SetLogger(log)

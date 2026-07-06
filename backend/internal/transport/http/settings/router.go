@@ -4,6 +4,8 @@ import "github.com/gin-gonic/gin"
 
 func (m *Module) RegisterPublicRoutes(api *gin.RouterGroup) {
 	api.GET("/settings/login-page", m.Handler.GetLoginPageSettings)
+	api.GET("/settings/site-profile", m.Handler.GetSiteProfile)
+	api.GET("/site-assets/:file_name", m.Handler.GetSiteAsset)
 }
 
 func (m *Module) RegisterRoutes(api *gin.RouterGroup) {
@@ -30,6 +32,7 @@ func (m *Module) RegisterAdminRoutes(adminGroup *gin.RouterGroup) {
 	g.GET("/embedding/runtime", m.Handler.GetEmbeddingRuntime)
 	g.GET("/embedding/status", m.Handler.GetEmbeddingStatus)
 	g.POST("/embedding/reindex", m.Handler.TriggerReindex)
+	g.POST("/site-assets", m.Handler.UploadSiteAsset)
 	g.GET("/:namespace", m.Handler.ListByNamespace)
 	g.PATCH("", m.Handler.Patch)
 }

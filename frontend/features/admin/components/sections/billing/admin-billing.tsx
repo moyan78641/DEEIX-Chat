@@ -1608,7 +1608,21 @@ export function AdminBillingPage() {
   );
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="pb-10">
+      <Tabs defaultValue="settings" className="space-y-6">
+        <TabsList variant="line" className="mx-1 flex w-full max-w-full justify-start overflow-x-auto rounded-none bg-transparent p-0">
+          <TabsTrigger value="settings" className="flex-none rounded-none border-b-2 border-transparent px-3 py-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+            {t("tabs.settings")}
+          </TabsTrigger>
+          <TabsTrigger value="modelPricing" className="flex-none rounded-none border-b-2 border-transparent px-3 py-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+            {t("tabs.modelPricing")}
+          </TabsTrigger>
+          <TabsTrigger value="toolPricing" className="flex-none rounded-none border-b-2 border-transparent px-3 py-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+            {t("tabs.toolPricing")}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="settings" className="space-y-8">
       <SettingsSection title={t("billingConfig.title")} actions={billingConfigActions} className="px-1">
         <SettingsFieldList>
           <SettingsFieldItem>
@@ -1963,9 +1977,9 @@ export function AdminBillingPage() {
         </div>
         <PeriodBillingTable plans={plans} loading={loading} onEdit={openPlanEdit} />
       </section>
+        </TabsContent>
 
-      <Separator className="mx-1 my-10" />
-
+        <TabsContent value="modelPricing" className="space-y-6">
       <section className="space-y-6 px-1">
         <div className="flex h-10 items-center">
           <h3 className="text-sm font-semibold">{t("modelPricing.title")}</h3>
@@ -2156,9 +2170,9 @@ export function AdminBillingPage() {
           />
         </div>
       </section>
+        </TabsContent>
 
-      <Separator className="mx-1 my-10" />
-
+        <TabsContent value="toolPricing" className="space-y-6">
       <SettingsSection title={t("toolPricing.title")} actions={toolPricingActions} className="px-1">
         <SettingsFieldList>
           <SettingsFieldItem>
@@ -2242,6 +2256,8 @@ export function AdminBillingPage() {
             <p className="text-[11px] leading-5 text-muted-foreground">{t("toolPricing.note")}</p>
         </CollapsibleMotionContent>
       </SettingsSection>
+        </TabsContent>
+      </Tabs>
 
       <PlanBillingDialog
         open={!!editPlan && !!planForm}

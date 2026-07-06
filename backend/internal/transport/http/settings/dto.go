@@ -39,6 +39,36 @@ type LoginPageSettingsResponse struct {
 	DefaultNextPath string `json:"defaultNextPath"`
 }
 
+type SiteLegalDocumentResponse struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+type SiteProfileResponse struct {
+	Name         string                    `json:"name"`
+	ShortName    string                    `json:"shortName"`
+	Description  string                    `json:"description"`
+	LogoURL      string                    `json:"logoURL"`
+	LogoDarkURL  string                    `json:"logoDarkURL"`
+	FaviconURL   string                    `json:"faviconURL"`
+	HomeTitle    string                    `json:"homeTitle"`
+	HomeSubtitle string                    `json:"homeSubtitle"`
+	FooterText   string                    `json:"footerText"`
+	ContactEmail string                    `json:"contactEmail"`
+	TermsURL     string                    `json:"termsURL"`
+	PrivacyURL   string                    `json:"privacyURL"`
+	Terms        SiteLegalDocumentResponse `json:"terms"`
+	Privacy      SiteLegalDocumentResponse `json:"privacy"`
+	Agreement    SiteLegalDocumentResponse `json:"agreement"`
+}
+
+type SiteAssetUploadResponse struct {
+	URL         string `json:"url"`
+	FileName    string `json:"fileName"`
+	ContentType string `json:"contentType"`
+	SizeBytes   int64  `json:"sizeBytes"`
+}
+
 type ModelOptionPolicyResponse struct {
 	Mode             string                         `json:"mode"`
 	AllowedPathsJSON string                         `json:"allowedPathsJSON"`

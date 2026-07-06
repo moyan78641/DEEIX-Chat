@@ -44,6 +44,27 @@ export async function patchAdminSettings(
   );
 }
 
+export type SiteAssetUploadResult = {
+  url: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+};
+
+export async function uploadSiteAsset(accessToken: string, file: File): Promise<SiteAssetUploadResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return authedRequest<SiteAssetUploadResult>(
+    "/api/v1/admin/settings/site-assets",
+    {
+      method: "POST",
+      accessToken,
+      body: formData,
+    },
+    true,
+  );
+}
+
 export async function getAdminTikaRuntime(accessToken: string): Promise<AdminTikaRuntimeView> {
   return authedRequest<AdminTikaRuntimeView>(
     "/api/v1/admin/settings/tika/runtime",

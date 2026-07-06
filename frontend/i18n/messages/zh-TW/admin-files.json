@@ -1,0 +1,441 @@
+{
+  "groups": {
+    "uploadLimits": {
+      "title": "上傳限制",
+      "description": "控制對話附件數量、MIME 白名單和檔案大小上限。"
+    },
+    "extraction": {
+      "title": "內容提取",
+      "description": "控制檔案內容提取主鏈路、共享 OCR 引擎和 OCR 啟用範圍。"
+    },
+    "fullContext": {
+      "title": "全文注入",
+      "description": "控制提取後的檔案文本是否可以直接注入上下文，而不是走 RAG。"
+    },
+    "embedding": {
+      "title": "向量化檢索",
+      "description": "配置外部 Embedding 服務是否啟用；變更模型會將舊向量標記為失效。"
+    },
+    "semantic": {
+      "title": "語義增強",
+      "description": "基於向量檢索召回歷史訊息語義片段，需要訊息向量化就緒。"
+    },
+    "rag": {
+      "title": "RAG",
+      "description": "控制檢索、相似度閾值、注入預算和就緒等待策略。"
+    }
+  },
+  "runtime": {
+    "address": "地址",
+    "testConnection": "測試連線"
+  },
+  "embeddingStatus": {
+    "title": "向量索引狀態",
+    "noSignature": "尚未生成簽名（首次儲存配置後自動計算）",
+    "reindex": "重建索引",
+    "reindexing": "重建中...",
+    "ready": "就緒",
+    "stale": "失效",
+    "pending": "待處理",
+    "failed": "失敗",
+    "empty": "暫無資料（配置 Embedding 服務後可用）",
+    "needsReindex": "檢測到失效向量，請點選「重建索引」以恢復檢索能力。"
+  },
+  "toast": {
+    "sessionExpired": "登入狀態已失效",
+    "sessionExpiredDescription": "請重新登入後再繼續操作。",
+    "unknownError": "請求失敗，請稍後重試。",
+    "cannotEnable": "無法開啟",
+    "saveFailed": "儲存失敗",
+    "loadFailed": "載入檔案策略失敗",
+    "serviceTestFailed": "{service} 測試失敗",
+    "reindexSubmitted": "重建索引已提交",
+    "reindexSubmittedDescription": "已提交 {count} 個檔案的重建任務，後臺非同步執行。",
+    "reindexFailed": "重建索引失敗",
+    "embeddingModelChanged": "Embedding 模型已變更",
+    "embeddingModelChangedDescription": "舊向量已標記為失效，請在索引狀態面板中點選「重建索引」以重新向量化所有檔案。",
+    "groupUpdated": "{group}已更新"
+  },
+  "validation": {
+    "embeddingRequired": "請先在「向量化檢索」中開啟並配置 Embedding 服務地址和請求模型。",
+    "messageEmbeddingRequired": "請先開啟訊息向量化。",
+    "messageEmbeddingRequiredBeforeSemantic": "開啟語義上下文召回前，請先開啟訊息向量化。",
+    "tikaBaseURLRequired": "Tika 服務地址不能為空。",
+    "doclingBaseURLRequired": "Docling 服務地址不能為空。",
+    "mineruBaseURLRequired": "MinerU 服務地址不能為空。",
+    "tesseractBaseURLRequired": "Tesseract OCR 服務地址不能為空。",
+    "rapidOCRBaseURLRequired": "Rapid OCR 服務地址不能為空。",
+    "paddleOCRBaseURLRequired": "Paddle OCR 服務地址不能為空。",
+    "tencentOCRRequired": "騰訊雲 OCR 的 SecretId、SecretKey 和地域不能為空。",
+    "aliyunOCRRequired": "阿里雲 OCR 的 AccessKey ID、AccessKey Secret 和地域不能為空。",
+    "llmOCRBaseURLRequired": "LLM OCR 服務地址不能為空。",
+    "llmOCRModelRequired": "LLM OCR 請求模型不能為空。",
+    "embeddingModelRequired": "Embedding 請求模型不能為空。",
+    "embeddingHostRequired": "Embedding 服務地址不能為空。"
+  },
+  "fields": {
+    "storage": {
+      "max_message_files": {
+        "label": "附件數量上限",
+        "description": "用於限制單條對話訊息可攜帶的附件數量。",
+        "placeholder": "請輸入數量"
+      },
+      "max_upload_file_bytes": {
+        "label": "預設大小上限",
+        "description": "用於設定單個附件的預設大小上限，頁面單位為 MB。",
+        "placeholder": "大小上限（MB）"
+      },
+      "user_storage_quota_bytes": {
+        "label": "使用者儲存配額",
+        "description": "用於限制每位使用者可佔用的檔案總儲存空間，頁面單位為 MB；設定為 0 表示不限制。",
+        "placeholder": "0 表示不限制"
+      }
+    },
+    "file": {
+      "allowed_mime_types": {
+        "label": "附件 MIME 白名單",
+        "description": "用於限制允許上傳的附件 MIME 型別，多個值使用逗號分隔。",
+        "placeholder": "MIME 型別，逗號分隔"
+      },
+      "image_max_bytes": {
+        "label": "影像大小上限",
+        "description": "用於單獨覆蓋影像附件的大小上限，頁面單位為 MB；留空時回退到預設附件大小上限。",
+        "placeholder": "留空則回退預設附件大小上限"
+      },
+      "doc_max_bytes": {
+        "label": "檔案大小上限",
+        "description": "用於單獨覆蓋檔案附件的大小上限，頁面單位為 MB；留空時回退到預設附件大小上限。",
+        "placeholder": "留空則回退預設附件大小上限"
+      },
+      "full_context_limit_enabled": {
+        "label": "全文注入限制",
+        "description": "開啟後按大小、Token 和 PDF 頁數限制全文注入；關閉後不再限制全文注入閾值。"
+      },
+      "file_full_context_max_bytes": {
+        "label": "全文大小上限",
+        "description": "用於限制全文注入允許的最大文本位元組數；留空或填 0 表示不限制大小。",
+        "placeholder": "留空或 0 表示不限制"
+      },
+      "full_context_max_tokens": {
+        "label": "全文 Token 上限",
+        "description": "用於限制全文注入允許的最大 Token 預算；留空或填 0 表示不限制 Token。",
+        "placeholder": "留空或 0 表示不限制"
+      },
+      "full_context_pdf_max_pages": {
+        "label": "全文頁數上限",
+        "description": "用於限制 PDF 走全文注入時允許的最大頁數；留空或填 0 表示不限制頁數。",
+        "placeholder": "留空或 0 表示不限制"
+      },
+      "embedding_enabled": {
+        "label": "啟用 Embedding",
+        "description": "開啟後啟用檔案向量化和向量檢索能力；關閉後相關鏈路將停用。"
+      },
+      "embedding_host": {
+        "label": "Embedding 服務地址 *",
+        "description": "用於配置 Embedding 服務地址，服務需相容 OpenAI `/embeddings` 介面。",
+        "placeholder": "服務地址"
+      },
+      "embedding_key": {
+        "label": "Embedding 鑑權金鑰",
+        "description": "用於配置呼叫 Embedding 服務時使用的鑑權金鑰。",
+        "placeholder": "鑑權金鑰"
+      },
+      "rag_model": {
+        "label": "Embedding 模型 *",
+        "description": "用於指定向量化所使用的模型名稱。",
+        "placeholder": "模型名稱"
+      },
+      "embedding_timeout_seconds": {
+        "label": "Embedding 超時",
+        "description": "用於設定單次 Embedding API 請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "embedding_output_dimensions": {
+        "label": "向量維度",
+        "description": "用於指定寫庫和檢索統一使用的向量維度。",
+        "placeholder": "向量維度"
+      },
+      "embedding_normalize": {
+        "label": "歸一化向量",
+        "description": "開啟後會對向量執行歸一化處理。"
+      },
+      "embed_trigger_on_upload": {
+        "label": "自動向量化",
+        "description": "檔案上傳完成後立即非同步觸發 Embedding。"
+      },
+      "embed_batch_size": {
+        "label": "批次大小",
+        "description": "用於設定單次 Embedding API 請求攜帶的文本數量。",
+        "placeholder": "批次大小"
+      },
+      "embed_chunk_size_tokens": {
+        "label": "分片大小",
+        "description": "用於設定檔案向量化時的分片大小，按 Token 估算。",
+        "placeholder": "分片大小（Token）"
+      },
+      "embed_chunk_overlap_tokens": {
+        "label": "分片重疊",
+        "description": "用於設定相鄰分片之間的 Token 重疊量。",
+        "placeholder": "分片重疊（Token）"
+      },
+      "rag_top_k": {
+        "label": "召回片段數",
+        "description": "用於設定 RAG 最終返回並參與注入的片段數量。",
+        "placeholder": "返回片段數"
+      }
+    },
+    "extract": {
+      "engine": {
+        "label": "提取引擎",
+        "description": "用於選擇檔案內容提取的主鏈路引擎。",
+        "options": {
+          "builtin": "內建",
+          "tika": "Tika",
+          "docling": "Docling",
+          "mineru": "MinerU"
+        }
+      },
+      "tika_base_url": {
+        "label": "Tika 服務地址 *",
+        "description": "用於配置 Apache Tika 服務地址。",
+        "placeholder": "服務地址"
+      },
+      "tika_auth_token": {
+        "label": "Tika 鑑權金鑰",
+        "description": "用於配置呼叫 Tika 服務時附帶的鑑權金鑰。",
+        "placeholder": "鑑權金鑰（可空）"
+      },
+      "tika_timeout_seconds": {
+        "label": "Tika 超時時間",
+        "description": "用於設定單次 Tika 解析請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "docling_base_url": {
+        "label": "Docling 服務地址 *",
+        "description": "用於配置 Docling 服務地址。",
+        "placeholder": "服務地址"
+      },
+      "docling_auth_token": {
+        "label": "Docling 鑑權金鑰",
+        "description": "用於配置呼叫 Docling 服務時附帶的鑑權金鑰。",
+        "placeholder": "鑑權金鑰（可空）"
+      },
+      "docling_timeout_seconds": {
+        "label": "Docling 超時時間",
+        "description": "用於設定單次 Docling 解析請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "mineru_source": {
+        "label": "MinerU 服務型別",
+        "description": "用於選擇 MinerU 雲服務或自部署服務。",
+        "options": {
+          "cloud": "雲服務",
+          "self_hosted": "自部署"
+        }
+      },
+      "mineru_base_url": {
+        "label": "MinerU 服務地址 *",
+        "description": "用於配置 MinerU 服務地址。",
+        "placeholder": "服務地址"
+      },
+      "mineru_auth_token": {
+        "label": "MinerU 鑑權金鑰",
+        "description": "用於配置呼叫 MinerU 服務時使用的 Token 或 API Key。",
+        "placeholder": "鑑權金鑰（可空）"
+      },
+      "mineru_timeout_seconds": {
+        "label": "MinerU 超時時間",
+        "description": "用於設定單次 MinerU 解析請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "image_ocr_enabled": {
+        "label": "圖片 OCR",
+        "description": "開啟後會將圖片附件送入 OCR 鏈路，並生成可用於檢索的文本結果。"
+      },
+      "pdf_ocr_fallback_enabled": {
+        "label": "PDF OCR 回退",
+        "description": "開啟後會在 PDF 原生文本提取失敗或質量較差時啟用 OCR 回退識別。"
+      },
+      "ocr_engine": {
+        "label": "OCR 引擎",
+        "description": "用於選擇圖片 OCR 和 PDF OCR 回退共用的識別引擎。",
+        "options": {
+          "rapidocr": "Rapid OCR",
+          "tesseract": "Tesseract OCR",
+          "paddle": "Paddle OCR",
+          "tencent": "騰訊雲 OCR",
+          "aliyun": "阿里雲 OCR",
+          "llm": "LLM OCR"
+        }
+      },
+      "tesseract_ocr_base_url": {
+        "label": "Tesseract OCR 服務地址 *",
+        "description": "用於配置 Tesseract OCR 服務地址。",
+        "placeholder": "服務地址"
+      },
+      "tesseract_ocr_auth_token": {
+        "label": "Tesseract OCR 鑑權金鑰",
+        "description": "用於配置呼叫 Tesseract OCR 服務時附帶的鑑權金鑰。",
+        "placeholder": "鑑權金鑰（可空）"
+      },
+      "tesseract_ocr_timeout_seconds": {
+        "label": "Tesseract OCR 超時時間",
+        "description": "用於設定單次 Tesseract OCR 請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "rapidocr_base_url": {
+        "label": "Rapid OCR 服務地址 *",
+        "description": "用於配置 Rapid OCR 服務地址。",
+        "placeholder": "服務地址"
+      },
+      "rapidocr_auth_token": {
+        "label": "Rapid OCR 鑑權金鑰",
+        "description": "用於配置呼叫 Rapid OCR 服務時附帶的鑑權金鑰。",
+        "placeholder": "鑑權金鑰（可空）"
+      },
+      "rapidocr_timeout_seconds": {
+        "label": "Rapid OCR 超時時間",
+        "description": "用於設定單次 Rapid OCR 請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "paddle_ocr_base_url": {
+        "label": "Paddle OCR 服務地址 *",
+        "description": "用於配置 Paddle OCR 服務地址。",
+        "placeholder": "服務地址"
+      },
+      "paddle_ocr_auth_token": {
+        "label": "Paddle OCR 鑑權金鑰",
+        "description": "用於配置呼叫 Paddle OCR 服務時附帶的鑑權金鑰。",
+        "placeholder": "鑑權金鑰（可空）"
+      },
+      "paddle_ocr_timeout_seconds": {
+        "label": "Paddle OCR 超時時間",
+        "description": "用於設定單次 Paddle OCR 請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "tencent_ocr_secret_id": {
+        "label": "騰訊雲 SecretId *",
+        "description": "用於配置呼叫騰訊雲 OCR API 所需的 SecretId。",
+        "placeholder": "SecretId"
+      },
+      "tencent_ocr_secret_key": {
+        "label": "騰訊雲 SecretKey *",
+        "description": "用於配置呼叫騰訊雲 OCR API 所需的 SecretKey。",
+        "placeholder": "SecretKey"
+      },
+      "tencent_ocr_region": {
+        "label": "騰訊雲地域",
+        "description": "用於配置騰訊雲 OCR API 的請求地域。",
+        "placeholder": "地域"
+      },
+      "tencent_ocr_endpoint": {
+        "label": "騰訊雲接入點",
+        "description": "用於配置騰訊雲 OCR API 的接入點地址。",
+        "placeholder": "接入點"
+      },
+      "tencent_ocr_timeout_seconds": {
+        "label": "騰訊雲 OCR 超時時間",
+        "description": "用於設定單次騰訊雲 OCR 請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "aliyun_ocr_access_key_id": {
+        "label": "阿里雲 AccessKey ID *",
+        "description": "用於配置呼叫阿里雲 OCR API 所需的 AccessKey ID。",
+        "placeholder": "AccessKey ID"
+      },
+      "aliyun_ocr_access_key_secret": {
+        "label": "阿里雲 AccessKey Secret *",
+        "description": "用於配置呼叫阿里雲 OCR API 所需的 AccessKey Secret。",
+        "placeholder": "AccessKey Secret"
+      },
+      "aliyun_ocr_region": {
+        "label": "阿里雲地域",
+        "description": "用於配置阿里雲 OCR API 的請求地域。",
+        "placeholder": "地域"
+      },
+      "aliyun_ocr_endpoint": {
+        "label": "阿里雲接入點",
+        "description": "用於配置阿里雲 OCR API 的接入點地址。",
+        "placeholder": "接入點"
+      },
+      "aliyun_ocr_timeout_seconds": {
+        "label": "阿里雲 OCR 超時時間",
+        "description": "用於設定單次阿里雲 OCR 請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "llm_ocr_base_url": {
+        "label": "LLM OCR 服務地址 *",
+        "description": "用於配置 OpenAI 相容視覺模型服務地址。",
+        "placeholder": "服務地址"
+      },
+      "llm_ocr_auth_token": {
+        "label": "LLM OCR 鑑權金鑰",
+        "description": "用於配置呼叫 LLM OCR 服務時使用的 API Key。",
+        "placeholder": "API Key（可空）"
+      },
+      "llm_ocr_model": {
+        "label": "LLM OCR 請求模型 *",
+        "description": "用於指定執行 OCR 的視覺模型名稱。",
+        "placeholder": "模型名稱"
+      },
+      "llm_ocr_timeout_seconds": {
+        "label": "LLM OCR 超時時間",
+        "description": "用於設定單次 LLM OCR 請求的最長等待時間，單位為秒。",
+        "placeholder": "超時時間（秒）"
+      },
+      "llm_ocr_prompt": {
+        "label": "LLM OCR 提示詞",
+        "description": "用於配置傳送給視覺模型的 OCR 指令。",
+        "placeholder": "提示詞（可空）"
+      }
+    },
+    "chat": {
+      "message_embedding_enabled": {
+        "label": "訊息向量化",
+        "description": "開啟後會在每輪對話完成後非同步生成訊息向量，依賴可用的 Embedding 服務。"
+      },
+      "semantic_context_enabled": {
+        "label": "語義上下文召回",
+        "description": "開啟後會在傳送訊息時自動召回歷史相關片段並注入上下文，依賴訊息向量資料可用。"
+      },
+      "rag_enabled": {
+        "label": "RAG 開關",
+        "description": "開啟後允許檔案進入檢索增強鏈路，依賴可用的 Embedding 服務。"
+      },
+      "rag_min_similarity": {
+        "label": "相似度閾值",
+        "description": "用於設定片段注入的最低相似度閾值。",
+        "placeholder": "相似度閾值"
+      },
+      "rag_token_budget": {
+        "label": "注入 Token 預算",
+        "description": "用於限制檢索片段注入上下文時可佔用的 Token 預算。",
+        "placeholder": "Token 預算"
+      },
+      "rag_fetch_multiplier": {
+        "label": "抓取倍數",
+        "description": "用於設定候選抓取倍率，系統會先抓取更多候選結果，再執行二次篩選。",
+        "placeholder": "抓取倍數"
+      },
+      "rag_wait_ready_ms": {
+        "label": "就緒等待時長",
+        "description": "用於設定傳送請求時等待向量化結果就緒的最長時間，單位為毫秒。",
+        "placeholder": "等待時長（毫秒）"
+      },
+      "rag_query_history_turns": {
+        "label": "歷史拼接輪次",
+        "description": "用於設定生成檢索查詢時可額外帶入的最近使用者輪次數量。",
+        "placeholder": "歷史輪次"
+      },
+      "rag_retrieval_cache_ttl_seconds": {
+        "label": "檢索快取時長",
+        "description": "用於設定 RAG 檢索結果快取時長，單位為秒。",
+        "placeholder": "快取時長（秒）"
+      },
+      "rag_hybrid_enabled": {
+        "label": "混合檢索（BM25+向量）",
+        "description": "開啟後會並行執行向量檢索和全文檢索，並使用 RRF 合併結果。"
+      }
+    }
+  }
+}

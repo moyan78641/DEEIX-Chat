@@ -114,6 +114,7 @@ type billingRepositoryStub struct {
 	nativeToolPricingJSON      string
 	requestedPlatformModelName string
 	replacedSubscription       *domainbilling.Subscription
+	usageBalanceSettled        bool
 	reservedNanousd            int64
 	periodUsageSettled         bool
 	periodStartAt              time.Time
@@ -239,7 +240,8 @@ func (r *billingRepositoryStub) AddUsageAndDebitBalance(context.Context, *domain
 	panic("not used")
 }
 func (r *billingRepositoryStub) AddUsageAndSettleBalance(context.Context, *domainbilling.UsageLedger, *domainbilling.UsageBalanceReservation) error {
-	panic("not used")
+	r.usageBalanceSettled = true
+	return nil
 }
 func (r *billingRepositoryStub) AddPeriodUsageAndSettleOverage(_ context.Context, _ *domainbilling.UsageLedger, periodStart time.Time, periodEnd time.Time, periodCreditNanousd int64, _ *domainbilling.UsageBalanceReservation) error {
 	r.periodUsageSettled = true
@@ -359,6 +361,31 @@ func TestRecordUsageWithReservationUsesBillingAtForPeriod(t *testing.T) {
 	}
 	if repo.periodCreditNanousd != 1000 {
 		t.Fatalf("period credit = %d, want 1000", repo.periodCreditNanousd)
+	}
+}
+
+func TestRecordUsageWithReservationPeriodModeWithoutSubscriptionSettlesBalance(t *testing.T) {
+	billingAt := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	repo := &billingRepositoryStub{mode: "period"}
+	service := NewService(repo)
+
+	err := service.RecordUsageWithReservation(context.Background(), &domainbilling.UsageLedger{
+		UserID:              1,
+		PlatformModelName:   "gpt-test",
+		BillingAt:           billingAt,
+		UsageDate:           billingAt,
+		BilledCurrency:      "USD",
+		BilledNanousd:       100,
+		PricingSnapshotJSON: `{}`,
+	}, nil)
+	if err != nil {
+		t.Fatalf("RecordUsageWithReservation() error = %v", err)
+	}
+	if !repo.usageBalanceSettled {
+		t.Fatal("usage balance settlement was not used")
+	}
+	if repo.periodUsageSettled {
+		t.Fatal("period settlement was used without an active paid subscription")
 	}
 }
 

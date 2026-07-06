@@ -1,6 +1,8 @@
 "use client";
 
+import * as React from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +11,8 @@ import { PASSWORD_MIN_LENGTH } from "@/shared/auth/account-policy";
 import { useLoginPage } from "@/features/auth/hooks/use-auth-login-page";
 import { AppLogo } from "@/shared/components/app-logo";
 import { IdentityProviderIcon } from "@/shared/components/identity-provider-icon";
+import { AgreementCheckbox } from "@/shared/site/agreement-checkbox";
+import { useSiteProfile } from "@/shared/site/site-profile-context";
 import { TurnstileWidget } from "@/features/auth/components/turnstile-widget";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +33,14 @@ function LoginBrandMark() {
 
 export function LoginPage({ nextPath }: LoginPageProps) {
   const t = useTranslations("login");
-  const loginPage = useLoginPage({ nextPath });
+  const { profile } = useSiteProfile();
+  const [loginAgreementAccepted, setLoginAgreementAccepted] = React.useState(true);
+  const [registerAgreementAccepted, setRegisterAgreementAccepted] = React.useState(false);
+  const loginPage = useLoginPage({
+    nextPath,
+    loginLegalConsentAccepted: loginAgreementAccepted,
+    registerLegalConsentAccepted: registerAgreementAccepted,
+  });
   const {
     cancelTwoFactorChallenge,
     canShowRegisterSwitch,
@@ -104,6 +115,10 @@ export function LoginPage({ nextPath }: LoginPageProps) {
     <main className="flex min-h-screen items-center justify-center px-4 py-8 text-foreground" aria-busy={!configReady}>
       <div className="w-full max-w-[360px]">
         <LoginBrandMark />
+        <div className="mt-4 space-y-1 text-center">
+          <h1 className="text-lg font-semibold tracking-normal text-foreground">{profile.name}</h1>
+          <p className="text-xs leading-5 text-muted-foreground">{profile.description}</p>
+        </div>
 
         <div
           aria-hidden={!configReady}
@@ -181,7 +196,17 @@ export function LoginPage({ nextPath }: LoginPageProps) {
             ) : null}
 
             {mode === "login" && !twoFactorChallengeToken && passwordLoginEnabled ? (
-              <form className="mt-7 space-y-4" onSubmit={onLoginSubmit}>
+              <form
+                className="mt-7 space-y-4"
+                onSubmit={(event) => {
+                  if (!loginAgreementAccepted) {
+                    event.preventDefault();
+                    toast.error(t("toasts.agreementRequired"));
+                    return;
+                  }
+                  void onLoginSubmit(event);
+                }}
+              >
                 <div className="space-y-2">
                   <label className="text-sm font-medium leading-none text-foreground" htmlFor="username">
                     {accountLabel}
@@ -230,10 +255,15 @@ export function LoginPage({ nextPath }: LoginPageProps) {
                 <Button
                   className="mt-2 h-9 w-full rounded-md bg-foreground text-sm font-semibold text-background shadow-none hover:bg-foreground/90"
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !loginAgreementAccepted}
                 >
                   {submitting ? <SpinnerLabel>{t("signingIn")}</SpinnerLabel> : t("signIn")}
                 </Button>
+                <AgreementCheckbox
+                  checked={loginAgreementAccepted}
+                  disabled={submitting}
+                  onCheckedChange={setLoginAgreementAccepted}
+                />
               </form>
             ) : null}
 
@@ -321,7 +351,17 @@ export function LoginPage({ nextPath }: LoginPageProps) {
             ) : null}
 
             {mode === "register" && emailRegistrationEnabled ? (
-              <form className="mt-7 space-y-4" onSubmit={onRegisterSubmit}>
+              <form
+                className="mt-7 space-y-4"
+                onSubmit={(event) => {
+                  if (!registerAgreementAccepted) {
+                    event.preventDefault();
+                    toast.error(t("toasts.agreementRequired"));
+                    return;
+                  }
+                  void onRegisterSubmit(event);
+                }}
+              >
                 <div className="space-y-2">
                   <label className="text-sm font-medium leading-none text-foreground" htmlFor="register-email">
                     {t("email")}
@@ -391,10 +431,15 @@ export function LoginPage({ nextPath }: LoginPageProps) {
                   </div>
                 ) : null}
                 {registerDebugCode ? <p className="text-xs font-medium text-muted-foreground">{t("debugCode", { code: registerDebugCode })}</p> : null}
+                <AgreementCheckbox
+                  checked={registerAgreementAccepted}
+                  disabled={submitting}
+                  onCheckedChange={setRegisterAgreementAccepted}
+                />
                 <Button
                   className="mt-1 h-9 w-full rounded-md bg-foreground text-sm font-semibold text-background shadow-none hover:bg-foreground/90"
                   type="submit"
-                  disabled={submitting || (emailVerificationEnabled && registerCode.length !== 6) || (registerTurnstileRequired && !registerTurnstileToken)}
+                  disabled={submitting || !registerAgreementAccepted || (emailVerificationEnabled && registerCode.length !== 6) || (registerTurnstileRequired && !registerTurnstileToken)}
                 >
                   {submitting ? <SpinnerLabel>{t("registering")}</SpinnerLabel> : t("register")}
                 </Button>
@@ -403,12 +448,21 @@ export function LoginPage({ nextPath }: LoginPageProps) {
 
             {mode === "login" && !twoFactorChallengeToken && loginProviders.length > 0 ? (
               <div className={cn("space-y-2.5", passwordLoginEnabled ? "mt-5" : "mt-7")}>
+                {!passwordLoginEnabled ? (
+                  <AgreementCheckbox
+                    checked={loginAgreementAccepted}
+                    disabled={submitting}
+                    onCheckedChange={setLoginAgreementAccepted}
+                    className="mb-3"
+                  />
+                ) : null}
                 {loginProviders.map((provider) => (
                   <Button
                     key={provider.publicID}
                     type="button"
                     variant="secondary"
                     className="h-9 w-full rounded-md border-0 bg-muted text-sm font-semibold text-foreground shadow-none hover:bg-muted/80"
+                    disabled={!loginAgreementAccepted}
                     onClick={() => {
                       void handleProviderLogin(provider.slug);
                     }}

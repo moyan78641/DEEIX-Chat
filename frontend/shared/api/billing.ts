@@ -95,10 +95,14 @@ export async function redeemBillingCode(accessToken: string, payload: RedeemBill
   );
 }
 
-export async function subscribeBillingPlan(accessToken: string, priceID: number): Promise<SubscribeData> {
+export async function subscribeBillingPlan(
+  accessToken: string,
+  priceID: number,
+  legalConsent?: { termsAccepted: boolean; privacyAccepted: boolean },
+): Promise<SubscribeData> {
   return authedRequest<SubscribeData>(
     "/api/v1/billing/subscriptions",
-    { method: "POST", accessToken, body: { priceID: priceID, cycles: 1 } },
+    { method: "POST", accessToken, body: { priceID: priceID, cycles: 1, ...(legalConsent ?? {}) } },
     true,
   );
 }

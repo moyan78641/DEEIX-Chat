@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { PublicHomePage } from "@/features/site/components/public-home-page";
 
 export default function Page() {
-  redirect("/chat");
+  return <PublicHomePage />;
 }

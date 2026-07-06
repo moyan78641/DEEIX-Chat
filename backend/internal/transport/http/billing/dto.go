@@ -15,8 +15,10 @@ import (
 
 // SubscribeRequest 订阅请求。
 type SubscribeRequest struct {
-	PriceID uint `json:"priceID" binding:"required,min=1"`
-	Cycles  int  `json:"cycles" binding:"min=1,max=120"`
+	PriceID         uint `json:"priceID" binding:"required,min=1"`
+	Cycles          int  `json:"cycles" binding:"min=1,max=120"`
+	TermsAccepted   bool `json:"termsAccepted"`
+	PrivacyAccepted bool `json:"privacyAccepted"`
 }
 
 // CreateCheckoutRequest 创建支付收银台请求。
@@ -29,6 +31,8 @@ type CreateCheckoutRequest struct {
 	EPayType         string `json:"epayType" binding:"omitempty,max=32"`
 	SuccessURL       string `json:"successURL" binding:"omitempty,max=512"`
 	CancelURL        string `json:"cancelURL" binding:"omitempty,max=512"`
+	TermsAccepted    bool   `json:"termsAccepted"`
+	PrivacyAccepted  bool   `json:"privacyAccepted"`
 }
 
 // UpsertModelPricingRequest 保存模型计费单价。金额单位均为美元。

@@ -73,6 +73,7 @@ var exactErrorSpecs = map[string]errorSpec{
 	"cannot unlink the last available login method":              {Code: CodeAuthLastLoginRequired, Message: "set a password or bind another identity provider first"},
 	"configure the provider callback url to the frontend callback endpoint": {Code: "auth.provider_callback_misconfigured", Message: "configure the provider callback URL to the frontend callback endpoint"},
 	"email registration is disabled":                                        {Code: "auth.email_registration_disabled", Message: "email registration is disabled"},
+	"terms of service and privacy policy must be accepted":                  {Code: "legal.consent_required", Message: "terms of service and privacy policy must be accepted"},
 	"email verification is disabled":                                        {Code: "auth.email_verification_disabled", Message: "email verification is disabled"},
 	"email already exists":                                                  {Code: "auth.email_already_exists", Message: "email already exists"},
 	"user email is invalid":                                                 {Code: "auth.invalid_email", Message: "invalid email"},

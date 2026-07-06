@@ -1,0 +1,119 @@
+{
+  "groups": {
+    "identity": "Identity",
+    "assets": "Brand assets",
+    "home": "Public home",
+    "links": "Links",
+    "legal": "Terms and privacy"
+  },
+  "actions": {
+    "upload": "Upload"
+  },
+  "fields": {
+    "name": {
+      "label": "Site name",
+      "description": "Primary product or site name shown in public surfaces."
+    },
+    "shortName": {
+      "label": "Short name",
+      "description": "Compact name used where space is limited."
+    },
+    "description": {
+      "label": "Description",
+      "description": "Short product description used by public pages and metadata."
+    },
+    "logoURL": {
+      "label": "Light logo URL",
+      "description": "Logo used on light backgrounds. Use a local path or an absolute URL."
+    },
+    "logoDarkURL": {
+      "label": "Dark logo URL",
+      "description": "Logo used on dark backgrounds. Use a local path or an absolute URL."
+    },
+    "faviconURL": {
+      "label": "Favicon URL",
+      "description": "Browser icon URL. Supports uploaded PNG, ICO, SVG, and other image assets."
+    },
+    "homeTitle": {
+      "label": "Home headline",
+      "description": "Main heading on the public home page."
+    },
+    "homeSubtitle": {
+      "label": "Home subtitle",
+      "description": "Supporting copy shown under the public home headline."
+    },
+    "footerText": {
+      "label": "Footer text",
+      "description": "Small footer line shown on public pages."
+    },
+    "contactEmail": {
+      "label": "Contact email",
+      "description": "Support or contact email shown publicly."
+    },
+    "termsURL": {
+      "label": "Terms URL",
+      "description": "Optional public terms link."
+    },
+    "privacyURL": {
+      "label": "Privacy URL",
+      "description": "Optional public privacy link."
+    },
+    "termsTitleEnUS": {
+      "label": "Terms title (English)",
+      "description": "Terms of Service title shown in the English interface."
+    },
+    "termsContentEnUS": {
+      "label": "Terms content (English)",
+      "description": "Terms of Service body shown in the English interface."
+    },
+    "privacyTitleEnUS": {
+      "label": "Privacy title (English)",
+      "description": "Privacy Policy title shown in the English interface."
+    },
+    "privacyContentEnUS": {
+      "label": "Privacy content (English)",
+      "description": "Privacy Policy body shown in the English interface."
+    },
+    "termsTitleZhCN": {
+      "label": "Terms title (Simplified Chinese)",
+      "description": "Terms of Service title shown in the Simplified Chinese interface."
+    },
+    "termsContentZhCN": {
+      "label": "Terms content (Simplified Chinese)",
+      "description": "Terms of Service body shown in the Simplified Chinese interface."
+    },
+    "privacyTitleZhCN": {
+      "label": "Privacy title (Simplified Chinese)",
+      "description": "Privacy Policy title shown in the Simplified Chinese interface."
+    },
+    "privacyContentZhCN": {
+      "label": "Privacy content (Simplified Chinese)",
+      "description": "Privacy Policy body shown in the Simplified Chinese interface."
+    },
+    "termsTitleZhTW": {
+      "label": "Terms title (Traditional Chinese)",
+      "description": "Terms of Service title shown in the Traditional Chinese interface."
+    },
+    "termsContentZhTW": {
+      "label": "Terms content (Traditional Chinese)",
+      "description": "Terms of Service body shown in the Traditional Chinese interface."
+    },
+    "privacyTitleZhTW": {
+      "label": "Privacy title (Traditional Chinese)",
+      "description": "Privacy Policy title shown in the Traditional Chinese interface."
+    },
+    "privacyContentZhTW": {
+      "label": "Privacy content (Traditional Chinese)",
+      "description": "Privacy Policy body shown in the Traditional Chinese interface."
+    }
+  },
+  "toast": {
+    "sessionExpired": "Session expired",
+    "signInAgain": "Please sign in again before continuing.",
+    "loadFailed": "Failed to load site settings",
+    "saved": "Site settings saved",
+    "saveFailed": "Could not save site settings",
+    "assetUploaded": "Brand asset uploaded",
+    "assetUploadFailed": "Could not upload brand asset"
+  }
+}

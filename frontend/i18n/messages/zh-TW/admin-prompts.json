@@ -1,0 +1,75 @@
+{
+  "title": "提示詞庫",
+  "types": {
+    "prompts": "Prompts",
+    "skills": "Skills"
+  },
+  "libraryTitle": {
+    "prompts": "Prompts 庫",
+    "skills": "Skills 庫"
+  },
+  "create": "新建",
+  "createSkill": "新建 Skill",
+  "edit": "編輯",
+  "delete": "刪除",
+  "enable": "啟用",
+  "disable": "停用",
+  "cancel": "取消",
+  "save": "儲存",
+  "saving": "儲存中",
+  "searchPlaceholder": "搜尋名稱或內容",
+  "skillsSearchPlaceholder": "搜尋 Skills",
+  "createTitle": "新建內建提示詞",
+  "editTitle": "編輯內建提示詞",
+  "dialogDescription": "平臺內部維護的一份提示詞，可在對話中快速插入，使用者僅供查閱，無法編輯。",
+  "createSkillTitle": "新建內建 Skill",
+  "editSkillTitle": "編輯內建 Skill",
+  "skillDialogDescription": "平臺內建 Skill 由一份 SKILL.md 定義。裝載後僅作為本輪對話上下文，不會執行命令。",
+  "deleteTitle": "刪除內建提示詞",
+  "deleteDescription": "刪除後該內建提示詞不再對使用者展示，不影響使用者自己的自定義提示詞。",
+  "deleteSkillTitle": "刪除內建 Skill",
+  "deleteSkillDescription": "刪除後該內建 Skill 不再對使用者展示，不影響使用者自己的自定義 Skills。",
+  "empty": "暫無內建提示詞",
+  "skillsEmpty": "暫無內建 Skills",
+  "settings": {
+    "skillsPrompt": {
+      "label": "Skills 呼叫提示詞",
+      "description": "控制模型如何理解和使用已裝載的 Skills。留空使用內建預設提示詞。"
+    },
+    "defaultPromptPlaceholder": "留空使用內建預設提示詞"
+  },
+  "fields": {
+    "name": "名稱",
+    "description": "說明",
+    "content": "內容",
+    "skillMarkdown": "SKILL.md",
+    "enabled": "啟用",
+    "createdAt": "建立時間",
+    "updatedAt": "更新時間"
+  },
+  "toast": {
+    "loadFailed": "提示詞載入失敗",
+    "invalid": "請填寫名稱和內容。",
+    "tooLong": "名稱最多 64 個字元，說明最多 256 個字元，內容最多 10000 個字元。",
+    "created": "提示詞已建立",
+    "createFailed": "建立提示詞失敗",
+    "updated": "提示詞已更新",
+    "updateFailed": "更新提示詞失敗",
+    "deleted": "提示詞已刪除",
+    "deleteFailed": "刪除提示詞失敗",
+    "skillsLoadFailed": "Skills 載入失敗",
+    "skillInvalid": "請填寫名稱和 SKILL.md。",
+    "skillTooLong": "名稱最多 64 個字元，說明最多 256 個字元，SKILL.md 最多 10000 個字元。",
+    "skillCreated": "Skill 已建立",
+    "skillCreateFailed": "建立 Skill 失敗",
+    "skillUpdated": "Skill 已更新",
+    "skillUpdateFailed": "更新 Skill 失敗",
+    "skillDeleted": "Skill 已刪除",
+    "skillDeleteFailed": "刪除 Skill 失敗",
+    "settingsLoadFailed": "載入呼叫提示詞配置失敗",
+    "settingsUpdated": "呼叫提示詞配置已更新",
+    "settingsSaveFailed": "儲存呼叫提示詞配置失敗",
+    "sessionExpired": "登入狀態已失效",
+    "signInAgain": "請重新登入後再繼續操作。"
+  }
+}

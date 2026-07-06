@@ -9,6 +9,9 @@
     "defaultPermissionGroupUsersImplicit": "默认权限组成员由系统自动维护。",
     "permissionGroupReferencedByPlan": "该权限组已被计费套餐引用，请先解除绑定再删除。"
   },
+  "legal": {
+    "consentRequired": "请先阅读并同意服务条款和隐私政策。"
+  },
   "auth": {
     "adminRequired": "需要管理员权限。",
     "authorizationCodeRequired": "缺少授权码。",

@@ -1,0 +1,153 @@
+{
+  "sections": {
+    "conversation": "會話配置",
+    "contextCompression": "上下文壓縮",
+    "optionPassthrough": "引數透傳",
+    "dataExport": "資料匯出"
+  },
+  "taskModel": {
+    "follow": "跟隨當前模型"
+  },
+  "policy": {
+    "allowlist": "白名單",
+    "denylist": "黑名單",
+    "disabled": "禁止透傳"
+  },
+  "fields": {
+    "taskModel": {
+      "label": "任務執行模型",
+      "description": "生成會話標題和標籤時使用的聊天模型。"
+    },
+    "defaultSystemPrompt": {
+      "label": "全域性預設系統提示詞",
+      "description": "作為所有聊天模型的全域性行為指令；空值表示不注入。模型級提示詞會在其後追加。",
+      "placeholder": "例如：保持回答準確、清晰，並遵循平臺安全要求。"
+    },
+    "contextCompactEnabled": {
+      "label": "上下文壓縮",
+      "description": "全域性允許上下文壓縮。開啟後，使用者仍可在自己的聊天設定中選擇是否使用。"
+    },
+    "contextTokenBudget": {
+      "label": "Token 預算截斷",
+      "description": "開啟後會根據當前模型上下文視窗自動計算預算，並裁剪可傳送的歷史訊息。"
+    },
+    "contextMaxTurns": {
+      "label": "壓縮觸發輪次",
+      "description": "對話超過該輪次數時觸發上下文壓縮；設為 0 表示關閉按輪次觸發。",
+      "placeholder": "觸發輪次"
+    },
+    "contextCompactTriggerTokens": {
+      "label": "壓縮 Token 閾值",
+      "description": "累計訊息 Token 超過該值時觸發上下文壓縮；設為 0 表示關閉按 Token 觸發。",
+      "placeholder": "Token 閾值"
+    },
+    "contextCompactPreserveTurns": {
+      "label": "原文保留輪次",
+      "description": "用於設定壓縮時保留的最近原始輪次數量，其餘較早內容會寫入摘要。",
+      "placeholder": "保留輪次"
+    },
+    "contextCompactHighlightsPerRole": {
+      "label": "每角色摘要條數",
+      "description": "用於設定模板壓縮時，使用者和助手各自最多保留多少條摘要資訊。",
+      "placeholder": "摘要條數"
+    },
+    "contextCompactSnippetChars": {
+      "label": "片段字元上限",
+      "description": "用於設定模板壓縮時單條訊息片段允許保留的最大字元數。",
+      "placeholder": "字元數上限"
+    },
+    "contextArtifactRetentionDays": {
+      "label": "證據保留天數",
+      "description": "用於設定上下文證據的保留時長，包含 RAG 結果、歷史證據和工具結果；0 表示不自動過期。",
+      "placeholder": "保留天數"
+    },
+    "compactAsync": {
+      "label": "後臺執行壓縮",
+      "description": "開啟後會在當前回覆完成後執行模板或 LLM 壓縮，以減少回覆鏈路阻塞。"
+    },
+    "compactLLM": {
+      "label": "LLM 壓縮",
+      "description": "開啟後會呼叫模型生成語義摘要；關閉後僅使用模板摘要。"
+    },
+    "compactTaskModel": {
+      "label": "壓縮模型",
+      "description": "用於指定生成壓縮摘要時使用的模型。跟隨當前模型時，非聊天模型會回退到預設聊天模型。"
+    },
+    "compactMaxFailures": {
+      "label": "熔斷閾值",
+      "description": "用於設定 LLM 壓縮的連續失敗閾值；達到後會自動降級為模板摘要。",
+      "placeholder": "熔斷閾值"
+    },
+    "compactSystemPrompt": {
+      "label": "全量摘要提示詞",
+      "description": "用於自定義全量壓縮時傳送給 LLM 的指令；留空時使用內建預設值。"
+    },
+    "compactLightPrompt": {
+      "label": "輕量摘要提示詞",
+      "description": "用於自定義輕量壓縮時傳送給 LLM 的指令；留空時使用內建預設值。"
+    },
+    "optionPolicyMode": {
+      "label": "引數透傳策略",
+      "description": "控制使用者請求 options 是否允許透傳到上游。預設僅放行白名單路徑。"
+    },
+    "allowedPaths": {
+      "label": "模型引數白名單",
+      "description": "JSON 物件。default 對所有協議生效，協議項只對對應協議追加放行；路徑使用 xxx.xxx。"
+    },
+    "deniedPaths": {
+      "label": "模型引數黑名單",
+      "description": "JSON 物件。僅黑名單模式生效；系統危險欄位即使不寫也會被攔截。"
+    },
+    "titlePrompt": {
+      "label": "生成標題提示詞",
+      "description": "模型需返回 JSON：'{' \"title\": \"你歸納的標題\" '}'。支援 '{{MESSAGES}}' 佔位符。"
+    },
+    "labelsPrompt": {
+      "label": "生成標籤提示詞",
+      "description": "模型需返回 JSON：'{' \"labels\": [\"標籤1\", \"標籤2\"] '}'。支援 '{{MESSAGES}}' 佔位符。"
+    },
+    "defaultPromptPlaceholder": "留空使用內建預設提示詞"
+  },
+  "preview": {
+    "title": "即時預覽",
+    "passed": "不過濾",
+    "filtered": "過濾",
+    "emptyPassed": "當前沒有可透傳路徑",
+    "emptyFiltered": "當前沒有過濾路徑",
+    "systemDenied": "系統攔截",
+    "hitDenylist": "命中黑名單",
+    "hitAllowlist": "命中白名單",
+    "otherFields": "其他欄位",
+    "notInDenylist": "未列入黑名單"
+  },
+  "guide": {
+    "button": "教程",
+    "close": "關閉",
+    "title": "引數透傳教程",
+    "description": "控制使用者 options 哪些欄位可以進入上游請求。",
+    "pathTitle": "路徑寫法",
+    "pathLabel": "路徑",
+    "pathDescription": "頂層寫欄位名，巢狀用點號，支援多層。",
+    "strategyTitle": "透傳策略",
+    "allowlistDescription": "只放行列出的路徑，其他欄位丟棄。",
+    "denylistDescription": "預設透傳，命中黑名單或系統攔截的路徑會被移除。",
+    "openAIServiceTierNote": "OpenAI service_tier 僅接受 default、flex、priority；未配置時不傳。",
+    "protocolTitle": "協議主鍵",
+    "protocolDescription": "default 全協議生效；其他主鍵只對對應協議生效。",
+    "systemDeniedTitle": "系統攔截",
+    "systemDeniedDescription": "這些欄位始終攔截，不能通過白名單放行。"
+  },
+  "toast": {
+    "sessionExpired": "登入狀態已失效",
+    "signInAgain": "請重新登入後再繼續操作。",
+    "loadFailed": "載入會話配置失敗",
+    "saveFailed": "儲存失敗",
+    "updated": "會話配置已更新"
+  },
+  "dataExport": {
+    "title": "全部對話",
+    "description": "匯出所有對話、訊息和後設資料為 JSONL 檔案。",
+    "exportButton": "匯出",
+    "failed": "匯出失敗，請重試。"
+  }
+}

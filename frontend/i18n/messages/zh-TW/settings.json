@@ -1,0 +1,650 @@
+{
+  "title": "設定",
+  "general": "通用",
+  "account": "賬戶",
+  "chat": "對話",
+  "subscription": "訂閱",
+  "about": "關於",
+  "navigation": "設定導航",
+  "aboutPage": {
+    "title": "關於",
+    "description": "DEEIX Chat 是面向多使用者 AI 應用的模型接入與對話運營平臺。它將模型目錄、多上游路由、引數治理、檔案與 RAG、MCP 工具、用量計費、身份安全、審計與運維配置整合到同一套控制面。",
+    "details": "產品資訊",
+    "product": "產品",
+    "version": "版本",
+    "console": "控制台",
+    "userConsole": "使用者端",
+    "official": "官方",
+    "website": "官網",
+    "repository": "倉庫",
+    "social": "X",
+    "blog": "部落格",
+    "contact": "聯絡與支援",
+    "copyright": "© 2026 DEEIX. DEEIX Chat.",
+    "license": "程式碼遵循 Apache License 2.0 授權。"
+  },
+  "appearance": "外觀",
+  "language": "語言",
+  "languageDescription": "選擇當前瀏覽器和賬戶使用的介面語言。",
+  "generalPage": {
+    "profile": {
+      "avatar": "頭像",
+      "avatarAlt": "使用者頭像",
+      "username": "使用者名稱",
+      "usernamePlaceholder": "設定使用者名稱",
+      "displayName": "顯示名稱",
+      "displayNamePlaceholder": "介面中顯示的名稱",
+      "displayNameInvalid": "顯示名稱需為 3-16 個字元。",
+      "timezone": "時區",
+      "conversationPreferences": "對話偏好",
+      "conversationPreferencesPlaceholder": "偏好的風格、語言習慣、輸出格式和常用工作流。"
+    },
+    "username": {
+      "invalid": "使用者名稱需為 3-16 位小寫字母、數字、下劃線或短橫線，且不能使用保留名稱。",
+      "alreadyChanged": "使用者名稱只能設定一次。",
+      "taken": "該使用者名稱已被佔用。"
+    },
+    "toast": {
+      "initialUsernameRequired": "請修改初始化使用者名稱。",
+      "setUsernameFailed": "設定使用者名稱失敗",
+      "usernameUpdated": "使用者名稱已更新",
+      "profileUpdated": "個人資料已更新",
+      "saveProfileFailed": "儲存個人資料失敗"
+    },
+    "notifications": {
+      "responseCompletionTitle": "回覆完成通知",
+      "responseCompletionDescription": "當模型完成回覆時通知你，適合工具呼叫、研究等耗時較長的任務。",
+      "toggleResponseCompletion": "切換回復完成通知",
+      "unsupportedTitle": "當前瀏覽器不支援通知",
+      "unsupportedDescription": "請使用支援 Notification API 的桌面瀏覽器。",
+      "deniedTitle": "通知許可權被拒絕",
+      "deniedDescription": "請在瀏覽器的站點許可權設定裡允許通知後再開啟。",
+      "enabledTitle": "已開啟瀏覽器通知",
+      "enabledDescription": "當回覆在後臺完成時，你會收到系統通知。",
+      "defaultHelp": "開啟後會呼叫瀏覽器通知許可權，通過系統通知提醒你。",
+      "unsupportedHelp": "當前瀏覽器不支援系統通知。",
+      "deniedHelp": "瀏覽器已阻止通知，請在瀏覽器設定中手動允許。",
+      "grantedHelp": "已啟用瀏覽器通知。開啟後，模型回覆完成時會彈出提醒。"
+    },
+    "appearance": {
+      "colorMode": "顏色模式",
+      "themePreset": "主題",
+      "fontSize": "字型大小",
+      "preset": {
+        "default": "預設",
+        "azure": "Azure",
+        "cobalt": "Cobalt",
+        "graphite": "Graphite",
+        "lagoon": "Lagoon",
+        "ink": "Ink",
+        "ochre": "Ochre",
+        "sepia": "Sepia"
+      },
+      "theme": {
+        "light": "淺色",
+        "system": "跟隨系統",
+        "dark": "深色"
+      },
+      "fontSizeOption": {
+        "small": "小號",
+        "standard": "標準",
+        "medium": "中號",
+        "large": "大號"
+      }
+    },
+    "avatarDialog": {
+      "title": "編輯頭像",
+      "description": "上傳圖片、輸入頭像 URL，或生成畫素風頭像。",
+      "avatarURL": "頭像 URL",
+      "upload": "上傳圖片",
+      "uploading": "上傳中",
+      "uploaded": "頭像已上傳",
+      "uploadFailed": "頭像上傳失敗",
+      "uploadInvalid": "請選擇圖片檔案",
+      "generate": "生成頭像",
+      "apply": "應用"
+    }
+  },
+  "profile": "個人資料",
+  "security": "安全",
+  "notifications": "通知",
+  "memory": "AI 偏好記憶",
+  "accountPage": {
+    "title": "賬戶",
+    "password": "登入密碼",
+    "twoFactor": "兩步驗證",
+    "logoutAllDevices": "登出您的所有線上裝置",
+    "deleteAccount": "刪除您的賬號",
+    "publicID": "使用者公開 ID",
+    "copyPublicID": "複製使用者公開 ID",
+    "email": {
+      "label": "郵箱",
+      "withAddress": "郵箱（{email}）",
+      "verified": "已驗證",
+      "unverified": "未驗證"
+    },
+    "actions": {
+      "set": "設定",
+      "update": "更新",
+      "manage": "管理",
+      "generating": "生成中",
+      "logOut": "登出",
+      "loggingOut": "登出中",
+      "deleteAccount": "刪除賬號",
+      "deleting": "刪除中",
+      "bind": "繫結",
+      "cancel": "取消",
+      "verify": "驗證"
+    },
+    "identity": {
+      "title": "繫結身份源",
+      "provider": "身份源",
+      "username": "使用者名稱",
+      "email": "郵箱",
+      "linkedAt": "繫結時間",
+      "empty": "當前沒有繫結第三方身份源",
+      "unlink": "解綁身份源",
+      "unlinkDisabled": "請先設定密碼或繫結其他身份源"
+    },
+    "session": {
+      "title": "活躍會話",
+      "device": "裝置",
+      "location": "位置",
+      "createdAt": "建立時間",
+      "updatedAt": "更新時間",
+      "empty": "當前沒有可用的活躍會話",
+      "current": "當前會話",
+      "actions": "會話操作",
+      "logoutThisSession": "登出此會話",
+      "unknownDevice": "未知裝置",
+      "unknownLocation": "未知地區",
+      "unknownIP": "未知 IP"
+    },
+    "logoutAllDialog": {
+      "title": "登出所有線上裝置？",
+      "description": "確認後，此賬號在其他瀏覽器、桌面端或移動裝置上的線上會話都會失效。當前裝置也會回到登入頁。",
+      "confirm": "確認登出所有裝置"
+    },
+    "deleteDialog": {
+      "title": "刪除賬戶",
+      "description": "刪除賬號是永久性的。您將無法恢復您的賬號或聊天記錄。",
+      "verificationTitle": "驗證刪除賬號",
+      "verificationDescription": {
+        "twoFactor": "輸入認證器驗證碼或恢復碼後刪除賬號。",
+        "email": "傳送驗證碼到已驗證郵箱，輸入後刪除賬號。"
+      },
+      "verificationUnavailable": "刪除賬號需要先驗證身份。請先驗證郵箱或啟用兩步驗證。"
+    },
+    "securityDialog": {
+      "common": {
+        "cancel": "取消",
+        "save": "儲存",
+        "saving": "儲存中",
+        "sending": "傳送中",
+        "sendCode": "傳送",
+        "resendIn": "{seconds}s 後重發",
+        "processing": "處理中",
+        "done": "完成",
+        "verify": "驗證",
+        "continue": "繼續",
+        "back": "返回",
+        "debugCode": "開發驗證碼：{code}",
+        "copiedLabel": "{label}已複製",
+        "copyFailed": "複製失敗",
+        "copyManually": "請手動選擇內容複製。"
+      },
+      "password": {
+        "title": {
+          "required": "首次設定密碼",
+          "change": "修改密碼",
+          "set": "設定密碼"
+        },
+        "description": {
+          "required": "首次啟動需要修改初始化密碼。完成後當前會話會失效，需要使用新密碼重新登入。",
+          "change": "修改後當前登入會話會失效，需要使用新密碼重新登入。",
+          "set": "設定後可使用賬號密碼登入，並作為解綁身份源前的安全憑證。"
+        },
+        "verificationTitle": "驗證密碼修改",
+        "verificationDescription": {
+          "twoFactor": "輸入認證器驗證碼或恢復碼後繼續。",
+          "email": "傳送驗證碼到已驗證郵箱，輸入後繼續。"
+        },
+        "labels": {
+          "currentPassword": "當前密碼",
+          "newPassword": "新密碼",
+          "loginPassword": "登入密碼",
+          "twoFactorCode": "兩步驗證碼",
+          "emailCode": "郵箱驗證碼"
+        },
+        "placeholders": {
+          "password": "至少 8 位，不能為純數字",
+          "otpOrRecovery": "驗證碼或恢復碼",
+          "sixDigitCode": "6 位驗證碼"
+        }
+      },
+      "email": {
+        "title": {
+          "set": "設定郵箱",
+          "change": "修改郵箱"
+        },
+        "description": {
+          "bootstrapVerified": "首次設定郵箱需要驗證新郵箱所有權。",
+          "saveOnly": "儲存後將更新郵箱。",
+          "change": "DEEIX Chat 會根據當前賬號安全狀態要求必要驗證，通過後儲存修改。"
+        },
+        "labels": {
+          "newEmail": "新郵箱"
+        }
+      },
+      "verification": {
+        "title": {
+          "emailBootstrap": "驗證新郵箱",
+          "emailChange": "驗證郵箱修改",
+          "currentEmail": "驗證郵箱"
+        },
+        "description": {
+          "emailBootstrap": "傳送驗證碼到新郵箱，輸入後儲存郵箱。",
+          "emailChange": "完成必要驗證後儲存郵箱修改。",
+          "currentEmail": "傳送驗證碼到 {email}，輸入後將該郵箱標記為已驗證。"
+        },
+        "labels": {
+          "twoFactorCode": "兩步驗證碼",
+          "emailCode": "郵箱驗證碼",
+          "currentEmailCode": "當前郵箱驗證碼",
+          "newEmail": "新郵箱",
+          "newEmailCode": "新郵箱驗證碼",
+          "verificationCode": "驗證碼"
+        },
+        "placeholders": {
+          "otpOrRecovery": "驗證碼或恢復碼",
+          "sixDigitCode": "6 位驗證碼"
+        },
+        "actions": {
+          "useEmail": "使用郵箱驗證",
+          "useTwoFactor": "使用兩步驗證"
+        }
+      },
+      "twoFactor": {
+        "title": {
+          "setup": "開啟兩步驗證",
+          "manage": "兩步驗證管理",
+          "recovery": "備用驗證碼儲存"
+        },
+        "description": {
+          "setup": "使用認證器 App 掃碼或手動繫結。",
+          "manage": "輸入驗證碼或備用驗證碼後繼續操作。",
+          "recovery": "備用驗證碼只顯示一次，請儲存到安全位置。"
+        },
+        "tabs": {
+          "qr": "二維碼",
+          "manual": "手動繫結"
+        },
+        "errors": {
+          "codeRequired": "請輸入驗證碼"
+        },
+        "qrLabel": "兩步驗證二維碼",
+        "setupExpired": "本次設定已過期",
+        "qrUnavailable": "二維碼暫不可用，請使用手動金鑰繫結。",
+        "scanThenVerify": "掃碼後輸入驗證碼完成繫結",
+        "regenerate": "重新生成",
+        "validUntil": "{time} 前有效",
+        "secret": "金鑰",
+        "copySecret": "複製金鑰",
+        "otpAuthUri": "OTP Auth URI",
+        "copyOtpUri": "複製 OTP Auth URI",
+        "code": "驗證碼",
+        "sixDigitCode": "6 位驗證碼",
+        "codeOrRecovery": "驗證碼或備用驗證碼",
+        "regenerateRecoveryCodes": "重新生成恢復碼",
+        "recoveryCodes": "備用驗證碼",
+        "copyRecoveryCodes": "複製備用驗證碼",
+        "enable": "啟用",
+        "disable": "關閉"
+      }
+    },
+    "toasts": {
+      "retryLater": "請稍後重試。",
+      "sessionMissing": "未檢測到登入態",
+      "loadFailed": "載入賬戶資訊失敗",
+      "publicIDCopied": "已複製公開 ID",
+      "copyFailed": "複製失敗",
+      "codeSent": "驗證碼已傳送",
+      "sendCodeFailed": "驗證碼傳送失敗",
+      "passwordChanged": "密碼已修改",
+      "passwordChangedDescription": "請使用新密碼重新登入。",
+      "changePasswordFailed": "修改密碼失敗",
+      "emailSet": "郵箱已設定",
+      "setEmailFailed": "設定郵箱失敗",
+      "emailVerified": "郵箱已驗證",
+      "verifyEmailFailed": "驗證郵箱失敗",
+      "currentEmailCodeSent": "當前郵箱驗證碼已傳送",
+      "newEmailCodeSent": "新郵箱驗證碼已傳送",
+      "deleteAccountCodeSent": "刪除賬號驗證碼已傳送",
+      "emailChanged": "郵箱已修改",
+      "changeEmailFailed": "修改郵箱失敗",
+      "deleteAccountFailed": "刪除賬戶失敗",
+      "sessionLoggedOut": "會話已登出",
+      "logoutSessionFailed": "登出會話失敗",
+      "identityUnlinked": "身份源已解綁",
+      "unlinkIdentityFailed": "解綁身份源失敗",
+      "startTwoFactorFailed": "啟動兩步驗證失敗",
+      "twoFactorEnabled": "兩步驗證已啟用",
+      "enableTwoFactorFailed": "啟用兩步驗證失敗",
+      "twoFactorDisabled": "兩步驗證已關閉",
+      "disableTwoFactorFailed": "關閉兩步驗證失敗",
+      "recoveryCodesRegenerated": "恢復碼已重新生成",
+      "regenerateRecoveryCodesFailed": "重新生成恢復碼失敗",
+      "providerUnavailable": "該身份源暫不可繫結",
+      "bindIdentityFailed": "繫結身份源失敗"
+    }
+  },
+  "chatPage": {
+    "defaultModel": {
+      "sectionTitle": "預設模型",
+      "title": "新會話預設模型",
+      "description": "開啟新對話時預選的模型。留空則使用系統推薦的第一個可用模型。",
+      "systemRecommended": "系統預設",
+      "autoTitle": "自動生成標題",
+      "autoTitleDescription": "關閉後，新對話使用第一條訊息的前 16 個字元作為標題。"
+    },
+    "input": {
+      "sectionTitle": "輸入與傳送",
+      "shortcutTitle": "傳送快捷鍵",
+      "shortcutDescription": "當前平臺使用 {shortcut} 提交訊息。",
+      "heightTitle": "輸入區域高度",
+      "heightDescription": "控制輸入框自動擴充套件時允許佔用的最大高度。",
+      "height": {
+        "compact": "緊湊",
+        "standard": "標準",
+        "loose": "寬鬆"
+      },
+      "restoreDraftTitle": "自動恢復草稿",
+      "restoreDraftDescription": "控制傳送失敗時是否自動恢復本次傳送的文字和附件。",
+      "preserveDraftTitle": "保留會話草稿",
+      "preserveDraftDescription": "控制切換會話後是否保留並恢復當前會話的未傳送內容。",
+      "reuseModelOptionsTitle": "複用模型配置",
+      "reuseModelOptionsDescription": "開啟後，新會話選擇同一模型時會自動填充上次使用的模型引數。",
+      "deleteFilesDefaultTitle": "刪除會話時預設刪除檔案",
+      "deleteFilesDefaultDescription": "開啟後，刪除會話確認框會預設勾選同時刪除檔案；仍被其他會話引用的檔案會保留。"
+    },
+    "display": {
+      "sectionTitle": "顯示與渲染",
+      "markdownTitle": "Markdown 渲染",
+      "markdownDescription": "控制 AI 回覆是否渲染為格式化 Markdown 內容。",
+      "modelTitle": "顯示呼叫模型",
+      "modelDescription": "控制 AI 回覆下方是否展示本次呼叫的模型。",
+      "tokenTitle": "顯示 Token 用量",
+      "tokenDescription": "控制 AI 回覆下方是否展示本次請求消耗的 Token 用量。",
+      "latencyTitle": "顯示呼叫總耗時",
+      "latencyDescription": "控制 AI 回覆下方是否展示本次呼叫的總耗時。",
+      "costTitle": "顯示呼叫總費用",
+      "costDescription": "控制 AI 回覆下方是否展示本次呼叫的總費用。",
+      "costDescriptionSelfMode": "控制 AI 回覆下方是否展示本次呼叫的總費用。自用模式不展示。",
+      "widthTitle": "對話區域寬度",
+      "width": {
+        "compact": "緊湊",
+        "standard": "標準",
+        "wide": "寬屏"
+      },
+      "chatFont": "對話字型",
+      "chatFontWeight": "對話字重",
+      "font": {
+        "default": "預設",
+        "songti": "襯線",
+        "heiti": "無襯線",
+        "mono": "等寬"
+      },
+      "fontWeight": {
+        "regular": "常規",
+        "medium": "中等",
+        "semibold": "半粗",
+        "bold": "粗體"
+      }
+    },
+    "context": {
+      "sectionTitle": "上下文管理",
+      "autoCompactTitle": "自動壓縮上下文",
+      "autoCompactDescription": "開啟後，當對話超過輪次或 Token 閾值時，系統會自動將較早訊息壓縮為摘要，並保留最近幾輪原文，以減少上下文。關閉後，將不會自動壓縮對話上下文。"
+    },
+    "file": {
+      "sectionTitle": "檔案處理",
+      "modeTitle": "檔案處理模式",
+      "mode": {
+        "auto": "自動",
+        "fullContext": "全文注入",
+        "rag": "向量檢索"
+      },
+      "modeDescription": {
+        "auto": "當前：自動 — 系統根據檔案大小、型別、上下文預算與檢索能力自動選擇全文注入或 RAG（推薦）。",
+        "fullContext": "當前：全文注入 — 後續每輪儘量將會話檔案內容放入上下文，適合小檔案精確分析。",
+        "rag": "當前：RAG — 後續每輪優先檢索會話檔案相關片段；檢索不可用時回退全文注入。"
+      }
+    },
+    "memory": {
+      "sectionTitle": "AI 偏好記憶",
+      "save": "儲存",
+      "cancel": "取消",
+      "delete": "刪除",
+      "edit": "編輯偏好",
+      "confirmDelete": "確認刪除此偏好？",
+      "separator": "：",
+      "addTitle": "新增偏好",
+      "addDescription": "儲存後會作為 AI 回覆時的長期偏好參考。",
+      "name": "名稱",
+      "namePlaceholder": "例如：回覆風格",
+      "content": "偏好內容",
+      "contentPlaceholder": "例如：簡短直接，避免廢話",
+      "adding": "新增中",
+      "add": "新增",
+      "added": "已新增偏好",
+      "addFailed": "新增失敗",
+      "updated": "已更新",
+      "updateFailed": "更新失敗",
+      "deleted": "已刪除",
+      "deleteFailed": "刪除失敗",
+      "full": "已滿",
+      "addPreference": "新增偏好",
+      "empty": "還沒有偏好記憶。"
+    },
+    "toasts": {
+      "saveFailed": "儲存失敗",
+      "retryLater": "請稍後重試。"
+    }
+  },
+  "subscriptionPage": {
+    "title": "訂閱",
+    "actions": {
+      "cancel": "取消",
+      "processing": "處理中"
+    },
+    "interval": {
+      "lifetime": "永久",
+      "year": "年",
+      "month": "月"
+    },
+    "currentSubscription": {
+      "title": "當前訂閱",
+      "none": "未訂閱",
+      "empty": "當前沒有可用訂閱方案",
+      "defaultUsage": "預設按量計費，訂閱後優先消耗套餐額度",
+      "subscribe": "訂閱"
+    },
+    "periodUsage": {
+      "title": "套餐使用情況",
+      "currentPeriod": "當前計費週期",
+      "used": "已使用 {value}",
+      "total": "總額度 {value}"
+    },
+    "periodOverage": {
+      "title": "餘額按量",
+      "balance": "可用餘額 {value}"
+    },
+    "entitlements": {
+      "title": "訂閱權益",
+      "count": "{count} 段",
+      "current": "當前",
+      "upcoming": "待生效",
+      "range": "{start} - {end}",
+      "credit": "{credit} 額度"
+    },
+    "usageBilling": {
+      "title": "按量付費",
+      "balance": "賬戶餘額 {value}",
+      "topUp": "充值"
+    },
+    "selfMode": {
+      "title": "計費模式",
+      "value": "自用模式"
+    },
+    "usageTrend": {
+      "dailyTitle": "按天用量趨勢",
+      "monthlyTitle": "按月用量趨勢",
+      "daily": "按天",
+      "monthly": "按月",
+      "dailyUsage": "每日用量",
+      "monthlyUsage": "月度用量",
+      "empty": "暫無用量資料。",
+      "metrics": {
+        "totalCost": "總費用",
+        "totalTokens": "總 Tokens",
+        "totalCalls": "總呼叫",
+        "averageLatency": "平均耗時"
+      },
+      "tooltip": {
+        "cost": "費用",
+        "calls": "呼叫"
+      }
+    },
+    "usageLog": {
+      "title": "呼叫日誌",
+      "searchModel": "搜尋模型",
+      "type": "型別",
+      "filters": {
+        "all": "全部",
+        "free": "免費模型",
+        "billable": "計費模型"
+      },
+      "sort": {
+        "newest": "最新呼叫",
+        "oldest": "最早呼叫",
+        "tokensDesc": "Tokens 最多",
+        "costDesc": "費用最高",
+        "latencyDesc": "耗時最長"
+      },
+      "columns": {
+        "time": "時間",
+        "model": "模型",
+        "baseBilling": "基礎計費",
+        "serviceBilling": "服務計費",
+        "latency": "耗時"
+      },
+      "empty": "暫無呼叫日誌"
+    },
+    "billingTooltip": {
+      "cacheWrite": "快取(寫)",
+      "cacheWrite5m": "快取(寫 5m)",
+      "cacheWrite1h": "快取(寫 1h)",
+      "cacheWrite5m1h": "快取(寫 5m/1h)",
+      "cacheWritePricingLabel": "快取(寫 5m)",
+      "cacheWritePricingNote": "Claude 快取讀按後臺配置；快取寫 5m 按後臺配置價 1.25x，1h 按 2x；Fast Mode 會基於此再 6x。",
+      "claudeCacheWriteMixedNote": "Claude 快取寫按後臺配置價 {multiplier} 計費。",
+      "claudeCacheWriteNote": "Claude {timeout} 快取寫按後臺配置價 {multiplier} 計費。",
+      "claudeFastModeNote": "Claude Fast Mode：輸入、輸出和快取費用按 {multiplier} 計費。",
+      "openaiServiceTierNote": "OpenAI service_tier={tier}：按 {multiplier} 計費。",
+      "baseService": "基礎服務",
+      "input": "輸入",
+      "output": "輸出",
+      "cacheRead": "快取(讀)",
+      "rateNote": "倍率說明",
+      "cacheNote": "快取說明",
+      "total": "總計",
+      "subtotal": "小計",
+      "freeModelNoBilling": "免費模型，不計費",
+      "perCall": "每次",
+      "perSecond": "每秒",
+      "callUnit": "次",
+      "secondUnit": "秒",
+      "tieredRangeBounded": "原始輸入區間 {from}-{upTo}",
+      "tieredRangeOpen": "原始輸入區間 {from}+",
+      "table": {
+        "item": "計費專案",
+        "usage": "用量",
+        "unitPrice": "單價",
+        "amount": "金額"
+      }
+    },
+    "plans": {
+      "title": "訂閱方案",
+      "actions": {
+        "current": "當前方案",
+        "unavailable": "不可用",
+        "renew": "續費",
+        "subscribe": "訂閱",
+        "switch": "切換",
+        "upgrade": "升級",
+        "freeBlocked": "基礎方案"
+      },
+      "features": {
+        "monthlyCredit": "{credit} 月額度",
+        "freeModelsNotIncluded": "免費模型不計入額度"
+      }
+    },
+    "payment": {
+      "title": "選擇支付方式",
+      "renewTitle": "續費訂閱",
+      "upgradeTitle": "升級訂閱",
+      "description": "確認支付方式後繼續。",
+      "renewDescription": "續費會追加當前方案的可用時間。",
+      "renewAfterHigherDescription": "將按該方案續費；當前更高方案權益和額度不變，新方案會在現有更高權益結束後生效。",
+      "upgradeDescription": "升級後更高方案立即生效，未用權益會順延保留。",
+      "method": "支付方式",
+      "card": "銀行卡",
+      "disabled": "未開啟",
+      "continue": "繼續支付",
+      "epay": {
+        "alipay": "支付寶",
+        "wxpay": "微信支付",
+        "qqpay": "QQ 錢包",
+        "custom": "自定義 · {type}"
+      }
+    },
+    "topUp": {
+      "title": "充值",
+      "description": "輸入充值金額並確認支付方式。",
+      "currentBalance": "當前餘額 {value}",
+      "amount": "充值金額",
+      "amountAria": "充值金額",
+      "confirm": "充值"
+    },
+    "redemption": {
+      "open": "兌換",
+      "title": "兌換碼",
+      "description": "輸入管理員提供的兌換碼。",
+      "code": "兌換碼",
+      "confirm": "兌換"
+    },
+    "toasts": {
+      "retryLater": "請稍後重試。",
+      "subscriptionLoadFailed": "訂閱資訊載入失敗",
+      "usageLogLoadFailed": "呼叫日誌載入失敗",
+      "checkoutCreateFailed": "支付建立失敗",
+      "checkoutURLMissing": "支付渠道沒有返回收銀臺地址。",
+      "planUpdated": "訂閱方案已更新",
+      "subscribeFailed": "訂閱失敗",
+      "invalidTopUpAmount": "充值金額無效",
+      "invalidTopUpAmountDescription": "請輸入大於 0 的美元金額。",
+      "planUnavailable": "套餐不可用",
+      "planUnavailableDescription": "當前套餐沒有可用價格，請聯絡管理員檢查計費配置。",
+      "paymentDisabled": "支付渠道未開啟",
+      "paymentDisabledDescription": "需要先在後臺完成支付配置，才能訂閱付費套餐。",
+      "freeSwitchBlocked": "當前有有效訂閱權益",
+      "freeSwitchBlockedDescription": "付費權益到期前不能切換到免費方案，可選擇續費或訂閱其他付費方案。",
+      "noPlanSelected": "未選擇套餐",
+      "noPlanSelectedDescription": "請先選擇要訂閱的套餐。",
+      "agreementRequired": "請先閱讀並同意服務條款和隱私政策。",
+      "invalidRedemptionCode": "請輸入兌換碼。",
+      "redemptionSucceeded": "兌換成功",
+      "redemptionFailed": "兌換失敗"
+    }
+  }
+}

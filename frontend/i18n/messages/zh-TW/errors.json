@@ -1,0 +1,333 @@
+{
+  "admin": {
+    "defaultPermissionGroupDeleteNotAllowed": "預設許可權組不可刪除。",
+    "permissionGroupNotFound": "許可權組不存在。",
+    "invalidPermissionGroupName": "許可權組名稱不能為空。",
+    "invalidPermissionGroupRateMultiplier": "計費倍率無效，範圍 1-10000。",
+    "invalidPermissionGroupModels": "許可權組模型配置無效。",
+    "invalidPermissionGroupUsers": "許可權組成員配置無效。",
+    "defaultPermissionGroupUsersImplicit": "預設許可權組成員由系統自動維護。",
+    "permissionGroupReferencedByPlan": "該許可權組已被計費套餐引用，請先解除繫結再刪除。"
+  },
+  "legal": {
+    "consentRequired": "請先閱讀並同意服務條款和隱私政策。"
+  },
+  "auth": {
+    "adminRequired": "需要管理員許可權。",
+    "authorizationCodeRequired": "缺少授權碼。",
+    "emailAliasNotAllowed": "不允許使用郵箱別名。",
+    "emailAlreadyExists": "該郵箱已被使用。",
+    "emailBootstrapNotAllowed": "當前賬號不允許初始化郵箱。",
+    "emailDomainNotAllowed": "該郵箱域名不可用。",
+    "emailNotVerified": "郵箱尚未驗證。",
+    "emailRegistrationDisabled": "郵箱註冊已關閉。",
+    "emailUnchanged": "新郵箱不能與當前郵箱相同。",
+    "emailVerificationDisabled": "郵箱驗證已關閉。",
+    "forbidden": "沒有許可權執行該操作。",
+    "invalidCredentials": "使用者名稱或密碼錯誤。",
+    "invalidCurrentPassword": "當前密碼錯誤。",
+    "invalidEmail": "郵箱地址無效。",
+    "invalidPassword": "密碼至少 8 位，且不能為純數字。",
+    "invalidPkce": "登入校驗引數無效，請重新登入。",
+    "invalidRedirectUri": "回撥地址無效。",
+    "invalidRefreshToken": "登入狀態已失效，請重新登入。",
+    "invalidToken": "登入憑證無效，請重新登入。",
+    "invalidTwoFactorCode": "兩步驗證碼無效。",
+    "lastLoginMethodRequired": "請先設定密碼或繫結其他身份源。",
+    "oauthIntentMismatch": "第三方登入流程不匹配，請重新操作。",
+    "oauthStateExpired": "第三方登入狀態已過期，請重新登入。",
+    "oauthStateInvalid": "第三方登入狀態無效，請重新登入。",
+    "passwordResetFailed": "密碼重置失敗，請檢查郵箱、驗證碼和新密碼。",
+    "passwordResetRequired": "請先完成密碼重置。",
+    "passwordReuseNotAllowed": "新密碼不能與初始密碼相同。",
+    "providerAccountNotRegistered": "該第三方賬號尚未註冊。",
+    "providerAlreadyBound": "該身份源已繫結。",
+    "providerAuthUrlNotConfigured": "身份源授權地址未配置。",
+    "providerBindEndpointRequired": "請使用賬號繫結入口完成身份源繫結。",
+    "providerCallbackMisconfigured": "身份源回撥地址配置不正確。",
+    "providerClientIdRequired": "身份源 Client ID 不能為空。",
+    "providerClientSecretRequired": "身份源 Client Secret 不能為空。",
+    "providerDefaultRoleInvalid": "身份源預設角色無效。",
+    "providerSuperadminDefaultRoleProtected": "只有超級管理員可以將身份源預設角色設為超級管理員。",
+    "providerEmailConflict": "該郵箱已屬於其他賬號。",
+    "providerIdRequired": "身份源 ID 不能為空。",
+    "providerIdentityConflict": "該第三方身份已繫結到其他賬號。",
+    "providerInvalid": "第三方登入失敗。",
+    "providerLoginDisabled": "第三方登入已關閉。",
+    "providerLogoUrlInvalid": "身份源 Logo 地址無效。",
+    "providerNameRequired": "身份源名稱不能為空。",
+    "providerOauthUrlsRequired": "OAuth2 授權地址、Token 地址和使用者資訊地址不能為空。",
+    "providerOidcIssuerRequired": "OIDC Issuer 或 Discovery 地址不能為空。",
+    "providerOrderInvalid": "身份源 ID 不能重複。",
+    "providerRegistrationDisabled": "第三方註冊已關閉。",
+    "providerRegistrationRequiresLogin": "開啟第三方註冊前需要先開啟第三方登入。",
+    "providerSlugRequired": "身份源標識不能為空。",
+    "providerSubjectMissing": "第三方賬號缺少唯一身份標識。",
+    "providerTypeInvalid": "身份源型別無效。",
+    "providerUpstreamFailed": "第三方身份源請求失敗。",
+    "sessionInvalid": "登入狀態已失效，請重新登入。",
+    "superadminRequired": "需要超級管理員許可權。",
+    "twoFactorAlreadyEnabled": "兩步驗證已啟用。",
+    "twoFactorChallengeExpired": "二次驗證已過期，請重新輸入賬號密碼登入。",
+    "twoFactorExpired": "兩步驗證已過期，請重新操作。",
+    "twoFactorNotStarted": "兩步驗證尚未開始。",
+    "turnstileInvalid": "人機驗證失敗，請重試。",
+    "turnstileNotConfigured": "人機驗證尚未配置完成。",
+    "turnstileRequired": "請先完成人機驗證。",
+    "unauthorized": "登入狀態已失效，請重新登入。",
+    "usernameChangeRequired": "請修改初始化使用者名稱。",
+    "verificationCodeAttemptsExceeded": "驗證碼嘗試次數過多，請重新獲取驗證碼。",
+    "verificationCodeInvalid": "驗證碼無效或已過期。",
+    "verificationCodeRecent": "驗證碼剛剛已傳送，請稍後再試。"
+  },
+  "billing": {
+    "insufficientBalance": "餘額不足。",
+    "insufficientFunds": "餘額不足。",
+    "invalidPlan": "計費套餐無效。",
+    "planNotFound": "計費套餐不存在。",
+    "invalidPermissionGroup": "許可權組無效。",
+    "invalidDailyUsageDateRange": "用量日期範圍無效。",
+    "invalidDailyUsageDays": "用量天數無效。",
+    "invalidModelPricing": "模型定價無效。",
+    "subscriptionEntitlementActive": "當前仍有有效付費訂閱權益，不能切換到免費方案。",
+    "invalidRedemptionCode": "兌換碼無效。",
+    "redemptionCodeConflict": "兌換碼已存在。",
+    "redemptionCodeUnavailable": "兌換碼不可用或已過期。",
+    "redemptionCodePlaintextUnavailable": "該兌換碼缺少可複製的加密內容，無法複製完整碼。",
+    "redemptionCodeExhausted": "兌換碼次數已用完。",
+    "redemptionSecretUnavailable": "兌換碼服務暫不可用。",
+    "redemptionUserLimitExceeded": "當前賬號已達到該兌換碼的使用次數上限。",
+    "redemptionValidation": {
+      "codeFormat": "兌換碼只能包含 3-64 位大寫字母、數字、橫線或下劃線。",
+      "quantity": "數量必須是 1-100 之間的整數。",
+      "manualQuantity": "手動兌換碼只能建立 1 個。",
+      "mode": "計費模式無效。",
+      "credit": "餘額金額必須大於 0。",
+      "plan": "請選擇一個啟用的非 Free 套餐。",
+      "duration": "有效天數必須大於 0。",
+      "expiresAt": "過期時間必須晚於當前時間。",
+      "maxRedemptions": "總次數必須是正整數，或留空表示不限。",
+      "perUserLimit": "單使用者次數必須是正整數。",
+      "limitRelationship": "單使用者次數不能大於總次數。",
+      "status": "兌換碼狀態無效。"
+    },
+    "invalidSubscriptionExpiry": "訂閱到期時間無效。",
+    "invalidSubscriptionTier": "訂閱等級無效。",
+    "paymentRequired": "需要先完成支付。",
+    "periodCreditExceeded": "週期額度已用盡。",
+    "pricingRequired": "需要先配置模型定價。",
+    "subscriptionExpiryRequired": "需要設定訂閱到期時間。"
+  },
+  "config": {
+    "invalidJson": "配置 JSON 無效。"
+  },
+  "conversation": {
+    "invalidId": "對話 ID 無效。",
+    "invalidTitle": "對話標題無效。",
+    "noTitleableContent": "當前對話沒有可用於生成標題的內容。",
+    "notFound": "對話不存在。"
+  },
+  "conversationRun": {
+    "canceled": "生成已取消。",
+    "streamInterrupted": "生成連線已中斷，請重試本條訊息。",
+    "streamNotFound": "生成流不存在。"
+  },
+  "conversationShare": {
+    "invalid": "分享對話無效。",
+    "invalidId": "分享 ID 無效。",
+    "notFound": "分享不存在。",
+    "schemaOutdated": "分享資料結構已過期，請重建資料庫。"
+  },
+  "contextArtifact": {
+    "invalidId": "上下文產物 ID 無效。",
+    "notFound": "上下文產物不存在。"
+  },
+  "cors": {
+    "originForbidden": "當前來源不允許訪問。"
+  },
+  "embedding": {
+    "serviceNotConfigured": "請先啟用並配置 Embedding 服務。",
+    "serviceUnavailable": "向量服務不可用。"
+  },
+  "file": {
+    "embeddingUnavailable": "當前檔案暫不支援向量處理。",
+    "extractNotReady": "檔案解析尚未完成。",
+    "invalidId": "檔案 ID 無效。",
+    "invalidName": "檔名無效。",
+    "invalidReference": "檔案引用無效。",
+    "invalidStream": "檔案流無效。",
+    "inUse": "檔案正在使用中，無法刪除。",
+    "notFound": "檔案不存在。",
+    "notReady": "檔案尚未準備完成。",
+    "required": "請選擇檔案。",
+    "tooLarge": "檔案過大。",
+    "tooLargeForContext": "檔案過大，無法加入完整上下文。",
+    "typeBlocked": "該檔案型別不允許上傳。"
+  },
+  "identityProvider": {
+    "deleteConflict": "刪除該身份源會導致部分使用者失去唯一登入方式。"
+  },
+  "internal": {
+    "error": "伺服器內部錯誤，請稍後重試。"
+  },
+  "toolRun": {
+    "finalAnswerMissing": "工具呼叫已到達執行上限，但模型沒有生成最終回答。請重試或減少本次啟用的工具。"
+  },
+  "llm": {
+    "apiKeysRequired": "API Keys 不能為空。",
+    "emptyResponse": "模型返回了空響應。",
+    "invalidAdapter": "介面協議不受支援，請重新選擇協議。",
+    "invalidApiKeysConfig": "API Keys 配置無效。",
+    "invalidCompatible": "相容模式無效。",
+    "invalidHeadersConfig": "請求頭配置無效。",
+    "invalidKinds": "模型型別無效。",
+    "invalidPlatformModelName": "平臺模型名稱無效。",
+    "invalidRouteProtocolCombination": "當前協議組合不可用。同一繫結只能選擇單個協議，或同時選擇同一廠商的影像生成與影像編輯協議。",
+    "systemPromptTooLong": "系統提示詞不能超過 20000 個字元。",
+    "invalidProtocolDefaultsConfig": "協議預設配置無效。",
+    "modelAccessDenied": "當前許可權組無權使用此模型。",
+    "modelRouteNotConfigured": "模型路由未配置。",
+    "noActiveApiKey": "沒有可用的 API Key。",
+    "platformModelNameExists": "平臺模型名稱已存在。",
+    "platformModelNameRequired": "平臺模型名稱不能為空。",
+    "protocolRequired": "協議不能為空。",
+    "remoteModelsUnavailable": "遠端模型列表暫不可用。",
+    "routeConflict": "該上游模型已存在相同平臺模型和協議的繫結，請刪除重複繫結後再儲存。",
+    "routesUnavailable": "所有模型路由都不可用。"
+  },
+  "mcp": {
+    "clientUnavailable": "MCP 客戶端不可用。",
+    "invalidServerBaseUrl": "MCP 服務地址無效。",
+    "invalidServerHeaders": "MCP 服務請求頭配置無效。",
+    "invalidServerName": "MCP 服務名稱無效。",
+    "invalidServerStatus": "MCP 服務狀態無效。",
+    "invalidToolDescription": "MCP 工具描述無效。",
+    "invalidToolName": "MCP 工具名稱無效。",
+    "invalidToolSelection": "MCP 工具選擇配置無效。",
+    "invalidToolStatus": "MCP 工具狀態無效。",
+    "server": {
+      "invalidId": "MCP 服務 ID 無效。"
+    },
+    "tool": {
+      "invalidId": "MCP 工具 ID 無效。"
+    }
+  },
+  "memory": {
+    "keyRequired": "記憶鍵不能為空。"
+  },
+  "media": {
+    "imagePromptRequired": "請輸入圖片提示詞。",
+    "imageGenerationRejectsInputs": "圖片生成不支援攜帶輸入圖片，請移除附件或選擇圖片編輯。",
+    "imageEditInputRequired": "圖片編輯需要至少上傳一張輸入圖片。",
+    "imageEditTooManyInputs": "圖片編輯輸入圖片過多。",
+    "imageEditInputInvalid": "圖片編輯只支援有效的圖片檔案。",
+    "imageStreamUnsupported": "Tips：當前上游可能不支援流式響應，請管理員在模型能力中關閉“影像流式呼叫”（設定 image.stream=false）後重試。",
+    "routeProtocolMismatch": "當前模型路由協議與圖片任務不匹配，請檢查模型繫結。",
+    "invalidTask": "圖片任務引數無效。"
+  },
+  "message": {
+    "feedbackTargetInvalid": "訊息反饋目標無效。",
+    "editStateInvalid": "當前訊息狀態不允許編輯。",
+    "editTargetInvalid": "只能編輯 AI 回覆。",
+    "invalidBranch": "訊息分支無效。",
+    "invalidContent": "訊息內容無效。",
+    "invalidFeedback": "訊息反饋無效。",
+    "invalidId": "訊息 ID 無效。",
+    "notFound": "訊息不存在。",
+    "tooManyFiles": "單條訊息包含的檔案過多。"
+  },
+  "payment": {
+    "checkoutFailed": "建立支付訂單失敗。",
+    "epayTypeUnsupported": "該易支付型別不受支援。",
+    "invalidEvent": "支付事件無效。",
+    "invalidSignature": "支付簽名無效。",
+    "invalidWebhookBody": "支付回撥內容無效。",
+    "notificationMismatch": "支付回撥與訂單不匹配。",
+    "orderNoRequired": "訂單號不能為空。",
+    "providerUnavailable": "支付服務不可用。",
+    "returnUrlCrossOrigin": "支付返回地址必須使用已配置的公開站點域名。",
+    "returnUrlInvalid": "支付返回地址無效。",
+    "webhookBodyTooLarge": "支付回撥內容過大。",
+    "webhookNotConfigured": "支付回撥尚未配置。"
+  },
+  "quota": {
+    "exceeded": "額度已用盡。"
+  },
+  "rateLimit": {
+    "authenticationExceeded": "認證嘗試次數過多，請稍後再試。",
+    "exceeded": "請求過於頻繁，請稍後再試。",
+    "refreshExceeded": "重新整理登入狀態次數過多，請稍後再試。"
+  },
+  "request": {
+    "invalid": "請求無效，請檢查後重試。",
+    "invalid_": "請求引數無效。",
+    "invalidBody": "請求引數無效，請檢查後重試。",
+    "invalidId": "ID 無效。",
+    "invalidQuery": "查詢引數無效。",
+    "required": "缺少必填引數。"
+  },
+  "resource": {
+    "conflict": "資源衝突，請重新整理後重試。",
+    "notFound": "資源不存在。"
+  },
+  "route": {
+    "notFound": "路由不存在。"
+  },
+  "runtime": {
+    "doclingUnavailable": "Docling 執行時不可用。",
+    "mineruUnavailable": "MinerU 執行時不可用。",
+    "rapidocrUnavailable": "RapidOCR 執行時不可用。",
+    "tesseractUnavailable": "Tesseract 執行時不可用。",
+    "tikaUnavailable": "Tika 執行時不可用。"
+  },
+  "service": {
+    "unavailable": "服務暫不可用，請稍後重試。"
+  },
+  "settings": {
+    "billingPaymentInvalid": "計費支付設定無效。",
+    "embeddingInvalid": "向量設定無效。",
+    "extractInvalid": "檔案解析設定無效。",
+    "invalidKey": "設定項無效。",
+    "invalidNamespace": "設定名稱空間無效。",
+    "invalidValue": "設定值無效。",
+    "modelOptionPolicyInvalid": "模型引數策略設定無效。",
+    "notFound": "設定項不存在。",
+    "serviceUnavailable": "設定服務不可用。",
+    "smtpInvalid": "SMTP 設定無效。"
+  },
+  "upstream": {
+    "unavailable": "上游服務不可用。"
+  },
+  "upstreamEmptyResponse": "上游返回了空響應，請稍後重試或聯絡管理員檢查模型路由。",
+  "upstreamRequestFailed": "上游請求失敗，請稍後重試或聯絡管理員檢查模型路由。",
+  "user": {
+    "accountDeleteVerificationRequired": "刪除賬號前需要先驗證身份。",
+    "emptyPatch": "請至少修改一個使用者欄位。",
+    "invalidAvatarUrl": "頭像地址無效。",
+    "invalidEmail": "使用者郵箱無效。",
+    "invalidLocale": "語言區域無效。",
+    "invalidLocation": "位置資訊無效。",
+    "invalidPhone": "手機號無效。",
+    "invalidRole": "使用者角色無效。",
+    "invalidStatus": "使用者狀態無效。",
+    "invalidTimeZone": "時區無效。",
+    "invalidUsername": "使用者名稱需為 3-16 位。",
+    "invalidDisplayName": "顯示名稱需為 3-16 個字元。",
+    "lastSuperadminRoleProtected": "不能修改最後一個超級管理員的角色。",
+    "selfDeleteNotAllowed": "不能刪除當前賬號。",
+    "selfRoleChangeNotAllowed": "不能修改自己的角色。",
+    "selfStatusChangeNotAllowed": "不能修改自己的狀態。",
+    "superadminDeleteProtected": "不能刪除超級管理員賬號。",
+    "superadminPasswordResetProtected": "不能重置超級管理員密碼。",
+    "superadminManagementProtected": "管理員不能管理超級管理員賬號。",
+    "superadminStatusProtected": "不能修改超級管理員狀態。",
+    "superadminTwoFactorResetProtected": "不能重置超級管理員兩步驗證。",
+    "usernameAlreadyExists": "該使用者名稱已被佔用。",
+    "usernameChangeUsed": "使用者名稱修改次數已用完。",
+    "usernameTaken": "該使用者名稱已被佔用。"
+  },
+  "userSettings": {
+    "invalidValue": "使用者設定值無效。",
+    "unknownKey": "未知的使用者設定項。"
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "groups": {
+    "identity": "站点身份",
+    "assets": "品牌素材",
+    "home": "公开首页",
+    "links": "链接",
+    "legal": "服务条款与隐私政策"
+  },
+  "actions": {
+    "upload": "上传"
+  },
+  "fields": {
+    "name": {
+      "label": "站点名称",
+      "description": "展示在公开页面等位置的主产品或站点名称。"
+    },
+    "shortName": {
+      "label": "站点短名称",
+      "description": "空间有限时使用的简短名称。"
+    },
+    "description": {
+      "label": "站点描述",
+      "description": "公开页面和元信息使用的简短产品描述。"
+    },
+    "logoURL": {
+      "label": "浅色 Logo URL",
+      "description": "用于浅色背景的 Logo，支持站内路径或完整 URL。"
+    },
+    "logoDarkURL": {
+      "label": "深色 Logo URL",
+      "description": "用于深色背景的 Logo，支持站内路径或完整 URL。"
+    },
+    "faviconURL": {
+      "label": "浏览器图标 URL",
+      "description": "浏览器图标地址，支持上传 PNG、ICO、SVG 等图片。"
+    },
+    "homeTitle": {
+      "label": "首页主标题",
+      "description": "公开首页第一屏展示的主标题。"
+    },
+    "homeSubtitle": {
+      "label": "首页副标题",
+      "description": "公开首页主标题下方的说明文案。"
+    },
+    "footerText": {
+      "label": "页脚文本",
+      "description": "公开页面底部展示的小字。"
+    },
+    "contactEmail": {
+      "label": "联系邮箱",
+      "description": "公开展示的支持或联系邮箱。"
+    },
+    "termsURL": {
+      "label": "服务条款 URL",
+      "description": "可选的公开服务条款链接。"
+    },
+    "privacyURL": {
+      "label": "隐私政策 URL",
+      "description": "可选的公开隐私政策链接。"
+    },
+    "termsTitleEnUS": {
+      "label": "服务条款标题（English）",
+      "description": "英文界面展示的服务条款标题。"
+    },
+    "termsContentEnUS": {
+      "label": "服务条款内容（English）",
+      "description": "英文界面展示的服务条款正文。"
+    },
+    "privacyTitleEnUS": {
+      "label": "隐私政策标题（English）",
+      "description": "英文界面展示的隐私政策标题。"
+    },
+    "privacyContentEnUS": {
+      "label": "隐私政策内容（English）",
+      "description": "英文界面展示的隐私政策正文。"
+    },
+    "termsTitleZhCN": {
+      "label": "服务条款标题（简体中文）",
+      "description": "简体中文界面展示的服务条款标题。"
+    },
+    "termsContentZhCN": {
+      "label": "服务条款内容（简体中文）",
+      "description": "简体中文界面展示的服务条款正文。"
+    },
+    "privacyTitleZhCN": {
+      "label": "隐私政策标题（简体中文）",
+      "description": "简体中文界面展示的隐私政策标题。"
+    },
+    "privacyContentZhCN": {
+      "label": "隐私政策内容（简体中文）",
+      "description": "简体中文界面展示的隐私政策正文。"
+    },
+    "termsTitleZhTW": {
+      "label": "服务条款标题（繁體中文）",
+      "description": "繁體中文界面展示的服务条款标题。"
+    },
+    "termsContentZhTW": {
+      "label": "服务条款内容（繁體中文）",
+      "description": "繁體中文界面展示的服务条款正文。"
+    },
+    "privacyTitleZhTW": {
+      "label": "隐私政策标题（繁體中文）",
+      "description": "繁體中文界面展示的隐私政策标题。"
+    },
+    "privacyContentZhTW": {
+      "label": "隐私政策内容（繁體中文）",
+      "description": "繁體中文界面展示的隐私政策正文。"
+    }
+  },
+  "toast": {
+    "sessionExpired": "登录状态已失效",
+    "signInAgain": "请重新登录后再继续操作。",
+    "loadFailed": "加载站点设置失败",
+    "saved": "站点设置已保存",
+    "saveFailed": "保存站点设置失败",
+    "assetUploaded": "品牌素材已上传",
+    "assetUploadFailed": "上传品牌素材失败"
+  }
+}

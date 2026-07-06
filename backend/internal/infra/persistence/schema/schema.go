@@ -245,17 +245,6 @@ func SeedBillingCatalog(db *gorm.DB) error {
 
 	plans := []model.BillingPlan{
 		{
-			Code:                "free",
-			Name:                "Free",
-			Description:         "默认免费套餐",
-			FeatureJSON:         `{"priority":"shared"}`,
-			PeriodCreditNanousd: 1000000000,
-			DiscountPercent:     0,
-			SortOrder:           10,
-			IsActive:            true,
-			PermissionGroupID:   copyUintPointer(defaultGroupID),
-		},
-		{
 			Code:                "pro",
 			Name:                "Pro",
 			Description:         "轻度使用套餐",
@@ -300,7 +289,6 @@ func SeedBillingCatalog(db *gorm.DB) error {
 		}
 
 		prices := []model.BillingPrice{
-			{PlanID: planIDByCode["free"], Code: "free-default", BillingInterval: model.BillingIntervalLifetime, Currency: "USD", AmountCents: 0, IsActive: true, IsDefault: true},
 			{PlanID: planIDByCode["pro"], Code: "pro-monthly", BillingInterval: model.BillingIntervalMonth, Currency: "USD", AmountCents: 2000, IsActive: true, IsDefault: true},
 			{PlanID: planIDByCode["max"], Code: "max-monthly", BillingInterval: model.BillingIntervalMonth, Currency: "USD", AmountCents: 5000, IsActive: true, IsDefault: true},
 			{PlanID: planIDByCode["ultra"], Code: "ultra-monthly", BillingInterval: model.BillingIntervalMonth, Currency: "USD", AmountCents: 20000, IsActive: true, IsDefault: true},

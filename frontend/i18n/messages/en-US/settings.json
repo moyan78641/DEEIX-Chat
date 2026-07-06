@@ -466,6 +466,7 @@
       "title": "Current subscription",
       "none": "No subscription",
       "empty": "No subscription plan is available.",
+      "defaultUsage": "Usage billing by default. Subscription credits are consumed first when active.",
       "subscribe": "Subscribe"
     },
     "periodUsage": {
@@ -475,7 +476,7 @@
       "total": "Total {value}"
     },
     "periodOverage": {
-      "title": "Overage billing",
+      "title": "Usage balance",
       "balance": "Available balance {value}"
     },
     "entitlements": {
@@ -640,6 +641,7 @@
       "freeSwitchBlockedDescription": "You cannot switch to Free before paid entitlements expire. Renew or choose another paid plan instead.",
       "noPlanSelected": "No plan selected",
       "noPlanSelectedDescription": "Select a plan before subscribing.",
+      "agreementRequired": "Please read and agree to the Terms of Service and Privacy Policy first.",
       "invalidRedemptionCode": "Enter a redemption code.",
       "redemptionSucceeded": "Redemption applied",
       "redemptionFailed": "Redemption failed"

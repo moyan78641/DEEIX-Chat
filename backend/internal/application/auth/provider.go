@@ -129,13 +129,15 @@ type githubEmailAddress struct {
 }
 
 type providerOAuthState struct {
-	Provider      string `json:"provider"`
-	RedirectURI   string `json:"redirectURI"`
-	Next          string `json:"next"`
-	Intent        string `json:"intent"`
-	CodeChallenge string `json:"codeChallenge"`
-	Nonce         string `json:"nonce"`
-	ExpiresAt     int64  `json:"expiresAt"`
+	Provider        string `json:"provider"`
+	RedirectURI     string `json:"redirectURI"`
+	Next            string `json:"next"`
+	Intent          string `json:"intent"`
+	CodeChallenge   string `json:"codeChallenge"`
+	TermsAccepted   bool   `json:"termsAccepted"`
+	PrivacyAccepted bool   `json:"privacyAccepted"`
+	Nonce           string `json:"nonce"`
+	ExpiresAt       int64  `json:"expiresAt"`
 }
 
 func (s *Service) GetLoginOptions(ctx context.Context) (*LoginOptions, error) {
@@ -339,12 +341,18 @@ func (s *Service) CompleteProviderLogin(
 	if verifiedState.Intent == providerIntentLogin && !provider.LoginEnabled {
 		return nil, fmt.Errorf("provider login is disabled")
 	}
+	if verifiedState.Intent == providerIntentLogin && !providerLegalConsentAccepted(verifiedState.TermsAccepted, verifiedState.PrivacyAccepted) {
+		return nil, fmt.Errorf("terms of service and privacy policy must be accepted")
+	}
 	if verifiedState.Intent == providerIntentBind {
 		return nil, fmt.Errorf("provider bind must use account binding endpoint")
 	}
 	if verifiedState.Intent == providerIntentRegister {
 		if !provider.LoginEnabled || !provider.RegistrationEnabled {
 			return nil, fmt.Errorf("provider registration is disabled")
+		}
+		if !providerLegalConsentAccepted(verifiedState.TermsAccepted, verifiedState.PrivacyAccepted) {
+			return nil, fmt.Errorf("terms of service and privacy policy must be accepted")
 		}
 	}
 	if err = validateProviderCodeVerifier(codeVerifier, verifiedState.CodeChallenge); err != nil {
@@ -372,7 +380,7 @@ func (s *Service) CompleteProviderLogin(
 	avatarURL := claimString(profile, provider.AvatarField)
 	emailVerified := resolveProviderEmailVerified(profile, *provider)
 
-	userItem, err := s.resolveProviderUser(ctx, *provider, subject, email, displayName, avatarURL, emailVerified, string(profileJSON), verifiedState.Intent)
+	userItem, err := s.resolveProviderUser(ctx, *provider, subject, email, displayName, avatarURL, emailVerified, string(profileJSON), verifiedState.Intent, verifiedState.TermsAccepted, verifiedState.PrivacyAccepted)
 	if err != nil {
 		return nil, err
 	}
@@ -913,7 +921,7 @@ func buildProviderAuthURL(provider domainuser.IdentityProvider, authURL string, 
 	return parsed.String(), nil
 }
 
-func (s *Service) BuildProviderAuthURL(ctx context.Context, slug string, redirectURI string, nextPath string, codeChallenge string, intent string) (string, error) {
+func (s *Service) BuildProviderAuthURL(ctx context.Context, slug string, redirectURI string, nextPath string, codeChallenge string, intent string, termsAccepted bool, privacyAccepted bool) (string, error) {
 	if !s.cfg.Snapshot().ThirdPartyLoginEnabled {
 		return "", fmt.Errorf("third-party login is disabled")
 	}
@@ -931,6 +939,9 @@ func (s *Service) BuildProviderAuthURL(ctx context.Context, slug string, redirec
 	if normalizedIntent == providerIntentLogin && !provider.LoginEnabled {
 		return "", fmt.Errorf("provider login is disabled")
 	}
+	if normalizedIntent == providerIntentLogin && !providerLegalConsentAccepted(termsAccepted, privacyAccepted) {
+		return "", fmt.Errorf("terms of service and privacy policy must be accepted")
+	}
 	if normalizedIntent == providerIntentBind && !provider.LoginEnabled {
 		return "", fmt.Errorf("provider login is disabled")
 	}
@@ -938,24 +949,33 @@ func (s *Service) BuildProviderAuthURL(ctx context.Context, slug string, redirec
 		if !provider.LoginEnabled || !provider.RegistrationEnabled {
 			return "", fmt.Errorf("provider registration is disabled")
 		}
+		if !providerLegalConsentAccepted(termsAccepted, privacyAccepted) {
+			return "", fmt.Errorf("terms of service and privacy policy must be accepted")
+		}
 	}
 	authURL, _, _, err := s.resolveProviderEndpoints(ctx, *provider)
 	if err != nil {
 		return "", err
 	}
 	state, err := s.signProviderState(providerOAuthState{
-		Provider:      slug,
-		RedirectURI:   redirectURI,
-		Next:          normalizeProviderNextPath(nextPath),
-		Intent:        normalizedIntent,
-		CodeChallenge: strings.TrimSpace(codeChallenge),
-		Nonce:         conv.NormalizePublicID(uuid.NewString()),
-		ExpiresAt:     time.Now().Add(10 * time.Minute).Unix(),
+		Provider:        slug,
+		RedirectURI:     redirectURI,
+		Next:            normalizeProviderNextPath(nextPath),
+		Intent:          normalizedIntent,
+		CodeChallenge:   strings.TrimSpace(codeChallenge),
+		TermsAccepted:   termsAccepted,
+		PrivacyAccepted: privacyAccepted,
+		Nonce:           conv.NormalizePublicID(uuid.NewString()),
+		ExpiresAt:       time.Now().Add(10 * time.Minute).Unix(),
 	})
 	if err != nil {
 		return "", err
 	}
 	return buildProviderAuthURL(*provider, authURL, redirectURI, state, codeChallenge)
+}
+
+func providerLegalConsentAccepted(termsAccepted bool, privacyAccepted bool) bool {
+	return termsAccepted && privacyAccepted
 }
 
 func (s *Service) exchangeProviderCode(ctx context.Context, provider domainuser.IdentityProvider, code string, redirectURI string, codeVerifier string) (*oauthTokenResponse, error) {
@@ -1197,7 +1217,7 @@ func parseOIDCDiscoveryDocument(reader io.Reader) (oidcDiscoveryDocument, error)
 	}, nil
 }
 
-func (s *Service) resolveProviderUser(ctx context.Context, provider domainuser.IdentityProvider, subject string, email string, displayName string, avatarURL string, emailVerified bool, profileJSON string, intent string) (*domainuser.User, error) {
+func (s *Service) resolveProviderUser(ctx context.Context, provider domainuser.IdentityProvider, subject string, email string, displayName string, avatarURL string, emailVerified bool, profileJSON string, intent string, termsAccepted bool, privacyAccepted bool) (*domainuser.User, error) {
 	identity, err := s.repo.GetUserIdentityByProviderSubject(ctx, provider.ID, subject)
 	if err == nil {
 		if !provider.LoginEnabled {
@@ -1252,6 +1272,9 @@ func (s *Service) resolveProviderUser(ctx context.Context, provider domainuser.I
 	}
 	if !provider.RegistrationEnabled {
 		return nil, fmt.Errorf("provider account is not registered")
+	}
+	if !providerLegalConsentAccepted(termsAccepted, privacyAccepted) {
+		return nil, fmt.Errorf("terms of service and privacy policy must be accepted")
 	}
 
 	emailVerifiedAt := (*time.Time)(nil)

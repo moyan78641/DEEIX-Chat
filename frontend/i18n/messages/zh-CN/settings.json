@@ -466,6 +466,7 @@
       "title": "当前订阅",
       "none": "未订阅",
       "empty": "当前没有可用订阅方案",
+      "defaultUsage": "默认按量计费，订阅后优先消耗套餐额度",
       "subscribe": "订阅"
     },
     "periodUsage": {
@@ -475,7 +476,7 @@
       "total": "总额度 {value}"
     },
     "periodOverage": {
-      "title": "超额按量",
+      "title": "余额按量",
       "balance": "可用余额 {value}"
     },
     "entitlements": {
@@ -640,6 +641,7 @@
       "freeSwitchBlockedDescription": "付费权益到期前不能切换到免费方案，可选择续费或订阅其他付费方案。",
       "noPlanSelected": "未选择套餐",
       "noPlanSelectedDescription": "请先选择要订阅的套餐。",
+      "agreementRequired": "请先阅读并同意服务条款和隐私政策。",
       "invalidRedemptionCode": "请输入兑换码。",
       "redemptionSucceeded": "兑换成功",
       "redemptionFailed": "兑换失败"

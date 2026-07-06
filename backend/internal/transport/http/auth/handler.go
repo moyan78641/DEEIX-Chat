@@ -16,6 +16,7 @@ import (
 )
 
 const refreshTokenCookieName = "deeix_chat_refresh_token"
+const legalConsentRequiredCode = "legal.consent_required"
 
 // Handler 封装认证 HTTP 处理。
 type Handler struct {
@@ -174,6 +175,10 @@ func (h *Handler) CompleteEmailRegistration(c *gin.Context) {
 	var req EmailRegistrationCompleteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.InvalidRequestBody(c, err)
+		return
+	}
+	if !legalConsentAccepted(req.TermsAccepted, req.PrivacyAccepted) {
+		response.ErrorWithCode(c, http.StatusBadRequest, legalConsentRequiredCode, "terms of service and privacy policy must be accepted")
 		return
 	}
 	result, err := h.service.RegisterWithEmail(
@@ -541,7 +546,16 @@ func (h *Handler) CompleteProviderBind(c *gin.Context) {
 func (h *Handler) StartProviderLogin(c *gin.Context) {
 	slug := c.Param("slug")
 	callback := c.Query("redirect_uri")
-	target, err := h.service.BuildProviderAuthURL(c.Request.Context(), slug, callback, c.Query("next"), c.Query("code_challenge"), c.Query("intent"))
+	target, err := h.service.BuildProviderAuthURL(
+		c.Request.Context(),
+		slug,
+		callback,
+		c.Query("next"),
+		c.Query("code_challenge"),
+		c.Query("intent"),
+		parseQueryBool(c.Query("termsAccepted")),
+		parseQueryBool(c.Query("privacyAccepted")),
+	)
 	if err != nil {
 		response.ErrorFrom(c, http.StatusBadRequest, err)
 		return
@@ -593,6 +607,19 @@ func (h *Handler) CompleteProviderLogin(c *gin.Context) {
 	response.Success(c, toLoginResponse(result))
 }
 
+func legalConsentAccepted(termsAccepted bool, privacyAccepted bool) bool {
+	return termsAccepted && privacyAccepted
+}
+
+func parseQueryBool(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
 // Login godoc
 // @Summary 用户登录
 // @Description 登录后返回JWT访问令牌
@@ -610,6 +637,10 @@ func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.InvalidRequestBody(c, err)
+		return
+	}
+	if !legalConsentAccepted(req.TermsAccepted, req.PrivacyAccepted) {
+		response.ErrorWithCode(c, http.StatusBadRequest, legalConsentRequiredCode, "terms of service and privacy policy must be accepted")
 		return
 	}
 

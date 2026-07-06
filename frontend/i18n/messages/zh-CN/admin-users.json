@@ -9,6 +9,7 @@
     "billing": "计费",
     "announcements": "公告",
     "logs": "日志",
+    "siteSettings": "站点",
     "loginSettings": "登录认证",
     "conversationSettings": "会话配置",
     "chatFiles": "文件与检索",

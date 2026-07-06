@@ -31,6 +31,8 @@ export type CreateCheckoutRequest = {
   epayType?: string;
   successURL?: string;
   cancelURL?: string;
+  termsAccepted?: boolean;
+  privacyAccepted?: boolean;
 };
 
 export type CheckoutDTO = {

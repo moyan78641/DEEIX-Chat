@@ -1,0 +1,173 @@
+{
+  "title": "工具",
+  "sections": {
+    "mcpTools": "MCP 工具",
+    "servers": "MCP 服務",
+    "tools": "MCP 工具"
+  },
+  "fields": {
+    "mcpEnable": {
+      "label": "啟用 MCP 工具",
+      "description": "允許使用者在對話中選擇已啟用的 MCP 工具。"
+    },
+    "toolPrompt": {
+      "label": "MCP Tool 呼叫提示詞",
+      "description": "控制模型何時以及如何呼叫 MCP 工具。留空使用內建預設提示詞。"
+    },
+    "defaultPromptPlaceholder": "留空使用內建預設提示詞",
+    "maxSelectedTools": {
+      "label": "單訊息可選工具數量",
+      "description": "單次訊息最多可選擇的 MCP 工具數量。預設 32，最大 128。"
+    },
+    "maxLLMCalls": {
+      "label": "最大 LLM 請求次數",
+      "description": "單次訊息內允許的 LLM 請求總數，包含首次請求和最終總結。預設 5，最小 2。"
+    },
+    "maxToolCalls": {
+      "label": "最大 MCP Tool 呼叫次數",
+      "description": "單次訊息內允許的 MCP Tool Call 總數，失敗呼叫計入次數。預設 8。"
+    },
+    "maxConcurrentCalls": {
+      "label": "MCP Tool 併發上限",
+      "description": "單個服務例項同時執行的 MCP Tool Call 上限。預設 8。"
+    },
+    "toolTimeout": {
+      "label": "MCP Tool 呼叫超時",
+      "description": "單次 MCP Tool Call 的最長等待時間，單位秒。預設 10。"
+    },
+    "toolRetry": {
+      "label": "MCP Tool 重試次數",
+      "description": "MCP Tool Call 失敗後的重試次數。預設 0。"
+    }
+  },
+  "status": {
+    "active": "開啟",
+    "inactive": "關閉",
+    "all": "全部",
+    "enabled": "已啟用",
+    "disabled": "已停用"
+  },
+  "sort": {
+    "customOrder": "自定義順序",
+    "nameAsc": "名稱 A-Z",
+    "nameDesc": "名稱 Z-A",
+    "statusAsc": "狀態",
+    "updatedDesc": "最近更新",
+    "updatedAsc": "最早更新"
+  },
+  "table": {
+    "name": "名稱",
+    "url": "地址",
+    "status": "狀態",
+    "tools": "工具",
+    "lastSynced": "同步時間",
+    "tool": "工具",
+    "description": "描述",
+    "schema": "Schema",
+    "enabled": "啟用",
+    "emptyServers": "暫無 MCP 服務",
+    "emptyTools": "暫無工具，請先同步",
+    "emptyFilteredTools": "沒有匹配的工具",
+    "noDescription": "無描述",
+    "unsynced": "未同步"
+  },
+  "toolbar": {
+    "searchServers": "搜尋服務名稱、地址",
+    "searchTools": "搜尋工具名稱、描述",
+    "add": "新增",
+    "sync": "同步",
+    "syncTools": "同步工具",
+    "editServer": "編輯服務",
+    "deleteServer": "刪除服務",
+    "viewTools": "檢視 {name} 的 MCP 工具",
+    "toggleServer": "切換 MCP 服務 {name} 狀態",
+    "selectPageTools": "選擇當前頁工具",
+    "selectTool": "選擇工具 {name}",
+    "editTool": "編輯工具",
+    "viewSchema": "檢視 Schema",
+    "viewToolSchema": "檢視工具 {name} 的 Schema",
+    "toggleTool": "切換工具 {name}",
+    "activateSelected": "啟用",
+    "deactivateSelected": "停用",
+    "order": "順序"
+  },
+  "order": {
+    "title": "MCP 展示順序",
+    "description": "配置 MCP 服務與服務內工具在對話選擇器中的展示順序。",
+    "loading": "正在載入 MCP 順序",
+    "empty": "暫無可排序的 MCP 服務",
+    "loadFailed": "MCP 順序載入失敗",
+    "serverHeader": "MCP 服務",
+    "toolHeader": "工具",
+    "itemCount": "{count} 個",
+    "dragServer": "拖拽調整 MCP 服務 {name} 的順序",
+    "dragTool": "拖拽調整 {name} 的順序",
+    "statusActive": "已啟用",
+    "statusInactive": "已停用",
+    "emptyTools": "該服務暫無可排序的工具",
+    "saveSuccess": "MCP 展示順序已儲存",
+    "saveFailed": "儲存 MCP 展示順序失敗"
+  },
+  "bulkConfirm": {
+    "title": "確認批次操作",
+    "description": "將對已選的 {count} 個工具執行此批次操作。",
+    "confirm": "確認執行",
+    "pending": "處理中"
+  },
+  "serverDialog": {
+    "createTitle": "新增 MCP 服務",
+    "editTitle": "編輯 MCP 服務",
+    "description": "配置 MCP Streamable HTTP 服務端點與訪問憑據。",
+    "name": "服務名稱",
+    "namePlaceholder": "服務名稱",
+    "status": "服務狀態",
+    "url": "服務地址",
+    "authToken": "鑑權金鑰",
+    "authTokenCreatePlaceholder": "可留空",
+    "authTokenEditPlaceholder": "留空則不變",
+    "headers": "請求頭"
+  },
+  "toolDialog": {
+    "title": "編輯 MCP 工具",
+    "description": "自定義對話工具欄與模型呼叫時展示的工具名稱和描述。",
+    "displayName": "展示名稱",
+    "displayNamePlaceholder": "工具展示名稱",
+    "toolDescription": "描述",
+    "toolDescriptionPlaceholder": "說明這個工具適合處理什麼任務"
+  },
+  "schemaDialog": {
+    "fallbackTitle": "工具 Schema",
+    "description": "{name} 的輸入引數 JSON Schema",
+    "fallbackDescription": "輸入引數 JSON Schema"
+  },
+  "confirm": {
+    "deleteServer": "刪除 MCP 服務「{name}」？"
+  },
+  "toast": {
+    "settingsUpdated": "工具配置已更新",
+    "settingsLoadFailed": "載入工具配置失敗",
+    "saveFailed": "儲存失敗",
+    "serversLoadFailed": "載入 MCP 服務失敗",
+    "toolsLoadFailed": "載入 MCP 工具失敗",
+    "toolsSynced": "MCP 工具已同步",
+    "toolsSyncFailed": "同步 MCP 工具失敗",
+    "serverUpdated": "MCP 服務已更新",
+    "serverCreated": "MCP 服務已建立",
+    "serverSaveFailed": "儲存 MCP 服務失敗",
+    "serverDeleted": "MCP 服務已刪除",
+    "serverDeleteFailed": "刪除 MCP 服務失敗",
+    "serverStatusUpdated": "MCP 服務已{status}",
+    "serverStatusFailed": "更新 MCP 服務狀態失敗",
+    "toolStatusFailed": "更新工具狀態失敗",
+    "selectedToolsEnabled": "所選工具已啟用",
+    "selectedToolsDisabled": "所選工具已停用",
+    "selectedToolsUpdateFailed": "批次更新工具失敗",
+    "toolUpdated": "工具資訊已更新",
+    "toolSaveFailed": "儲存工具失敗",
+    "schemaCopied": "Schema 已複製",
+    "copyFailed": "複製失敗",
+    "unknownError": "請求失敗，請稍後重試。",
+    "sessionExpired": "登入狀態已失效",
+    "sessionExpiredDescription": "請重新登入後再繼續操作。"
+  }
+}

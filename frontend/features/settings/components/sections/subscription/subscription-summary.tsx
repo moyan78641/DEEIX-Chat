@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { SpinnerLabel } from "@/components/ui/spinner";
+import { AgreementCheckbox } from "@/shared/site/agreement-checkbox";
 import type { UserDTO } from "@/shared/api/auth.types";
 import type { BillingOverviewData, BillingSubscriptionEntitlementDTO } from "@/shared/api/billing.types";
 import type { BillingPlanDTO, BillingPlanPriceDTO } from "@/shared/api/billing.types";
@@ -208,6 +209,8 @@ type SubscriptionSummaryProps = {
   onOpenTopUpDialog: () => void;
   onPricingDialogOpenChange: (open: boolean) => void;
   onPaymentDialogOpenChange: (open: boolean) => void;
+  agreementAccepted: boolean;
+  onAgreementAcceptedChange: (accepted: boolean) => void;
   onSelectPlan: (plan: BillingPlanDTO, price: BillingPlanPriceDTO | null, isCurrent: boolean) => void;
   onPaymentProviderChange: (provider: PaymentProvider) => void;
   onEPayTypeChange: (type: string) => void;
@@ -251,12 +254,15 @@ export function SubscriptionSummary({
   onOpenTopUpDialog,
   onPricingDialogOpenChange,
   onPaymentDialogOpenChange,
+  agreementAccepted,
+  onAgreementAcceptedChange,
   onSelectPlan,
   onPaymentProviderChange,
   onEPayTypeChange,
   onConfirmPayment,
 }: SubscriptionSummaryProps) {
   const t = useTranslations("settings.subscriptionPage");
+  const hasCurrentPeriodPlan = billingMode === "period" && Boolean(currentPlan);
   const selectedPlanActionKind = selectedPlan
     ? resolvePlanActionKind(
       selectedPlan,
@@ -297,7 +303,7 @@ export function SubscriptionSummary({
                 <p className="text-xs font-medium">{t("currentSubscription.title")}</p>
                 <p className="truncate text-sm font-semibold">{currentPlan?.name ?? t("currentSubscription.none")}</p>
                 <p className="text-xs text-muted-foreground">
-                  {currentPlan ? `${formatPlanPrice(currentPrice, intervalLabels, billingDisplay)} · ${t("plans.features.monthlyCredit", { credit: formatPlanCredit(periodCredit, billingDisplay) })}` : t("currentSubscription.empty")}
+                  {currentPlan ? `${formatPlanPrice(currentPrice, intervalLabels, billingDisplay)} · ${t("plans.features.monthlyCredit", { credit: formatPlanCredit(periodCredit, billingDisplay) })}` : t("currentSubscription.defaultUsage")}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -320,30 +326,34 @@ export function SubscriptionSummary({
             billingDisplay={billingDisplay}
           />
 
-          <Separator />
+          {hasCurrentPeriodPlan ? (
+            <>
+              <Separator />
 
-          <div className="space-y-3 rounded-md bg-muted/35 p-3 md:space-y-4">
-            <div className="flex items-start justify-between gap-3 md:gap-4">
-              <div className="space-y-1">
-                <p className="text-xs font-medium">{t("periodUsage.title")}</p>
-                <p className="text-xs text-muted-foreground">
-                  {billingOverview?.periodStartAt && billingOverview?.periodEndAt
-                    ? `${formatShortDate(billingOverview.periodStartAt, locale)} - ${formatShortDate(billingOverview.periodEndAt, locale)}`
-                    : t("periodUsage.currentPeriod")}
-                </p>
+              <div className="space-y-3 rounded-md bg-muted/35 p-3 md:space-y-4">
+                <div className="flex items-start justify-between gap-3 md:gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium">{t("periodUsage.title")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {billingOverview?.periodStartAt && billingOverview?.periodEndAt
+                        ? `${formatShortDate(billingOverview.periodStartAt, locale)} - ${formatShortDate(billingOverview.periodEndAt, locale)}`
+                        : t("periodUsage.currentPeriod")}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-xs font-medium text-muted-foreground">{Math.round(periodPercent)}%</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-4 text-xs">
+                    <span className="text-muted-foreground">{t("periodUsage.used", { value: formatPlanCredit(periodUsed, billingDisplay) })}</span>
+                    <span className="text-muted-foreground">{t("periodUsage.total", { value: formatPlanCredit(periodCredit, billingDisplay) })}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-foreground/70" style={{ width: `${periodPercent}%` }} />
+                  </div>
+                </div>
               </div>
-              <p className="shrink-0 text-xs font-medium text-muted-foreground">{Math.round(periodPercent)}%</p>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-4 text-xs">
-                <span className="text-muted-foreground">{t("periodUsage.used", { value: formatPlanCredit(periodUsed, billingDisplay) })}</span>
-                <span className="text-muted-foreground">{t("periodUsage.total", { value: formatPlanCredit(periodCredit, billingDisplay) })}</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-foreground/70" style={{ width: `${periodPercent}%` }} />
-              </div>
-            </div>
-          </div>
+            </>
+          ) : null}
 
           <ActionRow
             title={t("periodOverage.title")}
@@ -391,13 +401,20 @@ export function SubscriptionSummary({
             <DialogTitle>{t("plans.title")}</DialogTitle>
           </DialogHeader>
 
+          <AgreementCheckbox
+            checked={agreementAccepted}
+            disabled={billingLoading}
+            onCheckedChange={onAgreementAcceptedChange}
+            className="pt-1"
+          />
+
           <div className="space-y-2 xl:hidden">
             {billingPlans.map((plan) => {
               const price = resolveDefaultPrice(plan);
               const isCurrent = isCurrentBillingPlan(plan, currentPlan, viewer);
               const actionKind = resolvePlanActionKind(plan, price, isCurrent, currentPlan, protectedPaidPlanRank);
               const actionLabel = resolvePlanActionLabel(actionKind, planActionLabels);
-              const disabled = billingLoading || actionKind === "current" || actionKind === "freeBlocked" || actionKind === "unavailable" || checkoutPriceID === price?.id;
+              const disabled = billingLoading || !agreementAccepted || actionKind === "current" || actionKind === "freeBlocked" || actionKind === "unavailable" || checkoutPriceID === price?.id;
               const isSelected = selectedPlan?.id === plan.id;
               const isHighlighted = isCurrent || isSelected;
               const buttonVariant = resolvePlanButtonVariant(actionKind);
@@ -439,7 +456,7 @@ export function SubscriptionSummary({
               const isCurrent = isCurrentBillingPlan(plan, currentPlan, viewer);
               const actionKind = resolvePlanActionKind(plan, price, isCurrent, currentPlan, protectedPaidPlanRank);
               const actionLabel = resolvePlanActionLabel(actionKind, planActionLabels);
-              const disabled = billingLoading || actionKind === "current" || actionKind === "freeBlocked" || actionKind === "unavailable" || checkoutPriceID === price?.id;
+              const disabled = billingLoading || !agreementAccepted || actionKind === "current" || actionKind === "freeBlocked" || actionKind === "unavailable" || checkoutPriceID === price?.id;
               const features = resolvePlanFeatures(plan, planFeatureLabels, billingDisplay).slice(0, 6);
               const isSelected = selectedPlan?.id === plan.id;
               const isHighlighted = isCurrent || isSelected;
@@ -545,11 +562,16 @@ export function SubscriptionSummary({
               })
               : null}
           </div>
+          <AgreementCheckbox
+            checked={agreementAccepted}
+            disabled={checkoutPriceID === selectedPrice?.id}
+            onCheckedChange={onAgreementAcceptedChange}
+          />
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onPaymentDialogOpenChange(false)} disabled={checkoutPriceID === selectedPrice?.id}>
               {t("actions.cancel")}
             </Button>
-            <Button type="button" disabled={paymentDisabled || !selectedPrice || checkoutPriceID === selectedPrice.id} onClick={onConfirmPayment}>
+            <Button type="button" disabled={paymentDisabled || !agreementAccepted || !selectedPrice || checkoutPriceID === selectedPrice.id} onClick={onConfirmPayment}>
               {checkoutPriceID === selectedPrice?.id ? <SpinnerLabel>{t("actions.processing")}</SpinnerLabel> : t("payment.continue")}
             </Button>
           </DialogFooter>

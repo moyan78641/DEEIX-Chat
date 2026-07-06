@@ -1,12 +1,16 @@
 package httpx
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -65,6 +69,10 @@ type Modules struct {
 	User         *userhttp.Module
 	UserSettings *usersettingshttp.Module
 	StartupLog   func(*zap.Logger)
+}
+
+type frontendSiteProfileProvider interface {
+	SiteProfile(ctx context.Context) (settingshttp.SiteProfileResponse, error)
 }
 
 // NewEngine 创建并注册 API 路由。
@@ -207,15 +215,19 @@ func NewEngine(cfg *config.Runtime, log *zap.Logger, modules Modules, hc HealthC
 	if modules.StartupLog != nil {
 		modules.StartupLog(log)
 	}
-	registerFrontendStatic(engine, snapshot.FrontendDistDir, log)
+	registerFrontendStatic(engine, snapshot.FrontendDistDir, log, modules.Settings)
 
 	return engine, nil
 }
 
-func registerFrontendStatic(engine *gin.Engine, distDir string, log *zap.Logger) {
+func registerFrontendStatic(engine *gin.Engine, distDir string, log *zap.Logger, providers ...frontendSiteProfileProvider) {
 	root := strings.TrimSpace(distDir)
 	if root == "" {
 		return
+	}
+	var siteProfileProvider frontendSiteProfileProvider
+	if len(providers) > 0 {
+		siteProfileProvider = providers[0]
 	}
 
 	absoluteRoot, err := filepath.Abs(root)
@@ -253,19 +265,115 @@ func registerFrontendStatic(engine *gin.Engine, distDir string, log *zap.Logger)
 
 		if filePath, ok := resolveFrontendPageFile(absoluteRoot, requestPath); ok {
 			c.Header("Cache-Control", "no-cache")
-			c.File(filePath)
+			serveFrontendHTML(c, filePath, siteProfileProvider, http.StatusOK)
 			return
 		}
 
 		notFoundPath := filepath.Join(absoluteRoot, "404.html")
 		if isRegularFile(notFoundPath) {
-			c.Status(http.StatusNotFound)
-			c.File(notFoundPath)
+			serveFrontendHTML(c, notFoundPath, siteProfileProvider, http.StatusNotFound)
 			return
 		}
 
 		response.ErrorWithCode(c, http.StatusNotFound, response.CodeResourceNotFound, "not found")
 	})
+}
+
+func serveFrontendHTML(c *gin.Context, filePath string, provider frontendSiteProfileProvider, status int) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		c.Status(status)
+		c.File(filePath)
+		return
+	}
+	if provider == nil {
+		c.Data(status, "text/html; charset=utf-8", content)
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	defer cancel()
+	profile, err := provider.SiteProfile(ctx)
+	if err != nil {
+		c.Data(status, "text/html; charset=utf-8", content)
+		return
+	}
+	injected := injectSiteProfileIntoHTML(content, profile)
+	c.Data(status, "text/html; charset=utf-8", injected)
+}
+
+var (
+	htmlTitlePattern           = regexp.MustCompile(`(?is)<title>.*?</title>`)
+	htmlDescriptionMetaPattern = regexp.MustCompile(`(?is)<meta\s+name=["']description["']\s+content=["'][^"']*["']\s*/?>`)
+	htmlApplicationMetaPattern = regexp.MustCompile(`(?is)<meta\s+name=["']application-name["']\s+content=["'][^"']*["']\s*/?>`)
+	htmlAppleTitleMetaPattern  = regexp.MustCompile(`(?is)<meta\s+name=["']apple-mobile-web-app-title["']\s+content=["'][^"']*["']\s*/?>`)
+)
+
+func injectSiteProfileIntoHTML(content []byte, profile settingshttp.SiteProfileResponse) []byte {
+	htmlText := string(content)
+	title := firstHTMLNonEmpty(profile.Name, "DEEIX Chat")
+	description := firstHTMLNonEmpty(profile.Description, "DEEIX Chat is a multi-model AI conversation system.")
+	faviconURL := firstHTMLNonEmpty(profile.FaviconURL, "/favicon.ico")
+
+	htmlText = htmlTitlePattern.ReplaceAllString(htmlText, "<title>"+html.EscapeString(title)+"</title>")
+	htmlText = htmlDescriptionMetaPattern.ReplaceAllString(htmlText, `<meta name="description" content="`+html.EscapeString(description)+`"/>`)
+	htmlText = htmlApplicationMetaPattern.ReplaceAllString(htmlText, `<meta name="application-name" content="`+html.EscapeString(title)+`"/>`)
+	htmlText = htmlAppleTitleMetaPattern.ReplaceAllString(htmlText, `<meta name="apple-mobile-web-app-title" content="`+html.EscapeString(title)+`"/>`)
+	htmlText = injectSiteProfileIconLink(htmlText, faviconURL)
+
+	profileJSON, err := json.Marshal(profile)
+	if err != nil {
+		return []byte(htmlText)
+	}
+	injection := `<script id="deeix-site-profile" type="application/json">` + string(profileJSON) + `</script>` +
+		`<script>window.__DEEIX_SITE_PROFILE__=JSON.parse(document.getElementById("deeix-site-profile").textContent)</script>`
+	if strings.Contains(htmlText, "</head>") {
+		htmlText = strings.Replace(htmlText, "</head>", injection+"</head>", 1)
+		return []byte(htmlText)
+	}
+	return append(bytes.TrimRight([]byte(htmlText), "\n\r\t "), []byte(injection)...)
+}
+
+func injectSiteProfileIconLink(htmlText string, faviconURL string) string {
+	iconType := inferSiteProfileIconType(faviconURL)
+	typeAttr := ""
+	if iconType != "" {
+		typeAttr = ` type="` + html.EscapeString(iconType) + `"`
+	}
+	iconLink := `<link id="deeix-site-favicon" rel="icon" href="` + html.EscapeString(faviconURL) + `"` + typeAttr + `/>`
+	if strings.Contains(htmlText, "</head>") {
+		return strings.Replace(htmlText, "</head>", iconLink+"</head>", 1)
+	}
+	return iconLink + htmlText
+}
+
+func inferSiteProfileIconType(iconURL string) string {
+	cleanURL := strings.ToLower(strings.TrimSpace(iconURL))
+	if index := strings.IndexAny(cleanURL, "?#"); index >= 0 {
+		cleanURL = cleanURL[:index]
+	}
+	switch {
+	case strings.HasSuffix(cleanURL, ".svg"):
+		return "image/svg+xml"
+	case strings.HasSuffix(cleanURL, ".png"):
+		return "image/png"
+	case strings.HasSuffix(cleanURL, ".jpg"), strings.HasSuffix(cleanURL, ".jpeg"):
+		return "image/jpeg"
+	case strings.HasSuffix(cleanURL, ".webp"):
+		return "image/webp"
+	case strings.HasSuffix(cleanURL, ".ico"):
+		return "image/x-icon"
+	default:
+		return ""
+	}
+}
+
+func firstHTMLNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func swaggerEnabled(env string) bool {
