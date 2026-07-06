@@ -79,6 +79,10 @@ export type UpdateAdminBillingPlanRequest = {
   permissionGroupID?: number | null;
 };
 
+export type CreateAdminBillingPlanRequest = UpdateAdminBillingPlanRequest & {
+  code: string;
+};
+
 export type AdminBillingPlanData = {
   plan: AdminBillingPlanDTO;
 };

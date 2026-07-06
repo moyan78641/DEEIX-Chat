@@ -40,6 +40,7 @@ export type PricingFormState = {
 };
 
 export type PlanFormState = {
+  code: string;
   name: string;
   description: string;
   amount: string;
@@ -232,21 +233,22 @@ export function createFormState(row: BillingModelPricingRow): PricingFormState {
   };
 }
 
-export function createPlanFormState(plan: AdminBillingPlanDTO, defaultPermissionGroupID?: number): PlanFormState {
-  const defaultPrice = plan.prices.find((item) => item.isDefault) || plan.prices[0];
+export function createPlanFormState(plan: AdminBillingPlanDTO | null, defaultPermissionGroupID?: number): PlanFormState {
+  const defaultPrice = plan?.prices.find((item) => item.isDefault) || plan?.prices[0];
   let permissionGroupID = "";
-  if (plan.permissionGroupID != null) {
+  if (plan?.permissionGroupID != null) {
     permissionGroupID = String(plan.permissionGroupID);
   } else if (defaultPermissionGroupID) {
     permissionGroupID = String(defaultPermissionGroupID);
   }
   return {
-    name: plan.name || "",
-    description: plan.description || "",
+    code: plan?.code || "",
+    name: plan?.name || "",
+    description: plan?.description || "",
     amount: String((defaultPrice?.amountCents ?? 0) / 100),
     billingInterval: defaultPrice?.billingInterval || "month",
-    periodCredit: String(plan.periodCreditUSD ?? 0),
-    discountPercent: String(plan.discountPercent ?? 0),
+    periodCredit: String(plan?.periodCreditUSD ?? 0),
+    discountPercent: String(plan?.discountPercent ?? 0),
     permissionGroupID,
   };
 }

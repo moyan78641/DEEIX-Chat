@@ -175,6 +175,68 @@ func (r *Repo) GetActivePlanByCode(ctx context.Context, code string) (*domainbil
 	return &result, nil
 }
 
+// CreatePlanWithDefaultPrice 创建套餐与默认价格。
+func (r *Repo) CreatePlanWithDefaultPrice(ctx context.Context, plan *domainbilling.Plan, price *domainbilling.Price) error {
+	if plan == nil || price == nil || strings.TrimSpace(plan.Code) == "" {
+		return repository.ErrInvalidInput
+	}
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		sortOrder := plan.SortOrder
+		if sortOrder <= 0 {
+			if err := tx.Model(&model.BillingPlan{}).
+				Select("COALESCE(MAX(sort_order), 0)").
+				Scan(&sortOrder).Error; err != nil {
+				return translateError(err)
+			}
+			sortOrder += 100
+		}
+
+		planRecord := model.BillingPlan{
+			Code:                strings.TrimSpace(plan.Code),
+			Name:                strings.TrimSpace(plan.Name),
+			Description:         strings.TrimSpace(plan.Description),
+			FeatureJSON:         strings.TrimSpace(plan.FeatureJSON),
+			PeriodCreditNanousd: clampNonNegative(plan.PeriodCreditNanousd),
+			DiscountPercent:     clampPercent(plan.DiscountPercent),
+			SortOrder:           sortOrder,
+			IsActive:            true,
+			PermissionGroupID:   plan.PermissionGroupID,
+		}
+		if err := tx.Create(&planRecord).Error; err != nil {
+			return translateError(err)
+		}
+
+		priceRecord := model.BillingPrice{
+			PlanID:          planRecord.ID,
+			Code:            strings.TrimSpace(price.Code),
+			BillingInterval: normalizeInterval(price.BillingInterval),
+			Currency:        normalizeCurrency(price.Currency),
+			AmountCents:     clampNonNegative(price.AmountCents),
+			IsActive:        true,
+			IsDefault:       true,
+		}
+		if priceRecord.Code == "" {
+			priceRecord.Code = planRecord.Code + "-default"
+		}
+		if err := tx.Create(&priceRecord).Error; err != nil {
+			return translateError(err)
+		}
+
+		plan.ID = planRecord.ID
+		plan.SortOrder = planRecord.SortOrder
+		plan.IsActive = planRecord.IsActive
+		price.ID = priceRecord.ID
+		price.PlanID = planRecord.ID
+		price.Code = priceRecord.Code
+		price.BillingInterval = priceRecord.BillingInterval
+		price.Currency = priceRecord.Currency
+		price.AmountCents = priceRecord.AmountCents
+		price.IsActive = priceRecord.IsActive
+		price.IsDefault = priceRecord.IsDefault
+		return nil
+	})
+}
+
 // UpdatePlanWithDefaultPrice 更新套餐与默认价格。
 func (r *Repo) UpdatePlanWithDefaultPrice(ctx context.Context, plan *domainbilling.Plan, price *domainbilling.Price) error {
 	if plan == nil || price == nil || plan.ID == 0 {
@@ -227,7 +289,18 @@ func (r *Repo) UpdatePlanWithDefaultPrice(ctx context.Context, plan *domainbilli
 				return translateError(err)
 			}
 		}
-		return translateError(tx.Model(&record).Updates(updates).Error)
+		if err := tx.Model(&record).Updates(updates).Error; err != nil {
+			return translateError(err)
+		}
+		price.ID = record.ID
+		price.PlanID = plan.ID
+		price.Code = strings.TrimSpace(price.Code)
+		price.BillingInterval = normalizeInterval(price.BillingInterval)
+		price.Currency = normalizeCurrency(price.Currency)
+		price.AmountCents = clampNonNegative(price.AmountCents)
+		price.IsActive = true
+		price.IsDefault = true
+		return nil
 	})
 }
 

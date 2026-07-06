@@ -58,6 +58,7 @@ import { CopyActionButton, useCopyAction } from "@/shared/components/copy-action
 import {
   getAdminReferenceData,
   batchDeleteAdminRedemptionCodes,
+  createAdminBillingPlan,
   createAdminRedemptionCodes,
   deleteAdminRedemptionCode,
   invalidateAdminReferenceDataCache,
@@ -335,6 +336,7 @@ export function AdminBillingPage() {
   const [editRow, setEditRow] = React.useState<BillingModelPricingRow | null>(null);
   const [form, setForm] = React.useState<PricingFormState | null>(null);
   const [editPlan, setEditPlan] = React.useState<AdminBillingPlanDTO | null>(null);
+  const [planDialogMode, setPlanDialogMode] = React.useState<"create" | "edit" | null>(null);
   const [planForm, setPlanForm] = React.useState<PlanFormState | null>(null);
   const [permissionGroups, setPermissionGroups] = React.useState<PermissionGroup[]>([]);
   const [redemptionForm, setRedemptionForm] = React.useState<RedemptionFormState | null>(null);
@@ -645,7 +647,20 @@ export function AdminBillingPage() {
 
   function openPlanEdit(plan: AdminBillingPlanDTO) {
     setEditPlan(plan);
+    setPlanDialogMode("edit");
     setPlanForm(createPlanFormState(plan, permissionGroups.find((group) => group.isDefault)?.id ?? permissionGroups[0]?.id));
+  }
+
+  function openPlanCreate() {
+    setEditPlan(null);
+    setPlanDialogMode("create");
+    setPlanForm(createPlanFormState(null, permissionGroups.find((group) => group.isDefault)?.id ?? permissionGroups[0]?.id));
+  }
+
+  function closePlanDialog() {
+    setEditPlan(null);
+    setPlanDialogMode(null);
+    setPlanForm(null);
   }
 
   function openRedemptionCreate() {
@@ -1388,7 +1403,7 @@ export function AdminBillingPage() {
 
   async function savePlan(event?: React.FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (!editPlan || !planForm) return;
+    if (!planDialogMode || !planForm) return;
     setSaving(true);
     try {
       const token = await resolveAccessToken();
@@ -1396,7 +1411,7 @@ export function AdminBillingPage() {
         toast.error(t("toast.sessionExpired"), { description: t("toast.sessionExpiredDescription") });
         return;
       }
-      const data = await updateAdminBillingPlan(token, editPlan.id, {
+      const payload = {
         name: planForm.name.trim(),
         description: planForm.description.trim(),
         amountUSD: parsePrice(planForm.amount),
@@ -1405,14 +1420,25 @@ export function AdminBillingPage() {
         periodCreditUSD: parsePrice(planForm.periodCredit),
         discountPercent: Math.min(100, parseIntValue(planForm.discountPercent)),
         permissionGroupID: Number(planForm.permissionGroupID) || undefined,
+      };
+      const data = planDialogMode === "create"
+        ? await createAdminBillingPlan(token, { ...payload, code: planForm.code.trim() })
+        : editPlan
+          ? await updateAdminBillingPlan(token, editPlan.id, payload)
+          : null;
+      if (!data) return;
+      setPlans((current) => {
+        const exists = current.some((plan) => plan.id === data.plan.id);
+        const next = exists
+          ? current.map((plan) => plan.id === data.plan.id ? data.plan : plan)
+          : [...current, data.plan];
+        return next.sort((left, right) => (left.sortOrder - right.sortOrder) || (left.id - right.id));
       });
-      setPlans((current) => current.map((plan) => plan.id === data.plan.id ? data.plan : plan));
       invalidateAdminReferenceDataCache();
-      toast.success(t("toast.planSaved"));
-      setEditPlan(null);
-      setPlanForm(null);
+      toast.success(planDialogMode === "create" ? t("toast.planCreated") : t("toast.planSaved"));
+      closePlanDialog();
     } catch (error) {
-      toast.error(t("toast.planSaveFailed"), { description: resolveAdminErrorMessage(error) });
+      toast.error(planDialogMode === "create" ? t("toast.planCreateFailed") : t("toast.planSaveFailed"), { description: resolveAdminErrorMessage(error) });
     } finally {
       setSaving(false);
     }
@@ -1972,8 +1998,12 @@ export function AdminBillingPage() {
       <Separator className="mx-1 my-10" />
 
       <section className="space-y-6 px-1">
-        <div className="flex h-10 items-center">
+        <div className="flex h-10 items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">{t("plans.title")}</h3>
+          <Button type="button" size="sm" variant="outline" className="h-8 gap-2" onClick={openPlanCreate}>
+            <Plus className="size-3.5 stroke-1" />
+            {t("plans.create")}
+          </Button>
         </div>
         <PeriodBillingTable plans={plans} loading={loading} onEdit={openPlanEdit} />
       </section>
@@ -2260,18 +2290,18 @@ export function AdminBillingPage() {
       </Tabs>
 
       <PlanBillingDialog
-        open={!!editPlan && !!planForm}
+        open={!!planDialogMode && !!planForm}
         saving={saving}
+        mode={planDialogMode ?? "edit"}
         planForm={planForm}
         setPlanForm={setPlanForm}
         permissionGroups={permissionGroups}
         onOpenChange={(open) => {
           if (!open && !saving) {
-            setEditPlan(null);
-            setPlanForm(null);
+            closePlanDialog();
           }
         }}
-        onCancel={() => setEditPlan(null)}
+        onCancel={closePlanDialog}
         onSubmit={savePlan}
       />
 

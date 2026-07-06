@@ -28,6 +28,7 @@ func (m *Module) RegisterAdminRoutes(adminGroup *gin.RouterGroup) {
 	adminGroup.GET("/billing/config", m.Handler.GetBillingConfig)
 	adminGroup.PATCH("/billing/config", m.Handler.PatchBillingConfig)
 	adminGroup.GET("/billing/plans", m.Handler.ListPlans)
+	adminGroup.POST("/billing/plans", m.Handler.CreatePlan)
 	adminGroup.PATCH("/billing/plans/:id", m.Handler.UpdatePlan)
 	adminGroup.PATCH("/billing/accounts/:user_id/balance", m.Handler.UpdateBillingAccountBalance)
 	adminGroup.GET("/billing/redemption-codes", m.Handler.ListRedemptionCodes)

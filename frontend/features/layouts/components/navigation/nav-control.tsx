@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useTranslations } from "next-intl"
 
 import { PanelLeft } from "@/components/animate-ui/icons/panel-left"
@@ -27,9 +28,11 @@ export function NavControl() {
             "relative flex h-8 w-full items-center rounded-md text-sm",
           )}
         >
-          <span
+          <Link
+            href="/chat"
+            aria-label="Chat"
             className={cn(
-              "flex min-w-0 items-center overflow-hidden whitespace-nowrap pl-2 transition-[max-width,opacity,transform,padding-left] ease-linear",
+              "flex min-w-0 items-center overflow-hidden whitespace-nowrap rounded-md pl-2 transition-[max-width,opacity,transform,padding-left] ease-linear outline-hidden ring-sidebar-ring focus-visible:ring-2",
               isCollapsed
                 ? "max-w-0 -translate-x-2 pl-0 opacity-0 duration-100"
                 : "max-w-[160px] translate-x-0 pl-2 opacity-100 duration-150",
@@ -41,7 +44,7 @@ export function NavControl() {
               priority
               className="h-5 w-auto object-contain"
             />
-          </span>
+          </Link>
 
           <Tooltip>
             <TooltipTrigger asChild>

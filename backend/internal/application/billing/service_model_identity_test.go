@@ -189,6 +189,9 @@ func (r *billingRepositoryStub) ListPlansByIDs(_ context.Context, planIDs []uint
 func (r *billingRepositoryStub) GetActivePlanByCode(context.Context, string) (*domainbilling.Plan, error) {
 	panic("not used")
 }
+func (r *billingRepositoryStub) CreatePlanWithDefaultPrice(context.Context, *domainbilling.Plan, *domainbilling.Price) error {
+	panic("not used")
+}
 func (r *billingRepositoryStub) UpdatePlanWithDefaultPrice(_ context.Context, plan *domainbilling.Plan, price *domainbilling.Price) error {
 	r.updatedPlan = plan
 	r.updatedPrice = price

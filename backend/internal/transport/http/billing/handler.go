@@ -656,6 +656,52 @@ func (h *Handler) GetBillingOverview(c *gin.Context) {
 	response.Success(c, BillingOverviewDataResponse{Overview: toBillingOverviewResponse(overview)})
 }
 
+// CreatePlan godoc
+// @Summary 管理员创建周期套餐
+// @Description 创建周期套餐基础配置与默认价格
+// @Tags admin-billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body CreateBillingPlanRequest true "套餐配置"
+// @Success 200 {object} BillingPlanResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 409 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /admin/billing/plans [post]
+func (h *Handler) CreatePlan(c *gin.Context) {
+	var req CreateBillingPlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.InvalidRequestBody(c, err)
+		return
+	}
+
+	item, err := h.service.CreatePlan(c.Request.Context(), planCreateInputFromRequest(req))
+	if err != nil {
+		writePlanMutationError(c, err, "create billing plan failed")
+		return
+	}
+
+	userID := middleware.MustUserID(c)
+	h.recordAudit(
+		c,
+		userID,
+		"create_billing_plan",
+		"billing_plan",
+		item.Code,
+		map[string]interface{}{
+			"code":              req.Code,
+			"name":              req.Name,
+			"period_credit_usd": req.PeriodCreditUSD,
+			"discount_percent":  req.DiscountPercent,
+			"amount_usd":        req.AmountUSD,
+			"billing_interval":  req.BillingInterval,
+		},
+	)
+
+	response.Success(c, BillingPlanDataResponse{Plan: toPlanListResponse([]appbilling.BillingPlanView{*item})[0]})
+}
+
 // UpdatePlan godoc
 // @Summary 管理员更新周期套餐
 // @Description 更新周期套餐基础配置与默认价格
@@ -685,15 +731,7 @@ func (h *Handler) UpdatePlan(c *gin.Context) {
 
 	item, err := h.service.UpdatePlan(c.Request.Context(), uint(planID), planUpdateInputFromRequest(req))
 	if err != nil {
-		if errors.Is(err, appbilling.ErrInvalidPermissionGroup) || errors.Is(err, appbilling.ErrInvalidBillingPlan) {
-			response.ErrorFrom(c, http.StatusBadRequest, err)
-			return
-		}
-		if errors.Is(err, appbilling.ErrBillingPlanNotFound) {
-			response.ErrorFrom(c, http.StatusNotFound, err)
-			return
-		}
-		response.Error(c, http.StatusInternalServerError, "update billing plan failed")
+		writePlanMutationError(c, err, "update billing plan failed")
 		return
 	}
 
@@ -715,6 +753,22 @@ func (h *Handler) UpdatePlan(c *gin.Context) {
 	)
 
 	response.Success(c, BillingPlanDataResponse{Plan: toPlanListResponse([]appbilling.BillingPlanView{*item})[0]})
+}
+
+func writePlanMutationError(c *gin.Context, err error, fallback string) {
+	if errors.Is(err, appbilling.ErrInvalidPermissionGroup) || errors.Is(err, appbilling.ErrInvalidBillingPlan) {
+		response.ErrorFrom(c, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, appbilling.ErrBillingPlanConflict) {
+		response.ErrorFrom(c, http.StatusConflict, err)
+		return
+	}
+	if errors.Is(err, appbilling.ErrBillingPlanNotFound) {
+		response.ErrorFrom(c, http.StatusNotFound, err)
+		return
+	}
+	response.Error(c, http.StatusInternalServerError, fallback)
 }
 
 // Subscribe godoc

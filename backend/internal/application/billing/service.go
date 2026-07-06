@@ -301,6 +301,19 @@ type PlanUpdateInput struct {
 	PermissionGroupID   *uint
 }
 
+// PlanCreateInput 定义周期套餐创建入参。
+type PlanCreateInput struct {
+	Code                string
+	Name                string
+	Description         string
+	PeriodCreditNanousd int64
+	DiscountPercent     int
+	Currency            string
+	AmountCents         int64
+	BillingInterval     string
+	PermissionGroupID   *uint
+}
+
 // PaymentOrderInput 定义创建支付单入参。
 type PaymentOrderInput struct {
 	UserID               uint
@@ -969,6 +982,44 @@ func (s *Service) CompletePaymentOrder(ctx context.Context, orderNo string, exte
 	return s.repo.MarkPaymentOrderPaidAndGrantSubscription(ctx, orderNo, externalPaymentID, paidAt, subscription)
 }
 
+// CreatePlan 创建周期套餐与默认价格。
+func (s *Service) CreatePlan(ctx context.Context, input PlanCreateInput) (*BillingPlanView, error) {
+	code := normalizePlanCode(input.Code)
+	if !validPlanCode(code) || code == "free" || strings.TrimSpace(input.Name) == "" {
+		return nil, ErrInvalidBillingPlan
+	}
+	permissionGroupID, err := s.resolvePlanPermissionGroupID(ctx, input.PermissionGroupID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.validatePermissionGroupID(ctx, permissionGroupID); err != nil {
+		return nil, err
+	}
+
+	plan := &domainbilling.Plan{
+		Code:                code,
+		Name:                strings.TrimSpace(input.Name),
+		Description:         strings.TrimSpace(input.Description),
+		FeatureJSON:         "{}",
+		PeriodCreditNanousd: clampNonNegative(input.PeriodCreditNanousd),
+		DiscountPercent:     clampPercent(input.DiscountPercent),
+		IsActive:            true,
+		PermissionGroupID:   permissionGroupID,
+	}
+	price := &domainbilling.Price{
+		Code:            code + "-default",
+		BillingInterval: normalizeInterval(input.BillingInterval),
+		Currency:        normalizeCurrency(input.Currency),
+		AmountCents:     clampNonNegative(input.AmountCents),
+		IsActive:        true,
+		IsDefault:       true,
+	}
+	if err := s.repo.CreatePlanWithDefaultPrice(ctx, plan, price); err != nil {
+		return nil, mapPlanMutationError(err)
+	}
+	return billingPlanMutationView(plan, price), nil
+}
+
 // UpdatePlan 保存周期套餐与默认价格。
 func (s *Service) UpdatePlan(ctx context.Context, planID uint, input PlanUpdateInput) (*BillingPlanView, error) {
 	if planID == 0 {
@@ -1010,6 +1061,10 @@ func (s *Service) UpdatePlan(ctx context.Context, planID uint, input PlanUpdateI
 	if err := s.repo.UpdatePlanWithDefaultPrice(ctx, plan, price); err != nil {
 		return nil, mapPlanMutationError(err)
 	}
+	return billingPlanMutationView(plan, price), nil
+}
+
+func billingPlanMutationView(plan *domainbilling.Plan, price *domainbilling.Price) *BillingPlanView {
 	return &BillingPlanView{
 		ID:                  plan.ID,
 		Code:                plan.Code,
@@ -1023,6 +1078,7 @@ func (s *Service) UpdatePlan(ctx context.Context, planID uint, input PlanUpdateI
 		PermissionGroupID:   plan.PermissionGroupID,
 		Prices: []BillingPriceView{
 			{
+				ID:              price.ID,
 				PlanID:          plan.ID,
 				Code:            price.Code,
 				BillingInterval: price.BillingInterval,
@@ -1031,13 +1087,15 @@ func (s *Service) UpdatePlan(ctx context.Context, planID uint, input PlanUpdateI
 				IsDefault:       true,
 			},
 		},
-	}, nil
+	}
 }
 
 func mapPlanMutationError(err error) error {
 	switch {
 	case errors.Is(err, repository.ErrNotFound):
 		return ErrBillingPlanNotFound
+	case errors.Is(err, repository.ErrDuplicate):
+		return ErrBillingPlanConflict
 	case errors.Is(err, repository.ErrInvalidInput):
 		return ErrInvalidBillingPlan
 	default:
@@ -1078,6 +1136,31 @@ func (s *Service) validatePermissionGroupID(ctx context.Context, groupID *uint) 
 		return ErrInvalidPermissionGroup
 	}
 	return nil
+}
+
+func normalizePlanCode(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	value = strings.ReplaceAll(value, " ", "-")
+	return value
+}
+
+func validPlanCode(value string) bool {
+	if len(value) < 2 || len(value) > 32 {
+		return false
+	}
+	for _, ch := range value {
+		if ch >= 'a' && ch <= 'z' {
+			continue
+		}
+		if ch >= '0' && ch <= '9' {
+			continue
+		}
+		if ch == '-' || ch == '_' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // RecordUsage 记录用量。

@@ -16,7 +16,7 @@ func SecurityHeaders(env string) gin.HandlerFunc {
 		setHeaderIfEmpty(header, "X-Content-Type-Options", "nosniff")
 		setHeaderIfEmpty(header, "X-Frame-Options", "DENY")
 		setHeaderIfEmpty(header, "Referrer-Policy", "no-referrer")
-		setHeaderIfEmpty(header, "Permissions-Policy", "camera=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), browsing-topics=()")
+		setHeaderIfEmpty(header, "Permissions-Policy", "camera=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=()")
 		setHeaderIfEmpty(header, "Content-Security-Policy", defaultContentSecurityPolicy)
 		if strings.EqualFold(strings.TrimSpace(env), "prod") || strings.EqualFold(strings.TrimSpace(env), "production") {
 			setHeaderIfEmpty(header, "Strict-Transport-Security", "max-age=31536000; includeSubDomains")

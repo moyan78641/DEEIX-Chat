@@ -120,6 +120,19 @@ type UpdateBillingPlanRequest struct {
 	PermissionGroupID *uint   `json:"permissionGroupID"`
 }
 
+// CreateBillingPlanRequest 创建周期套餐。
+type CreateBillingPlanRequest struct {
+	Code              string  `json:"code" binding:"required,min=2,max=32"`
+	Name              string  `json:"name" binding:"required,min=1,max=64"`
+	Description       string  `json:"description" binding:"max=255"`
+	PeriodCreditUSD   float64 `json:"periodCreditUSD" binding:"min=0"`
+	DiscountPercent   int     `json:"discountPercent" binding:"min=0,max=100"`
+	Currency          string  `json:"currency" binding:"omitempty,max=16"`
+	AmountUSD         float64 `json:"amountUSD" binding:"min=0"`
+	BillingInterval   string  `json:"billingInterval" binding:"required,oneof=month year lifetime"`
+	PermissionGroupID *uint   `json:"permissionGroupID"`
+}
+
 type nullableIntRequest struct {
 	Set   bool
 	Value *int
@@ -1119,6 +1132,20 @@ func modelPricingInputFromRequest(req UpsertModelPricingRequest) appbilling.Mode
 
 func planUpdateInputFromRequest(req UpdateBillingPlanRequest) appbilling.PlanUpdateInput {
 	return appbilling.PlanUpdateInput{
+		Name:                req.Name,
+		Description:         req.Description,
+		PeriodCreditNanousd: usdToNanousd(req.PeriodCreditUSD),
+		DiscountPercent:     req.DiscountPercent,
+		Currency:            req.Currency,
+		AmountCents:         usdToCents(req.AmountUSD),
+		BillingInterval:     req.BillingInterval,
+		PermissionGroupID:   req.PermissionGroupID,
+	}
+}
+
+func planCreateInputFromRequest(req CreateBillingPlanRequest) appbilling.PlanCreateInput {
+	return appbilling.PlanCreateInput{
+		Code:                req.Code,
 		Name:                req.Name,
 		Description:         req.Description,
 		PeriodCreditNanousd: usdToNanousd(req.PeriodCreditUSD),

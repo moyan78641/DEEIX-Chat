@@ -15,6 +15,7 @@ import type {
   AdminModelPricingDTO,
   AdminModelPricingData,
   AdminModelPricingPage,
+  CreateAdminBillingPlanRequest,
   CreateAdminRedemptionCodeRequest,
   UpdateAdminRedemptionCodeRequest,
   UpdateAdminBillingConfigRequest,
@@ -48,6 +49,17 @@ export async function updateAdminBillingPlan(
   return authedRequest<AdminBillingPlanData>(
     `/api/v1/admin/billing/plans/${planID}`,
     { method: "PATCH", accessToken, body: payload },
+    true,
+  );
+}
+
+export async function createAdminBillingPlan(
+  accessToken: string,
+  payload: CreateAdminBillingPlanRequest,
+): Promise<AdminBillingPlanData> {
+  return authedRequest<AdminBillingPlanData>(
+    "/api/v1/admin/billing/plans",
+    { method: "POST", accessToken, body: payload },
     true,
   );
 }

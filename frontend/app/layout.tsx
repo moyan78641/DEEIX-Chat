@@ -6,7 +6,6 @@ import { AppVersionGuard } from "@/features/layouts/components/providers/app-ver
 import { FontSizeProvider } from "@/features/layouts/components/providers/font-size-provider";
 import { WorkspaceShell } from "@/features/layouts/components/sections/workspace-shell";
 import { AppI18nProvider } from "@/i18n/app-i18n-provider";
-import { DevtoolsBrandBanner } from "@/shared/components/devtools-brand-banner";
 import { ThemeProvider } from "@/shared/components/theme-provider";
 import { PWAServiceWorkerRegister } from "@/shared/components/pwa-service-worker-register";
 import { pwaAsset } from "@/shared/pwa/assets";
@@ -88,7 +87,6 @@ export default function RootLayout({
                   <AppVersionGuard />
                   <PWAServiceWorkerRegister />
                   <Toaster />
-                  <DevtoolsBrandBanner />
                 </ChatFontProvider>
               </FontSizeProvider>
             </SiteProfileProvider>

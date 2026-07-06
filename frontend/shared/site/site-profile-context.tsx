@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 
 import { useAppLocale } from "@/i18n/app-i18n-provider";
 import { DEFAULT_SITE_PROFILE, getSiteProfile, mergeSiteProfile } from "@/shared/api/site-profile";
@@ -94,16 +95,6 @@ function upsertFaviconLink(href: string) {
   }
 }
 
-function applySiteDocumentTitle(profile: SiteProfile) {
-  if (typeof document === "undefined") {
-    return;
-  }
-  const title = profile.name?.trim();
-  if (title) {
-    document.title = title;
-  }
-}
-
 export function SiteProfileProvider({
   children,
   initialProfile,
@@ -112,6 +103,7 @@ export function SiteProfileProvider({
   initialProfile?: Partial<SiteProfile> | null;
 }) {
   const { locale } = useAppLocale();
+  const pathname = usePathname();
   const initial = initialProfile ?? readInjectedSiteProfile();
   const [profile, setProfile] = React.useState<SiteProfile>(() => mergeSiteProfile(initial ?? DEFAULT_SITE_PROFILE));
   const [ready, setReady] = React.useState(Boolean(initial));
@@ -136,8 +128,55 @@ export function SiteProfileProvider({
   }, [locale]);
 
   React.useEffect(() => {
-    applySiteDocumentTitle(profile);
-  }, [profile]);
+    if (typeof document === "undefined") {
+      return undefined;
+    }
+    const title = profile.name?.trim();
+    if (!title) {
+      return undefined;
+    }
+
+    let frame = 0;
+    let timer = 0;
+    const apply = () => {
+      if (document.title !== title) {
+        document.title = title;
+      }
+    };
+    const scheduleApply = () => {
+      apply();
+      if (!frame) {
+        frame = window.requestAnimationFrame(() => {
+          frame = 0;
+          apply();
+        });
+      }
+      if (!timer) {
+        timer = window.setTimeout(() => {
+          timer = 0;
+          apply();
+        }, 50);
+      }
+    };
+
+    scheduleApply();
+    const observer = new MutationObserver(scheduleApply);
+    observer.observe(document.head, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [pathname, profile.name]);
 
   React.useEffect(() => {
     if (typeof document === "undefined") {

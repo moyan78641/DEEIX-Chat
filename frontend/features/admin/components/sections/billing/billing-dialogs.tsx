@@ -134,6 +134,7 @@ function pricingFormFromJSON(current: PricingFormState, raw: string, messages: {
 type PlanBillingDialogProps = {
   open: boolean;
   saving: boolean;
+  mode: "create" | "edit";
   planForm: PlanFormState | null;
   setPlanForm: React.Dispatch<React.SetStateAction<PlanFormState | null>>;
   permissionGroups: PermissionGroup[];
@@ -145,6 +146,7 @@ type PlanBillingDialogProps = {
 export function PlanBillingDialog({
   open,
   saving,
+  mode,
   planForm,
   setPlanForm,
   permissionGroups,
@@ -158,8 +160,8 @@ export function PlanBillingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[min(86vh,760px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
         <DialogHeader className="shrink-0 px-4 py-4">
-          <DialogTitle>{t("plans.dialogTitle")}</DialogTitle>
-          <DialogDescription>{t("plans.dialogDescription")}</DialogDescription>
+          <DialogTitle>{mode === "create" ? t("plans.createDialogTitle") : t("plans.editDialogTitle")}</DialogTitle>
+          <DialogDescription>{mode === "create" ? t("plans.createDialogDescription") : t("plans.editDialogDescription")}</DialogDescription>
         </DialogHeader>
 
         <motion.form layout transition={DIALOG_LAYOUT_TRANSITION} onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
@@ -168,16 +170,26 @@ export function PlanBillingDialog({
               <>
                 <div className="grid grid-cols-2 gap-5">
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t("plans.name")}</p>
-                    <Input value={planForm.name} onChange={(event) => setPlanForm({ ...planForm, name: event.target.value })} required />
+                    <p className="text-xs text-muted-foreground">{t("plans.code")}</p>
+                    <Input
+                      value={planForm.code}
+                      onChange={(event) => setPlanForm({ ...planForm, code: event.target.value.toLowerCase() })}
+                      disabled={mode === "edit"}
+                      pattern="[a-z0-9_-]{2,32}"
+                      required={mode === "create"}
+                    />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t("plans.price")}</p>
-                    <Input value={planForm.amount} type="number" min="0" step="0.01" onChange={(event) => setPlanForm({ ...planForm, amount: event.target.value })} />
+                    <p className="text-xs text-muted-foreground">{t("plans.name")}</p>
+                    <Input value={planForm.name} onChange={(event) => setPlanForm({ ...planForm, name: event.target.value })} required />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">{t("plans.price")}</p>
+                    <Input value={planForm.amount} type="number" min="0" step="0.01" onChange={(event) => setPlanForm({ ...planForm, amount: event.target.value })} />
+                  </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">{t("plans.interval")}</p>
                     <Select value={planForm.billingInterval} onValueChange={(value) => setPlanForm({ ...planForm, billingInterval: value })}>
@@ -199,10 +211,11 @@ export function PlanBillingDialog({
                     <p className="text-xs text-muted-foreground">{t("plans.discount")}</p>
                     <Input value={planForm.discountPercent} type="number" min="0" max="100" step="1" onChange={(event) => setPlanForm({ ...planForm, discountPercent: event.target.value })} />
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t("plans.description")}</p>
-                    <Input value={planForm.description} onChange={(event) => setPlanForm({ ...planForm, description: event.target.value })} />
-                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{t("plans.description")}</p>
+                  <Input value={planForm.description} onChange={(event) => setPlanForm({ ...planForm, description: event.target.value })} />
                 </div>
 
                 <div className="space-y-1">
@@ -232,7 +245,7 @@ export function PlanBillingDialog({
             <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>
               {tActions("cancel")}
             </Button>
-            <Button type="submit" disabled={saving || !planForm?.name.trim()}>
+            <Button type="submit" disabled={saving || !planForm?.name.trim() || (mode === "create" && !planForm?.code.trim())}>
               {saving ? <SpinnerLabel>{tActions("saving")}</SpinnerLabel> : tActions("save")}
             </Button>
           </DialogFooter>
