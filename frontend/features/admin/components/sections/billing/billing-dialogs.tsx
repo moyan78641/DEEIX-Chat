@@ -175,7 +175,7 @@ export function PlanBillingDialog({
                       value={planForm.code}
                       onChange={(event) => setPlanForm({ ...planForm, code: event.target.value.toLowerCase() })}
                       disabled={mode === "edit"}
-                      pattern="[a-z0-9_-]{2,32}"
+                      pattern={"[a-z0-9_\\-]{2,32}"}
                       required={mode === "create"}
                     />
                   </div>

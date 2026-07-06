@@ -756,7 +756,10 @@ func (h *Handler) UpdatePlan(c *gin.Context) {
 }
 
 func writePlanMutationError(c *gin.Context, err error, fallback string) {
-	if errors.Is(err, appbilling.ErrInvalidPermissionGroup) || errors.Is(err, appbilling.ErrInvalidBillingPlan) {
+	if errors.Is(err, appbilling.ErrInvalidPermissionGroup) ||
+		errors.Is(err, appbilling.ErrInvalidBillingPlan) ||
+		errors.Is(err, appbilling.ErrBillingPlanCodeInvalid) ||
+		errors.Is(err, appbilling.ErrBillingPlanCodeReserved) {
 		response.ErrorFrom(c, http.StatusBadRequest, err)
 		return
 	}

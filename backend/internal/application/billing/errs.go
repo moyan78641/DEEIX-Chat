@@ -29,6 +29,10 @@ var (
 	ErrBillingPlanNotFound = errors.New("billing plan not found")
 	// ErrBillingPlanConflict 计费套餐编码已存在。
 	ErrBillingPlanConflict = errors.New("billing plan already exists")
+	// ErrBillingPlanCodeInvalid 计费套餐编码格式非法。
+	ErrBillingPlanCodeInvalid = errors.New("billing plan code is invalid")
+	// ErrBillingPlanCodeReserved 计费套餐编码为系统保留。
+	ErrBillingPlanCodeReserved = errors.New("billing plan code is reserved")
 	// ErrInvalidPermissionGroup 非法权限组。
 	ErrInvalidPermissionGroup = errors.New("invalid permission group")
 	// ErrPermissionGroupReferenceCounterUnavailable 权限组套餐引用检查能力不可用。

@@ -985,7 +985,13 @@ func (s *Service) CompletePaymentOrder(ctx context.Context, orderNo string, exte
 // CreatePlan 创建周期套餐与默认价格。
 func (s *Service) CreatePlan(ctx context.Context, input PlanCreateInput) (*BillingPlanView, error) {
 	code := normalizePlanCode(input.Code)
-	if !validPlanCode(code) || code == "free" || strings.TrimSpace(input.Name) == "" {
+	if !validPlanCode(code) {
+		return nil, ErrBillingPlanCodeInvalid
+	}
+	if code == "free" {
+		return nil, ErrBillingPlanCodeReserved
+	}
+	if strings.TrimSpace(input.Name) == "" {
 		return nil, ErrInvalidBillingPlan
 	}
 	permissionGroupID, err := s.resolvePlanPermissionGroupID(ctx, input.PermissionGroupID)

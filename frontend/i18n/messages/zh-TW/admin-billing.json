@@ -283,6 +283,8 @@
     "freeSaveFailed": "免費狀態儲存失敗",
     "planCreated": "訂閱方案已建立",
     "planCreateFailed": "建立訂閱方案失敗",
+    "planCodeInvalid": "套餐編碼只能包含 2-32 位小寫字母、數字、橫線或下劃線。",
+    "planCodeReserved": "free 是系統保留編碼，請換一個編碼；免費體驗額度建議使用單獨的每日贈送額度配置。",
     "planSaved": "週期套餐已儲存",
     "planSaveFailed": "儲存週期套餐失敗",
     "redemptionInvalid": "兌換碼配置無效",

@@ -1404,6 +1404,17 @@ export function AdminBillingPage() {
   async function savePlan(event?: React.FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (!planDialogMode || !planForm) return;
+    const planCode = planForm.code.trim().toLowerCase();
+    if (planDialogMode === "create") {
+      if (!/^[a-z0-9_-]{2,32}$/.test(planCode)) {
+        toast.error(t("toast.planCreateFailed"), { description: t("toast.planCodeInvalid") });
+        return;
+      }
+      if (planCode === "free") {
+        toast.error(t("toast.planCreateFailed"), { description: t("toast.planCodeReserved") });
+        return;
+      }
+    }
     setSaving(true);
     try {
       const token = await resolveAccessToken();
@@ -1422,7 +1433,7 @@ export function AdminBillingPage() {
         permissionGroupID: Number(planForm.permissionGroupID) || undefined,
       };
       const data = planDialogMode === "create"
-        ? await createAdminBillingPlan(token, { ...payload, code: planForm.code.trim() })
+        ? await createAdminBillingPlan(token, { ...payload, code: planCode })
         : editPlan
           ? await updateAdminBillingPlan(token, editPlan.id, payload)
           : null;
