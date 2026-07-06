@@ -602,6 +602,12 @@
       "disabled": "未開啟",
       "continue": "繼續支付",
       "balancePay": "餘額購買",
+      "useBalance": "使用餘額抵扣",
+      "availableBalance": "可用餘額 {value}",
+      "originalAmount": "原價",
+      "couponDiscount": "優惠碼折扣",
+      "balanceDeduction": "餘額抵扣",
+      "onlinePayAmount": "線上支付",
       "epay": {
         "alipay": "支付寶",
         "wxpay": "微信支付",
@@ -611,7 +617,10 @@
     },
     "coupon": {
       "code": "優惠碼",
-      "placeholder": "可選"
+      "placeholder": "可選",
+      "apply": "套用",
+      "applying": "套用中",
+      "needsApply": "優惠碼已變更，請先套用後再支付。"
     },
     "topUp": {
       "title": "充值",
@@ -651,7 +660,11 @@
       "redemptionSucceeded": "兌換成功",
       "redemptionFailed": "兌換失敗",
       "balancePurchaseSucceeded": "餘額購買成功",
-      "balancePurchaseFailed": "餘額購買失敗"
+      "balancePurchaseFailed": "餘額購買失敗",
+      "couponCodeRequired": "請輸入優惠碼。",
+      "couponApplied": "優惠碼已套用",
+      "couponApplyFailed": "優惠碼套用失敗",
+      "balanceDeductionApplied": "餘額抵扣已試算"
     }
   }
 }

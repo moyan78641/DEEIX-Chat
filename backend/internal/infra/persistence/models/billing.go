@@ -82,6 +82,7 @@ type PaymentOrder struct {
 	BaseAmountCents         int64      `gorm:"not null;default:0;comment:基准金额(分)"`
 	OriginalBaseAmountCents int64      `gorm:"not null;default:0;comment:优惠前基准金额(分)"`
 	DiscountAmountCents     int64      `gorm:"not null;default:0;comment:优惠金额(分)"`
+	BalanceAmountCents      int64      `gorm:"not null;default:0;comment:站内余额抵扣金额(USD分)"`
 	CouponID                uint       `gorm:"not null;default:0;index:idx_billing_payment_orders_coupon_id;comment:优惠码ID"`
 	CouponCode              string     `gorm:"size:32;not null;default:'';index:idx_billing_payment_orders_coupon_code;comment:优惠码提示"`
 	PayCurrency             string     `gorm:"size:16;not null;default:'CNY';comment:支付币种"`

@@ -2027,6 +2027,15 @@ export function AdminBillingPage() {
           <TabsTrigger value="settings" className="flex-none rounded-none border-b-2 border-transparent px-3 py-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
             {t("tabs.settings")}
           </TabsTrigger>
+          <TabsTrigger value="plans" className="flex-none rounded-none border-b-2 border-transparent px-3 py-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+            {t("tabs.plans")}
+          </TabsTrigger>
+          <TabsTrigger value="redemptions" className="flex-none rounded-none border-b-2 border-transparent px-3 py-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+            {t("tabs.redemptions")}
+          </TabsTrigger>
+          <TabsTrigger value="coupons" className="flex-none rounded-none border-b-2 border-transparent px-3 py-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
+            {t("tabs.coupons")}
+          </TabsTrigger>
           <TabsTrigger value="modelPricing" className="flex-none rounded-none border-b-2 border-transparent px-3 py-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none">
             {t("tabs.modelPricing")}
           </TabsTrigger>
@@ -2124,9 +2133,9 @@ export function AdminBillingPage() {
       <Separator className="mx-1 my-10" />
 
       {paymentConfigSection}
+        </TabsContent>
 
-      <Separator className="mx-1 my-10" />
-
+        <TabsContent value="redemptions" className="space-y-6">
       <section className="space-y-6 px-1">
         <div className="flex h-10 items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">{t("redemption.title")}</h3>
@@ -2381,9 +2390,9 @@ export function AdminBillingPage() {
           />
         </div>
       </section>
+        </TabsContent>
 
-      <Separator className="mx-1 my-10" />
-
+        <TabsContent value="coupons" className="space-y-6">
       <section className="space-y-6 px-1">
         <div className="flex h-10 items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">{t("coupon.title")}</h3>
@@ -2586,9 +2595,9 @@ export function AdminBillingPage() {
           />
         </div>
       </section>
+        </TabsContent>
 
-      <Separator className="mx-1 my-10" />
-
+        <TabsContent value="plans" className="space-y-6">
       <section className="space-y-6 px-1">
         <div className="flex h-10 items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">{t("plans.title")}</h3>

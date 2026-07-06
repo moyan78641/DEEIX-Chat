@@ -688,6 +688,39 @@ func (r *Repo) MarkPaymentOrderPaidAndGrantSubscription(
 			return repository.ErrInvalidInput
 		}
 
+		if order.BalanceAmountCents > 0 {
+			account, err := getOrCreateBillingAccountForUpdate(tx, order.UserID)
+			if err != nil {
+				return err
+			}
+			debitNanousd := centsToNanousd(order.BalanceAmountCents)
+			if account.BalanceNanousd < debitNanousd {
+				return repository.ErrInsufficientBalance
+			}
+			nextBalance := account.BalanceNanousd - debitNanousd
+			if err := tx.Model(account).Updates(map[string]interface{}{
+				"balance_nanousd": nextBalance,
+				"currency":        "USD",
+				"status":          "active",
+			}).Error; err != nil {
+				return translateError(err)
+			}
+			transaction := model.BalanceTransaction{
+				AccountID:           account.ID,
+				UserID:              order.UserID,
+				Type:                domainbilling.BalanceTransactionTypeSubscriptionPurchase,
+				AmountNanousd:       -debitNanousd,
+				BalanceAfterNanousd: nextBalance,
+				RefType:             "payment_order",
+				RefID:               order.ID,
+				RefNo:               order.OrderNo,
+				Description:         "余额抵扣订阅套餐",
+			}
+			if err := tx.Create(&transaction).Error; err != nil {
+				return translateError(err)
+			}
+		}
+
 		var plan model.BillingPlan
 		if err := tx.Where("id = ? AND is_active = ?", subscription.PlanID, true).First(&plan).Error; err != nil {
 			return translateError(err)
@@ -2307,6 +2340,7 @@ func paymentOrderModelFromDomain(item *domainbilling.PaymentOrder) model.Payment
 		BaseAmountCents:         clampNonNegative(item.BaseAmountCents),
 		OriginalBaseAmountCents: clampNonNegative(item.OriginalBaseAmountCents),
 		DiscountAmountCents:     clampNonNegative(item.DiscountAmountCents),
+		BalanceAmountCents:      clampNonNegative(item.BalanceAmountCents),
 		CouponID:                item.CouponID,
 		CouponCode:              strings.TrimSpace(item.CouponCode),
 		PayCurrency:             normalizeCurrency(item.PayCurrency),
@@ -2348,6 +2382,7 @@ func toDomainPaymentOrder(item model.PaymentOrder) domainbilling.PaymentOrder {
 		BaseAmountCents:         item.BaseAmountCents,
 		OriginalBaseAmountCents: item.OriginalBaseAmountCents,
 		DiscountAmountCents:     item.DiscountAmountCents,
+		BalanceAmountCents:      item.BalanceAmountCents,
 		CouponID:                item.CouponID,
 		CouponCode:              item.CouponCode,
 		PayCurrency:             item.PayCurrency,
@@ -3388,6 +3423,13 @@ func clampNonNegative(value int64) int64 {
 		return 0
 	}
 	return value
+}
+
+func centsToNanousd(value int64) int64 {
+	if value <= 0 {
+		return 0
+	}
+	return value * 10000000
 }
 
 func minInt64(a int64, b int64) int64 {

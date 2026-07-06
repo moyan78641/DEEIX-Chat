@@ -362,6 +362,92 @@ func (r *billingRepositoryStub) SumBillableNanousd(context.Context, uint, time.T
 	return r.billableNanousd, nil
 }
 
+func TestQuotePaymentAppliesPartialBalanceDeduction(t *testing.T) {
+	repo := &billingRepositoryStub{
+		mode: "period",
+		plans: []domainbilling.Plan{{
+			ID:       2,
+			Code:     "pro",
+			Name:     "Pro",
+			IsActive: true,
+		}},
+		prices: []domainbilling.Price{{
+			ID:              3,
+			PlanID:          2,
+			BillingInterval: domainbilling.IntervalMonth,
+			Currency:        "USD",
+			AmountCents:     2000,
+			IsActive:        true,
+		}},
+		account: &domainbilling.BillingAccount{UserID: 1, Currency: "USD", Status: "active", BalanceNanousd: centsToNanousd(1500)},
+	}
+	service := NewService(repo)
+
+	quote, err := service.QuotePayment(context.Background(), PaymentQuoteInput{
+		UserID:               1,
+		OrderType:            domainbilling.PaymentOrderTypeSubscription,
+		PriceID:              3,
+		Provider:             domainbilling.PaymentProviderStripe,
+		PreferredPayCurrency: "USD",
+		UseBalance:           true,
+	})
+	if err != nil {
+		t.Fatalf("QuotePayment() error = %v", err)
+	}
+	if quote.OriginalBaseAmountCents != 2000 || quote.BalanceAmountCents != 1500 || quote.BaseAmountCents != 500 || quote.PayAmountCents != 500 {
+		t.Fatalf("quote amounts = original:%d balance:%d base:%d pay:%d, want 2000/1500/500/500",
+			quote.OriginalBaseAmountCents, quote.BalanceAmountCents, quote.BaseAmountCents, quote.PayAmountCents)
+	}
+
+	order, _, _, err := service.CreatePaymentOrder(context.Background(), PaymentOrderInput{
+		UserID:               1,
+		PriceID:              3,
+		Provider:             domainbilling.PaymentProviderStripe,
+		PreferredPayCurrency: "USD",
+		UseBalance:           true,
+	})
+	if err != nil {
+		t.Fatalf("CreatePaymentOrder() error = %v", err)
+	}
+	if order.BalanceAmountCents != 1500 || order.BaseAmountCents != 500 || order.PayAmountCents != 500 {
+		t.Fatalf("order amounts = balance:%d base:%d pay:%d, want 1500/500/500",
+			order.BalanceAmountCents, order.BaseAmountCents, order.PayAmountCents)
+	}
+}
+
+func TestCreatePaymentOrderRejectsExternalCheckoutWhenBalanceFullyCovers(t *testing.T) {
+	repo := &billingRepositoryStub{
+		mode: "period",
+		plans: []domainbilling.Plan{{
+			ID:       2,
+			Code:     "pro",
+			Name:     "Pro",
+			IsActive: true,
+		}},
+		prices: []domainbilling.Price{{
+			ID:              3,
+			PlanID:          2,
+			BillingInterval: domainbilling.IntervalMonth,
+			Currency:        "USD",
+			AmountCents:     2000,
+			IsActive:        true,
+		}},
+		account: &domainbilling.BillingAccount{UserID: 1, Currency: "USD", Status: "active", BalanceNanousd: centsToNanousd(2000)},
+	}
+	service := NewService(repo)
+
+	_, _, _, err := service.CreatePaymentOrder(context.Background(), PaymentOrderInput{
+		UserID:               1,
+		PriceID:              3,
+		Provider:             domainbilling.PaymentProviderStripe,
+		PreferredPayCurrency: "USD",
+		UseBalance:           true,
+	})
+	if !errors.Is(err, ErrPaymentCoveredByBalance) {
+		t.Fatalf("CreatePaymentOrder() error = %v, want ErrPaymentCoveredByBalance", err)
+	}
+}
+
 func TestRecordUsageWithReservationUsesBillingAtForPeriod(t *testing.T) {
 	billingAt := time.Date(2026, 6, 30, 23, 59, 58, 0, time.UTC)
 	usageDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)

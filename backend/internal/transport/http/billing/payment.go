@@ -104,6 +104,7 @@ func (h *Handler) CreateCheckout(c *gin.Context) {
 			USDToCNYRate:         settings.USDToCNYRate,
 			PreferredPayCurrency: settings.DisplayCurrency,
 			CouponCode:           req.CouponCode,
+			UseBalance:           req.UseBalance,
 		})
 	}
 	if err != nil {
@@ -146,6 +147,7 @@ func (h *Handler) CreateCheckout(c *gin.Context) {
 			"base_amount_cents":          order.BaseAmountCents,
 			"original_base_amount_cents": order.OriginalBaseAmountCents,
 			"discount_amount_cents":      order.DiscountAmountCents,
+			"balance_amount_cents":       order.BalanceAmountCents,
 			"coupon_id":                  order.CouponID,
 			"base_currency":              order.BaseCurrency,
 			"pay_amount_cents":           order.PayAmountCents,
@@ -155,6 +157,54 @@ func (h *Handler) CreateCheckout(c *gin.Context) {
 	)
 
 	response.Success(c, CheckoutDataResponse{Checkout: toCheckoutResponse(order)})
+}
+
+// QuotePayment godoc
+// @Summary 支付前试算
+// @Description 校验优惠码并返回优惠、余额抵扣和最终支付金额，不创建订单也不消耗优惠码次数
+// @Tags billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body PaymentQuoteRequest true "试算参数"
+// @Success 200 {object} PaymentQuoteResponseDoc
+// @Failure 400 {object} ErrorDoc
+// @Failure 500 {object} ErrorDoc
+// @Router /billing/payments/quote [post]
+func (h *Handler) QuotePayment(c *gin.Context) {
+	var req PaymentQuoteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.InvalidRequestBody(c, err)
+		return
+	}
+	settings, err := h.resolvePaymentSettings(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "resolve payment settings failed")
+		return
+	}
+	provider, err := resolvePaymentProvider(req.PaymentProvider, settings.Providers)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "payment provider is unavailable")
+		return
+	}
+	quote, err := h.service.QuotePayment(c.Request.Context(), appbilling.PaymentQuoteInput{
+		UserID:               middleware.MustUserID(c),
+		OrderType:            req.OrderType,
+		PriceID:              req.PriceID,
+		AmountMinorUnits:     req.AmountMinorUnits,
+		AmountCurrency:       settings.DisplayCurrency,
+		Cycles:               req.Cycles,
+		Provider:             provider,
+		USDToCNYRate:         settings.USDToCNYRate,
+		PreferredPayCurrency: settings.DisplayCurrency,
+		CouponCode:           req.CouponCode,
+		UseBalance:           req.UseBalance,
+	})
+	if err != nil {
+		writePaymentMutationError(c, err)
+		return
+	}
+	response.Success(c, PaymentQuoteDataResponse{Quote: toPaymentQuoteResponse(quote)})
 }
 
 // PurchaseSubscriptionWithBalance godoc
@@ -207,6 +257,7 @@ func (h *Handler) PurchaseSubscriptionWithBalance(c *gin.Context) {
 			"base_amount_cents":          order.BaseAmountCents,
 			"original_base_amount_cents": order.OriginalBaseAmountCents,
 			"discount_amount_cents":      order.DiscountAmountCents,
+			"balance_amount_cents":       order.BalanceAmountCents,
 			"coupon_id":                  order.CouponID,
 		},
 	)
@@ -235,7 +286,8 @@ func writePaymentMutationError(c *gin.Context, err error) {
 		return
 	}
 	if errors.Is(err, appbilling.ErrUsageBalanceInsufficient) ||
-		errors.Is(err, appbilling.ErrPaymentRequired) {
+		errors.Is(err, appbilling.ErrPaymentRequired) ||
+		errors.Is(err, appbilling.ErrPaymentCoveredByBalance) {
 		response.ErrorFrom(c, http.StatusBadRequest, err)
 		return
 	}

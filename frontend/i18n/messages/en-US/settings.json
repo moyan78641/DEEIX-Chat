@@ -602,6 +602,12 @@
       "disabled": "Disabled",
       "continue": "Continue",
       "balancePay": "Pay with balance",
+      "useBalance": "Use balance",
+      "availableBalance": "Available balance {value}",
+      "originalAmount": "Original amount",
+      "couponDiscount": "Coupon discount",
+      "balanceDeduction": "Balance deduction",
+      "onlinePayAmount": "Online payment",
       "epay": {
         "alipay": "Alipay",
         "wxpay": "WeChat Pay",
@@ -611,7 +617,10 @@
     },
     "coupon": {
       "code": "Coupon code",
-      "placeholder": "Optional"
+      "placeholder": "Optional",
+      "apply": "Apply",
+      "applying": "Applying",
+      "needsApply": "The coupon changed. Apply it before paying."
     },
     "topUp": {
       "title": "Top up",
@@ -651,7 +660,11 @@
       "redemptionSucceeded": "Redemption applied",
       "redemptionFailed": "Redemption failed",
       "balancePurchaseSucceeded": "Purchased with balance",
-      "balancePurchaseFailed": "Balance purchase failed"
+      "balancePurchaseFailed": "Balance purchase failed",
+      "couponCodeRequired": "Enter a coupon code.",
+      "couponApplied": "Coupon applied",
+      "couponApplyFailed": "Failed to apply coupon",
+      "balanceDeductionApplied": "Balance deduction calculated"
     }
   }
 }

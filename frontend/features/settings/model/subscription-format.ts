@@ -52,6 +52,14 @@ function formatCurrencyAmount(amount: number, currency: "USD" | "CNY"): string {
   }).format(Math.max(0, amount));
 }
 
+export function formatPaymentMinorUnits(amountCents: number, currency: string): string {
+  const normalized = (currency || "USD").toUpperCase();
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: normalized,
+  }).format(Math.max(0, amountCents || 0) / 100);
+}
+
 export function billingDisplayInputCurrency(billingDisplay: BillingDisplayOptions = DEFAULT_BILLING_DISPLAY): "USD" | "CNY" {
   const rate = Number(billingDisplay.usdToCnyRate);
   return billingDisplay.currency === "CNY" && Number.isFinite(rate) && rate > 0 ? "CNY" : "USD";

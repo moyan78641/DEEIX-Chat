@@ -323,6 +323,7 @@ type PaymentOrderInput struct {
 	USDToCNYRate         float64
 	PreferredPayCurrency string
 	CouponCode           string
+	UseBalance           bool
 }
 
 // TopUpPaymentOrderInput 定义创建按量充值支付单入参。
@@ -344,12 +345,58 @@ type BalanceSubscriptionPurchaseInput struct {
 	CouponCode string
 }
 
+// PaymentQuoteInput 定义支付试算入参。
+type PaymentQuoteInput struct {
+	UserID               uint
+	OrderType            string
+	PriceID              uint
+	AmountMinorUnits     int64
+	AmountCurrency       string
+	Cycles               int
+	Provider             string
+	USDToCNYRate         float64
+	PreferredPayCurrency string
+	CouponCode           string
+	UseBalance           bool
+}
+
+// PaymentQuoteView 描述支付前可展示的优惠与余额抵扣结果。
+type PaymentQuoteView struct {
+	OrderType               string
+	PlanID                  uint
+	PriceID                 uint
+	BaseCurrency            string
+	OriginalBaseAmountCents int64
+	DiscountAmountCents     int64
+	BalanceAmountCents      int64
+	BaseAmountCents         int64
+	PayCurrency             string
+	PayAmountCents          int64
+	FXRate                  string
+	CouponID                uint
+	CouponCode              string
+	CreditNanousd           int64
+}
+
 type paymentQuote struct {
 	BaseCurrency    string
 	BaseAmountCents int64
 	PayCurrency     string
 	PayAmountCents  int64
 	FXRate          float64
+}
+
+type subscriptionOrderQuote struct {
+	Plan                    *domainbilling.Plan
+	Price                   *domainbilling.Price
+	CouponQuote             *CouponQuoteView
+	BaseCurrency            string
+	OriginalBaseAmountCents int64
+	DiscountAmountCents     int64
+	BalanceAmountCents      int64
+	BalanceDebitNanousd     int64
+	ExternalBaseAmountCents int64
+	PaymentQuote            paymentQuote
 }
 
 // BillingAccountBalanceInput 定义管理员设置余额入参。
@@ -776,6 +823,140 @@ func (s *Service) SetUserSubscriptionByPlanCode(
 	return s.GetCurrentSubscriptionSnapshot(ctx, userID, now)
 }
 
+func (s *Service) buildSubscriptionPaymentQuote(ctx context.Context, input PaymentOrderInput) (subscriptionOrderQuote, error) {
+	provider := strings.TrimSpace(input.Provider)
+	switch provider {
+	case domainbilling.PaymentProviderStripe, domainbilling.PaymentProviderEPay:
+	default:
+		return subscriptionOrderQuote{}, ErrPaymentProviderUnavailable
+	}
+	cycles := input.Cycles
+	if cycles <= 0 {
+		cycles = 1
+	}
+
+	price, err := s.repo.GetPriceByID(ctx, input.PriceID)
+	if err != nil {
+		return subscriptionOrderQuote{}, err
+	}
+	plan, err := s.repo.GetPlanByID(ctx, price.PlanID)
+	if err != nil {
+		return subscriptionOrderQuote{}, err
+	}
+	if input.UserID == 0 || !plan.IsActive || !price.IsActive {
+		return subscriptionOrderQuote{}, repository.ErrInvalidInput
+	}
+	if price.AmountCents <= 0 {
+		return subscriptionOrderQuote{}, repository.ErrInvalidInput
+	}
+	baseCurrency := normalizeCurrency(price.Currency)
+	originalBaseAmountCents := price.AmountCents * int64(cycles)
+	if originalBaseAmountCents <= 0 {
+		return subscriptionOrderQuote{}, repository.ErrInvalidInput
+	}
+	baseAmountCents := originalBaseAmountCents
+	couponQuote, err := s.ResolveCouponQuote(ctx, input.UserID, input.CouponCode, domainbilling.PaymentOrderTypeSubscription, plan.ID, originalBaseAmountCents, false)
+	if err != nil {
+		return subscriptionOrderQuote{}, err
+	}
+	if couponQuote != nil {
+		baseAmountCents = couponQuote.FinalAmountCents
+	}
+	balanceAmountCents := int64(0)
+	if input.UseBalance {
+		if baseCurrency != "USD" {
+			return subscriptionOrderQuote{}, repository.ErrInvalidInput
+		}
+		account, err := s.repo.GetOrCreateBillingAccount(ctx, input.UserID)
+		if err != nil {
+			return subscriptionOrderQuote{}, err
+		}
+		availableBalanceCents := nanousdToCents(account.BalanceNanousd)
+		if availableBalanceCents > baseAmountCents {
+			availableBalanceCents = baseAmountCents
+		}
+		if availableBalanceCents > 0 {
+			balanceAmountCents = availableBalanceCents
+			baseAmountCents -= balanceAmountCents
+		}
+	}
+	quote := resolvePaymentQuote(provider, baseCurrency, baseAmountCents, input.USDToCNYRate, input.PreferredPayCurrency)
+	return subscriptionOrderQuote{
+		Plan:                    plan,
+		Price:                   price,
+		CouponQuote:             couponQuote,
+		BaseCurrency:            baseCurrency,
+		OriginalBaseAmountCents: originalBaseAmountCents,
+		DiscountAmountCents:     discountAmountCents(couponQuote),
+		BalanceAmountCents:      balanceAmountCents,
+		BalanceDebitNanousd:     centsToNanousd(balanceAmountCents),
+		ExternalBaseAmountCents: baseAmountCents,
+		PaymentQuote:            quote,
+	}, nil
+}
+
+// QuotePayment 计算支付前优惠、余额抵扣和最终应付金额。
+func (s *Service) QuotePayment(ctx context.Context, input PaymentQuoteInput) (*PaymentQuoteView, error) {
+	orderType := strings.TrimSpace(input.OrderType)
+	if orderType == "" {
+		if input.PriceID == 0 && input.AmountMinorUnits > 0 {
+			orderType = domainbilling.PaymentOrderTypeTopUp
+		} else {
+			orderType = domainbilling.PaymentOrderTypeSubscription
+		}
+	}
+	switch orderType {
+	case domainbilling.PaymentOrderTypeSubscription:
+		mode, err := s.repo.GetBillingMode(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if mode != "period" {
+			return nil, ErrPaymentRequired
+		}
+		quote, err := s.buildSubscriptionPaymentQuote(ctx, PaymentOrderInput{
+			UserID:               input.UserID,
+			PriceID:              input.PriceID,
+			Cycles:               input.Cycles,
+			Provider:             input.Provider,
+			USDToCNYRate:         input.USDToCNYRate,
+			PreferredPayCurrency: input.PreferredPayCurrency,
+			CouponCode:           input.CouponCode,
+			UseBalance:           input.UseBalance,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &PaymentQuoteView{
+			OrderType:               domainbilling.PaymentOrderTypeSubscription,
+			PlanID:                  quote.Plan.ID,
+			PriceID:                 quote.Price.ID,
+			BaseCurrency:            quote.PaymentQuote.BaseCurrency,
+			OriginalBaseAmountCents: quote.OriginalBaseAmountCents,
+			DiscountAmountCents:     quote.DiscountAmountCents,
+			BalanceAmountCents:      quote.BalanceAmountCents,
+			BaseAmountCents:         quote.PaymentQuote.BaseAmountCents,
+			PayCurrency:             quote.PaymentQuote.PayCurrency,
+			PayAmountCents:          quote.PaymentQuote.PayAmountCents,
+			FXRate:                  formatFXRate(quote.PaymentQuote.FXRate),
+			CouponID:                couponID(quote.CouponQuote),
+			CouponCode:              couponCodeHint(quote.CouponQuote),
+		}, nil
+	case domainbilling.PaymentOrderTypeTopUp:
+		return s.quoteTopUpPayment(ctx, TopUpPaymentOrderInput{
+			UserID:               input.UserID,
+			AmountMinorUnits:     input.AmountMinorUnits,
+			AmountCurrency:       input.AmountCurrency,
+			Provider:             input.Provider,
+			USDToCNYRate:         input.USDToCNYRate,
+			PreferredPayCurrency: input.PreferredPayCurrency,
+			CouponCode:           input.CouponCode,
+		})
+	default:
+		return nil, repository.ErrInvalidInput
+	}
+}
+
 // CreatePaymentOrder 创建待支付订单。
 func (s *Service) CreatePaymentOrder(ctx context.Context, input PaymentOrderInput) (*domainbilling.PaymentOrder, *domainbilling.Plan, *domainbilling.Price, error) {
 	mode, err := s.repo.GetBillingMode(ctx)
@@ -785,50 +966,23 @@ func (s *Service) CreatePaymentOrder(ctx context.Context, input PaymentOrderInpu
 	if mode != "period" {
 		return nil, nil, nil, ErrPaymentRequired
 	}
-
-	provider := strings.TrimSpace(input.Provider)
-	switch provider {
-	case domainbilling.PaymentProviderStripe, domainbilling.PaymentProviderEPay:
-	default:
-		return nil, nil, nil, ErrPaymentProviderUnavailable
+	orderQuote, err := s.buildSubscriptionPaymentQuote(ctx, input)
+	if err != nil {
+		return nil, nil, nil, err
 	}
+	if orderQuote.PaymentQuote.PayAmountCents <= 0 {
+		return nil, nil, nil, ErrPaymentCoveredByBalance
+	}
+	plan := orderQuote.Plan
+	price := orderQuote.Price
+	provider := strings.TrimSpace(input.Provider)
 	cycles := input.Cycles
 	if cycles <= 0 {
 		cycles = 1
 	}
-
-	price, err := s.repo.GetPriceByID(ctx, input.PriceID)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	plan, err := s.repo.GetPlanByID(ctx, price.PlanID)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if input.UserID == 0 || !plan.IsActive || !price.IsActive {
-		return nil, nil, nil, repository.ErrInvalidInput
-	}
-	if price.AmountCents <= 0 {
-		return nil, nil, nil, repository.ErrInvalidInput
-	}
-	baseCurrency := normalizeCurrency(price.Currency)
-	originalBaseAmountCents := price.AmountCents * int64(cycles)
-	if originalBaseAmountCents <= 0 {
-		return nil, nil, nil, repository.ErrInvalidInput
-	}
-	baseAmountCents := originalBaseAmountCents
-	couponQuote, err := s.ResolveCouponQuote(ctx, input.UserID, input.CouponCode, domainbilling.PaymentOrderTypeSubscription, plan.ID, originalBaseAmountCents, false)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	quote := orderQuote.PaymentQuote
+	couponQuote := orderQuote.CouponQuote
 	couponApply := (*repository.CouponOrderApplyInput)(nil)
-	if couponQuote != nil {
-		baseAmountCents = couponQuote.FinalAmountCents
-	}
-	quote := resolvePaymentQuote(provider, baseCurrency, baseAmountCents, input.USDToCNYRate, input.PreferredPayCurrency)
-	if quote.PayAmountCents <= 0 {
-		return nil, nil, nil, repository.ErrInvalidInput
-	}
 
 	orderNo, err := generateOrderNo()
 	if err != nil {
@@ -844,8 +998,10 @@ func (s *Service) CreatePaymentOrder(ctx context.Context, input PaymentOrderInpu
 		"price_code":                 price.Code,
 		"billing_interval":           price.BillingInterval,
 		"cycles":                     cycles,
-		"original_base_amount_cents": originalBaseAmountCents,
-		"discount_amount_cents":      discountAmountCents(couponQuote),
+		"original_base_amount_cents": orderQuote.OriginalBaseAmountCents,
+		"discount_amount_cents":      orderQuote.DiscountAmountCents,
+		"balance_amount_cents":       orderQuote.BalanceAmountCents,
+		"balance_debit_nanousd":      orderQuote.BalanceDebitNanousd,
 		"base_currency":              quote.BaseCurrency,
 		"base_amount_cents":          quote.BaseAmountCents,
 		"pay_currency":               quote.PayCurrency,
@@ -871,8 +1027,9 @@ func (s *Service) CreatePaymentOrder(ctx context.Context, input PaymentOrderInpu
 		Status:                  domainbilling.PaymentStatusPending,
 		BaseCurrency:            quote.BaseCurrency,
 		BaseAmountCents:         quote.BaseAmountCents,
-		OriginalBaseAmountCents: originalBaseAmountCents,
-		DiscountAmountCents:     discountAmountCents(couponQuote),
+		OriginalBaseAmountCents: orderQuote.OriginalBaseAmountCents,
+		DiscountAmountCents:     orderQuote.DiscountAmountCents,
+		BalanceAmountCents:      orderQuote.BalanceAmountCents,
 		CouponID:                couponID(couponQuote),
 		CouponCode:              couponCodeHint(couponQuote),
 		PayCurrency:             quote.PayCurrency,
@@ -887,6 +1044,70 @@ func (s *Service) CreatePaymentOrder(ctx context.Context, input PaymentOrderInpu
 		return nil, nil, nil, err
 	}
 	return order, plan, price, nil
+}
+
+func (s *Service) quoteTopUpPayment(ctx context.Context, input TopUpPaymentOrderInput) (*PaymentQuoteView, error) {
+	mode, err := s.repo.GetBillingMode(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if mode != "usage" && mode != "period" {
+		return nil, ErrPaymentRequired
+	}
+	provider := strings.TrimSpace(input.Provider)
+	switch provider {
+	case domainbilling.PaymentProviderStripe, domainbilling.PaymentProviderEPay:
+	default:
+		return nil, ErrPaymentProviderUnavailable
+	}
+	if input.UserID == 0 || input.AmountMinorUnits <= 0 {
+		return nil, repository.ErrInvalidInput
+	}
+
+	baseCurrency := "USD"
+	rate := resolveUSDToCNYRate(input.USDToCNYRate)
+	amountCurrency := normalizeCurrency(input.AmountCurrency)
+	baseAmountUSD := float64(input.AmountMinorUnits) / 100
+	if amountCurrency == "CNY" {
+		baseAmountUSD = baseAmountUSD / rate
+	} else if amountCurrency != "USD" {
+		return nil, repository.ErrInvalidInput
+	}
+	creditNanousd := usdToNanousd(baseAmountUSD)
+	originalBaseAmountCents := int64(math.Round(baseAmountUSD * 100))
+	if originalBaseAmountCents <= 0 {
+		return nil, repository.ErrInvalidInput
+	}
+	baseAmountCents := originalBaseAmountCents
+	couponQuote, err := s.ResolveCouponQuote(ctx, input.UserID, input.CouponCode, domainbilling.PaymentOrderTypeTopUp, 0, originalBaseAmountCents, false)
+	if err != nil {
+		return nil, err
+	}
+	if couponQuote != nil {
+		baseAmountCents = couponQuote.FinalAmountCents
+	}
+	quote := resolvePaymentQuote(provider, baseCurrency, baseAmountCents, rate, input.PreferredPayCurrency)
+	if couponQuote == nil && quote.PayCurrency == amountCurrency {
+		quote.PayAmountCents = input.AmountMinorUnits
+	} else if quote.PayCurrency == "CNY" && quote.BaseCurrency == "USD" {
+		quote.PayAmountCents = int64(math.Round(float64(baseAmountCents) * rate))
+	}
+	if quote.BaseAmountCents <= 0 || quote.PayAmountCents <= 0 || creditNanousd <= 0 {
+		return nil, repository.ErrInvalidInput
+	}
+	return &PaymentQuoteView{
+		OrderType:               domainbilling.PaymentOrderTypeTopUp,
+		BaseCurrency:            quote.BaseCurrency,
+		OriginalBaseAmountCents: originalBaseAmountCents,
+		DiscountAmountCents:     discountAmountCents(couponQuote),
+		BaseAmountCents:         quote.BaseAmountCents,
+		PayCurrency:             quote.PayCurrency,
+		PayAmountCents:          quote.PayAmountCents,
+		FXRate:                  formatFXRate(quote.FXRate),
+		CouponID:                couponID(couponQuote),
+		CouponCode:              couponCodeHint(couponQuote),
+		CreditNanousd:           creditNanousd,
+	}, nil
 }
 
 // CreateTopUpPaymentOrder 创建按量余额充值支付单。
@@ -1143,7 +1364,11 @@ func (s *Service) CompletePaymentOrder(ctx context.Context, orderNo string, exte
 		CanceledAt:           nil,
 		AutoRenew:            order.BillingInterval != domainbilling.IntervalLifetime,
 	}
-	return s.repo.MarkPaymentOrderPaidAndGrantSubscription(ctx, orderNo, externalPaymentID, paidAt, subscription)
+	completed, activated, err := s.repo.MarkPaymentOrderPaidAndGrantSubscription(ctx, orderNo, externalPaymentID, paidAt, subscription)
+	if errors.Is(err, repository.ErrInsufficientBalance) {
+		return nil, false, ErrUsageBalanceInsufficient
+	}
+	return completed, activated, err
 }
 
 // CreatePlan 创建周期套餐与默认价格。
@@ -3177,6 +3402,13 @@ func centsToNanousd(value int64) int64 {
 		return 0
 	}
 	return value * 10000000
+}
+
+func nanousdToCents(value int64) int64 {
+	if value <= 0 {
+		return 0
+	}
+	return value / 10000000
 }
 
 func usdToNanousd(value float64) int64 {

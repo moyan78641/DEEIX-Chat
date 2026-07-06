@@ -30,10 +30,22 @@ export type CreateCheckoutRequest = {
   paymentProvider?: "stripe" | "epay" | string;
   epayType?: string;
   couponCode?: string;
+  useBalance?: boolean;
   successURL?: string;
   cancelURL?: string;
   termsAccepted?: boolean;
   privacyAccepted?: boolean;
+};
+
+export type PaymentQuoteRequest = {
+  orderType?: "subscription" | "topup";
+  priceID?: number;
+  amountMinorUnits?: number;
+  cycles?: number;
+  paymentProvider?: "stripe" | "epay" | string;
+  epayType?: string;
+  couponCode?: string;
+  useBalance?: boolean;
 };
 
 export type BalanceSubscriptionPurchaseRequest = {
@@ -54,6 +66,7 @@ export type CheckoutDTO = {
   baseAmountCents: number;
   originalBaseAmountCents: number;
   discountAmountCents: number;
+  balanceAmountCents: number;
   couponID: number;
   couponCode: string;
   baseCurrency: string;
@@ -67,6 +80,28 @@ export type CheckoutDTO = {
 
 export type CheckoutData = {
   checkout: CheckoutDTO;
+};
+
+export type PaymentQuoteDTO = {
+  orderType: "subscription" | "topup" | string;
+  planID: number;
+  priceID: number;
+  baseCurrency: string;
+  originalBaseAmountCents: number;
+  discountAmountCents: number;
+  balanceAmountCents: number;
+  baseAmountCents: number;
+  payCurrency: string;
+  payAmountCents: number;
+  fxRate: string;
+  couponID: number;
+  couponCode: string;
+  creditNanousd: number;
+  creditUSD: number;
+};
+
+export type PaymentQuoteData = {
+  quote: PaymentQuoteDTO;
 };
 
 export type BalanceSubscriptionPurchaseData = {

@@ -5,6 +5,9 @@
   "subscription": "Subscription",
   "tabs": {
     "settings": "Billing settings",
+    "plans": "Plans",
+    "redemptions": "Redemption codes",
+    "coupons": "Coupons",
     "modelPricing": "Model pricing",
     "toolPricing": "Tool pricing"
   },

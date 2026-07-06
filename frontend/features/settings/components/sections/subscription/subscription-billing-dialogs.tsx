@@ -5,11 +5,15 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { SpinnerLabel } from "@/components/ui/spinner";
 import { AgreementCheckbox } from "@/shared/site/agreement-checkbox";
+import type { PaymentQuoteDTO } from "@/shared/api/billing.types";
 import {
   billingDisplayAmountToUSD,
   billingDisplayInputSymbol,
+  formatPaymentMinorUnits,
+  formatPlanCredit,
   formatProviderPaymentAmountFromUSD,
 } from "@/features/settings/model/subscription-format";
 import type { BillingDisplayOptions } from "@/shared/lib/billing-display";
@@ -33,6 +37,9 @@ type TopUpDialogProps = {
   onOpenChange: (open: boolean) => void;
   amount: string;
   couponCode: string;
+  couponQuote: PaymentQuoteDTO | null;
+  couponQuoteLoading: boolean;
+  couponNeedsApply: boolean;
   currentBalance: string;
   billingLoading: boolean;
   topUpLoading: boolean;
@@ -52,6 +59,7 @@ type TopUpDialogProps = {
   onCouponCodeChange: (value: string) => void;
   onPaymentProviderChange: (provider: PaymentProvider) => void;
   onEPayTypeChange: (type: string) => void;
+  onApplyCoupon: () => void;
   onSubmit: () => void;
   agreementAccepted: boolean;
   onAgreementAcceptedChange: (accepted: boolean) => void;
@@ -62,6 +70,9 @@ export function TopUpDialog({
   onOpenChange,
   amount,
   couponCode,
+  couponQuote,
+  couponQuoteLoading,
+  couponNeedsApply,
   currentBalance,
   billingLoading,
   topUpLoading,
@@ -76,6 +87,7 @@ export function TopUpDialog({
   onCouponCodeChange,
   onPaymentProviderChange,
   onEPayTypeChange,
+  onApplyCoupon,
   onSubmit,
   agreementAccepted,
   onAgreementAcceptedChange,
@@ -86,6 +98,7 @@ export function TopUpDialog({
   const stripePaymentAmount = formatProviderPaymentAmountFromUSD(paymentAmountUSD, "stripe", billingDisplay);
   const epayPaymentAmount = formatProviderPaymentAmountFromUSD(paymentAmountUSD, "epay", billingDisplay);
   const inputSymbol = billingDisplayInputSymbol(billingDisplay);
+  const busy = billingLoading || topUpLoading || paymentDisabled || couponQuoteLoading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -111,7 +124,7 @@ export function TopUpDialog({
               step="0.01"
               className="pl-7"
               onChange={(event) => onAmountChange(event.target.value)}
-              disabled={billingLoading || topUpLoading || paymentDisabled}
+              disabled={busy}
               aria-label={t("topUp.amountAria")}
             />
           </div>
@@ -119,16 +132,42 @@ export function TopUpDialog({
 
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground">{t("coupon.code")}</p>
-          <Input
-            value={couponCode}
-            autoComplete="off"
-            className="font-mono"
-            placeholder={t("coupon.placeholder")}
-            disabled={billingLoading || topUpLoading || paymentDisabled}
-            onChange={(event) => onCouponCodeChange(event.target.value)}
-            aria-label={t("coupon.code")}
-          />
+          <div className="flex gap-2">
+            <Input
+              value={couponCode}
+              autoComplete="off"
+              className="font-mono"
+              placeholder={t("coupon.placeholder")}
+              disabled={busy}
+              onChange={(event) => onCouponCodeChange(event.target.value)}
+              aria-label={t("coupon.code")}
+            />
+            <Button type="button" variant="outline" disabled={busy || !couponCode.trim()} onClick={onApplyCoupon}>
+              {couponQuoteLoading ? <SpinnerLabel>{t("coupon.applying")}</SpinnerLabel> : t("coupon.apply")}
+            </Button>
+          </div>
+          {couponNeedsApply ? <p className="text-xs text-amber-600 dark:text-amber-400">{t("coupon.needsApply")}</p> : null}
         </div>
+
+        {couponQuote ? (
+          <div className="space-y-2 rounded-lg bg-muted/30 p-3 text-xs">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">{t("payment.originalAmount")}</span>
+              <span className="font-medium tabular-nums">{formatPlanCredit(couponQuote.originalBaseAmountCents / 100, billingDisplay)}</span>
+            </div>
+            {couponQuote.discountAmountCents > 0 ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{t("payment.couponDiscount")}</span>
+                <span className="font-medium tabular-nums">-{formatPlanCredit(couponQuote.discountAmountCents / 100, billingDisplay)}</span>
+              </div>
+            ) : null}
+            <Separator />
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-medium">{t("payment.onlinePayAmount")}</span>
+              <span className="font-semibold tabular-nums">{formatPaymentMinorUnits(couponQuote.payAmountCents, couponQuote.payCurrency)}</span>
+            </div>
+          </div>
+        ) : null}
 
         {!paymentDisabled ? (
           <div className="space-y-2">
@@ -140,7 +179,7 @@ export function TopUpDialog({
                   className={`flex min-h-9 flex-col items-center justify-center rounded-md border px-2 py-1 text-xs ${
                     selectedPaymentProvider === "stripe" ? "border-foreground bg-muted/25 font-medium" : "border-border bg-transparent text-muted-foreground"
                   }`}
-                  disabled={billingLoading || topUpLoading || paymentDisabled}
+                  disabled={busy}
                   onClick={() => onPaymentProviderChange("stripe")}
                 >
                   <span>Stripe</span>
@@ -157,7 +196,7 @@ export function TopUpDialog({
                       className={`flex min-h-9 flex-col items-center justify-center rounded-md border px-2 py-1 text-xs ${
                         selected ? "border-foreground bg-muted/25 font-medium" : "border-border bg-transparent text-muted-foreground"
                       }`}
-                      disabled={billingLoading || topUpLoading || paymentDisabled}
+                      disabled={busy}
                       onClick={() => {
                         onPaymentProviderChange("epay");
                         onEPayTypeChange(item.type);
@@ -175,15 +214,15 @@ export function TopUpDialog({
 
         <AgreementCheckbox
           checked={agreementAccepted}
-          disabled={billingLoading || topUpLoading || paymentDisabled}
+          disabled={busy}
           onCheckedChange={onAgreementAcceptedChange}
         />
 
         <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={topUpLoading}>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={topUpLoading || couponQuoteLoading}>
             {t("actions.cancel")}
           </Button>
-          <Button type="button" disabled={billingLoading || topUpLoading || paymentDisabled || !agreementAccepted} onClick={onSubmit}>
+          <Button type="button" disabled={busy || !agreementAccepted || couponNeedsApply} onClick={onSubmit}>
             {topUpLoading ? <SpinnerLabel>{t("actions.processing")}</SpinnerLabel> : t("topUp.confirm")}
           </Button>
         </DialogFooter>

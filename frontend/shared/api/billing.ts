@@ -12,6 +12,8 @@ import type {
   BillingUsageMonthlyDTO,
   CheckoutData,
   CreateCheckoutRequest,
+  PaymentQuoteData,
+  PaymentQuoteRequest,
   RedeemBillingCodeData,
   RedeemBillingCodeRequest,
   SubscribeData,
@@ -84,6 +86,14 @@ export async function listBillingDailyUsage(
 export async function createBillingCheckout(accessToken: string, payload: CreateCheckoutRequest): Promise<CheckoutData> {
   return authedRequest<CheckoutData>(
     "/api/v1/billing/payments/checkout",
+    { method: "POST", accessToken, body: payload },
+    true,
+  );
+}
+
+export async function quoteBillingPayment(accessToken: string, payload: PaymentQuoteRequest): Promise<PaymentQuoteData> {
+  return authedRequest<PaymentQuoteData>(
+    "/api/v1/billing/payments/quote",
     { method: "POST", accessToken, body: payload },
     true,
   );

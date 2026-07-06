@@ -9,13 +9,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { SpinnerLabel } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 import { AgreementCheckbox } from "@/shared/site/agreement-checkbox";
 import type { UserDTO } from "@/shared/api/auth.types";
-import type { BillingOverviewData, BillingSubscriptionEntitlementDTO } from "@/shared/api/billing.types";
+import type { BillingOverviewData, BillingSubscriptionEntitlementDTO, PaymentQuoteDTO } from "@/shared/api/billing.types";
 import type { BillingPlanDTO, BillingPlanPriceDTO } from "@/shared/api/billing.types";
 import {
   formatAccountBalance,
   formatMediumDate,
+  formatPaymentMinorUnits,
   formatPlanCredit,
   formatPlanPrice,
   formatProviderPaymentAmountFromUSD,
@@ -199,6 +201,10 @@ type SubscriptionSummaryProps = {
   selectedPaymentProvider: PaymentProvider;
   selectedEPayType: string;
   subscriptionCouponCode: string;
+  subscriptionQuote: PaymentQuoteDTO | null;
+  subscriptionQuoteLoading: boolean;
+  subscriptionCouponNeedsApply: boolean;
+  subscriptionUseBalance: boolean;
   checkoutPriceID: number | null;
   balancePurchaseLoading: boolean;
   pricingDialogOpen: boolean;
@@ -218,6 +224,8 @@ type SubscriptionSummaryProps = {
   onPaymentProviderChange: (provider: PaymentProvider) => void;
   onEPayTypeChange: (type: string) => void;
   onSubscriptionCouponCodeChange: (value: string) => void;
+  onSubscriptionUseBalanceChange: (value: boolean) => void;
+  onApplySubscriptionCoupon: () => void;
   onConfirmPayment: () => void;
   onBalancePurchase: () => void;
 };
@@ -248,6 +256,10 @@ export function SubscriptionSummary({
   selectedPaymentProvider,
   selectedEPayType,
   subscriptionCouponCode,
+  subscriptionQuote,
+  subscriptionQuoteLoading,
+  subscriptionCouponNeedsApply,
+  subscriptionUseBalance,
   checkoutPriceID,
   balancePurchaseLoading,
   pricingDialogOpen,
@@ -267,6 +279,8 @@ export function SubscriptionSummary({
   onPaymentProviderChange,
   onEPayTypeChange,
   onSubscriptionCouponCodeChange,
+  onSubscriptionUseBalanceChange,
+  onApplySubscriptionCoupon,
   onConfirmPayment,
   onBalancePurchase,
 }: SubscriptionSummaryProps) {
@@ -301,6 +315,10 @@ export function SubscriptionSummary({
   const selectedPaymentAmountUSD = selectedPrice ? (selectedPrice.amountCents || 0) / 100 : 0;
   const stripePaymentAmount = selectedPrice ? formatProviderPaymentAmountFromUSD(selectedPaymentAmountUSD, "stripe", billingDisplay) : "";
   const epayPaymentAmount = selectedPrice ? formatProviderPaymentAmountFromUSD(selectedPaymentAmountUSD, "epay", billingDisplay) : "";
+  const paymentBusy = checkoutPriceID === selectedPrice?.id || balancePurchaseLoading || subscriptionQuoteLoading;
+  const canApplySubscriptionQuote = Boolean(subscriptionCouponCode.trim() || subscriptionUseBalance);
+  const subscriptionBalanceNeedsApply = subscriptionUseBalance && !subscriptionQuote;
+  const onlinePayDisabledByQuote = subscriptionUseBalance && Boolean(subscriptionQuote && subscriptionQuote.payAmountCents <= 0);
 
   return (
     <>
@@ -573,29 +591,77 @@ export function SubscriptionSummary({
           </div>
           <div className="space-y-1.5">
             <p className="text-xs text-muted-foreground">{t("coupon.code")}</p>
-            <Input
-              value={subscriptionCouponCode}
-              autoComplete="off"
-              className="font-mono"
-              placeholder={t("coupon.placeholder")}
-              disabled={checkoutPriceID === selectedPrice?.id || balancePurchaseLoading}
-              onChange={(event) => onSubscriptionCouponCodeChange(event.target.value)}
-              aria-label={t("coupon.code")}
-            />
+            <div className="flex gap-2">
+              <Input
+                value={subscriptionCouponCode}
+                autoComplete="off"
+                className="font-mono"
+                placeholder={t("coupon.placeholder")}
+                disabled={paymentBusy}
+                onChange={(event) => onSubscriptionCouponCodeChange(event.target.value)}
+                aria-label={t("coupon.code")}
+              />
+              <Button type="button" variant="outline" disabled={paymentBusy || !canApplySubscriptionQuote} onClick={onApplySubscriptionCoupon}>
+                {subscriptionQuoteLoading ? <SpinnerLabel>{t("coupon.applying")}</SpinnerLabel> : t("coupon.apply")}
+              </Button>
+            </div>
+            {subscriptionCouponNeedsApply ? <p className="text-xs text-amber-600 dark:text-amber-400">{t("coupon.needsApply")}</p> : null}
           </div>
+          {billingAccount && billingAccount.balanceUSD > 0 ? (
+            <div className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-3">
+              <span className="space-y-1">
+                <span className="block text-xs font-medium">{t("payment.useBalance")}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {t("payment.availableBalance", { value: formatAccountBalance(billingAccount.balanceUSD, billingDisplay) })}
+                </span>
+              </span>
+              <Switch
+                size="sm"
+                checked={subscriptionUseBalance}
+                disabled={paymentBusy}
+                onCheckedChange={onSubscriptionUseBalanceChange}
+                aria-label={t("payment.useBalance")}
+              />
+            </div>
+          ) : null}
+          {subscriptionQuote ? (
+            <div className="space-y-2 rounded-lg bg-muted/30 p-3 text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{t("payment.originalAmount")}</span>
+                <span className="font-medium tabular-nums">{formatPlanCredit(subscriptionQuote.originalBaseAmountCents / 100, billingDisplay)}</span>
+              </div>
+              {subscriptionQuote.discountAmountCents > 0 ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{t("payment.couponDiscount")}</span>
+                  <span className="font-medium tabular-nums">-{formatPlanCredit(subscriptionQuote.discountAmountCents / 100, billingDisplay)}</span>
+                </div>
+              ) : null}
+              {subscriptionQuote.balanceAmountCents > 0 ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{t("payment.balanceDeduction")}</span>
+                  <span className="font-medium tabular-nums">-{formatPlanCredit(subscriptionQuote.balanceAmountCents / 100, billingDisplay)}</span>
+                </div>
+              ) : null}
+              <Separator />
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-medium">{t("payment.onlinePayAmount")}</span>
+                <span className="font-semibold tabular-nums">{formatPaymentMinorUnits(subscriptionQuote.payAmountCents, subscriptionQuote.payCurrency)}</span>
+              </div>
+            </div>
+          ) : null}
           <AgreementCheckbox
             checked={agreementAccepted}
-            disabled={checkoutPriceID === selectedPrice?.id || balancePurchaseLoading}
+            disabled={paymentBusy}
             onCheckedChange={onAgreementAcceptedChange}
           />
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onPaymentDialogOpenChange(false)} disabled={checkoutPriceID === selectedPrice?.id || balancePurchaseLoading}>
+            <Button type="button" variant="ghost" onClick={() => onPaymentDialogOpenChange(false)} disabled={paymentBusy}>
               {t("actions.cancel")}
             </Button>
-            <Button type="button" variant="outline" disabled={!agreementAccepted || !selectedPrice || checkoutPriceID === selectedPrice?.id || balancePurchaseLoading} onClick={onBalancePurchase}>
+            <Button type="button" variant="outline" disabled={!agreementAccepted || !selectedPrice || paymentBusy} onClick={onBalancePurchase}>
               {balancePurchaseLoading ? <SpinnerLabel>{t("actions.processing")}</SpinnerLabel> : t("payment.balancePay")}
             </Button>
-            <Button type="button" disabled={paymentDisabled || !agreementAccepted || !selectedPrice || checkoutPriceID === selectedPrice.id || balancePurchaseLoading} onClick={onConfirmPayment}>
+            <Button type="button" disabled={paymentDisabled || !agreementAccepted || !selectedPrice || paymentBusy || subscriptionCouponNeedsApply || subscriptionBalanceNeedsApply || onlinePayDisabledByQuote} onClick={onConfirmPayment}>
               {checkoutPriceID === selectedPrice?.id ? <SpinnerLabel>{t("actions.processing")}</SpinnerLabel> : t("payment.continue")}
             </Button>
           </DialogFooter>

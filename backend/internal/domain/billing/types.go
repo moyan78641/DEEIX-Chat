@@ -120,6 +120,7 @@ type PaymentOrder struct {
 	BaseAmountCents         int64
 	OriginalBaseAmountCents int64
 	DiscountAmountCents     int64
+	BalanceAmountCents      int64
 	CouponID                uint
 	CouponCode              string
 	PayCurrency             string

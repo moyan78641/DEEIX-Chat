@@ -5,6 +5,9 @@
   "subscription": "订阅",
   "tabs": {
     "settings": "计费设置",
+    "plans": "订阅方案",
+    "redemptions": "兑换码",
+    "coupons": "优惠码",
     "modelPricing": "模型定价",
     "toolPricing": "工具定价"
   },

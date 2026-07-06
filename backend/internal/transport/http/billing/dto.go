@@ -30,10 +30,23 @@ type CreateCheckoutRequest struct {
 	PaymentProvider  string `json:"paymentProvider" binding:"omitempty,oneof=stripe epay"`
 	EPayType         string `json:"epayType" binding:"omitempty,max=32"`
 	CouponCode       string `json:"couponCode" binding:"omitempty,min=3,max=64"`
+	UseBalance       bool   `json:"useBalance"`
 	SuccessURL       string `json:"successURL" binding:"omitempty,max=512"`
 	CancelURL        string `json:"cancelURL" binding:"omitempty,max=512"`
 	TermsAccepted    bool   `json:"termsAccepted"`
 	PrivacyAccepted  bool   `json:"privacyAccepted"`
+}
+
+// PaymentQuoteRequest 支付前试算请求。
+type PaymentQuoteRequest struct {
+	OrderType        string `json:"orderType" binding:"omitempty,oneof=subscription topup"`
+	PriceID          uint   `json:"priceID" binding:"omitempty,min=1"`
+	AmountMinorUnits int64  `json:"amountMinorUnits" binding:"omitempty,min=0"`
+	Cycles           int    `json:"cycles" binding:"min=1,max=120"`
+	PaymentProvider  string `json:"paymentProvider" binding:"omitempty,oneof=stripe epay"`
+	EPayType         string `json:"epayType" binding:"omitempty,max=32"`
+	CouponCode       string `json:"couponCode" binding:"omitempty,min=3,max=64"`
+	UseBalance       bool   `json:"useBalance"`
 }
 
 // BalanceSubscriptionPurchaseRequest 使用站内余额购买套餐请求。
@@ -281,6 +294,7 @@ type CheckoutResponse struct {
 	BaseAmountCents         int64      `json:"baseAmountCents"`
 	OriginalBaseAmountCents int64      `json:"originalBaseAmountCents"`
 	DiscountAmountCents     int64      `json:"discountAmountCents"`
+	BalanceAmountCents      int64      `json:"balanceAmountCents"`
 	CouponID                uint       `json:"couponID"`
 	CouponCode              string     `json:"couponCode"`
 	BaseCurrency            string     `json:"baseCurrency"`
@@ -295,6 +309,30 @@ type CheckoutResponse struct {
 // CheckoutDataResponse 支付收银台操作响应。
 type CheckoutDataResponse struct {
 	Checkout CheckoutResponse `json:"checkout"`
+}
+
+// PaymentQuoteResponse 支付试算响应。
+type PaymentQuoteResponse struct {
+	OrderType               string  `json:"orderType"`
+	PlanID                  uint    `json:"planID"`
+	PriceID                 uint    `json:"priceID"`
+	BaseCurrency            string  `json:"baseCurrency"`
+	OriginalBaseAmountCents int64   `json:"originalBaseAmountCents"`
+	DiscountAmountCents     int64   `json:"discountAmountCents"`
+	BalanceAmountCents      int64   `json:"balanceAmountCents"`
+	BaseAmountCents         int64   `json:"baseAmountCents"`
+	PayCurrency             string  `json:"payCurrency"`
+	PayAmountCents          int64   `json:"payAmountCents"`
+	FXRate                  string  `json:"fxRate"`
+	CouponID                uint    `json:"couponID"`
+	CouponCode              string  `json:"couponCode"`
+	CreditNanousd           int64   `json:"creditNanousd"`
+	CreditUSD               float64 `json:"creditUSD"`
+}
+
+// PaymentQuoteDataResponse 支付试算操作响应。
+type PaymentQuoteDataResponse struct {
+	Quote PaymentQuoteResponse `json:"quote"`
 }
 
 // BalanceSubscriptionPurchaseDataResponse 使用余额购买套餐响应。
@@ -668,6 +706,12 @@ type CheckoutResponseDoc struct {
 	Data     CheckoutDataResponse `json:"data"`
 }
 
+// PaymentQuoteResponseDoc 支付试算响应。
+type PaymentQuoteResponseDoc struct {
+	ErrorMsg string                   `json:"errorMsg"`
+	Data     PaymentQuoteDataResponse `json:"data"`
+}
+
 // BalanceSubscriptionPurchaseResponseDoc 使用余额购买套餐响应。
 type BalanceSubscriptionPurchaseResponseDoc struct {
 	ErrorMsg string                                  `json:"errorMsg"`
@@ -910,6 +954,7 @@ func toCheckoutResponse(item *domainbilling.PaymentOrder) CheckoutResponse {
 		BaseAmountCents:         item.BaseAmountCents,
 		OriginalBaseAmountCents: item.OriginalBaseAmountCents,
 		DiscountAmountCents:     item.DiscountAmountCents,
+		BalanceAmountCents:      item.BalanceAmountCents,
 		CouponID:                item.CouponID,
 		CouponCode:              item.CouponCode,
 		BaseCurrency:            item.BaseCurrency,
@@ -919,6 +964,29 @@ func toCheckoutResponse(item *domainbilling.PaymentOrder) CheckoutResponse {
 		CreditNanousd:           item.CreditNanousd,
 		CreditUSD:               nanousdToUSD(item.CreditNanousd),
 		ExpiredAt:               item.ExpiredAt,
+	}
+}
+
+func toPaymentQuoteResponse(item *appbilling.PaymentQuoteView) PaymentQuoteResponse {
+	if item == nil {
+		return PaymentQuoteResponse{}
+	}
+	return PaymentQuoteResponse{
+		OrderType:               item.OrderType,
+		PlanID:                  item.PlanID,
+		PriceID:                 item.PriceID,
+		BaseCurrency:            item.BaseCurrency,
+		OriginalBaseAmountCents: item.OriginalBaseAmountCents,
+		DiscountAmountCents:     item.DiscountAmountCents,
+		BalanceAmountCents:      item.BalanceAmountCents,
+		BaseAmountCents:         item.BaseAmountCents,
+		PayCurrency:             item.PayCurrency,
+		PayAmountCents:          item.PayAmountCents,
+		FXRate:                  item.FXRate,
+		CouponID:                item.CouponID,
+		CouponCode:              item.CouponCode,
+		CreditNanousd:           item.CreditNanousd,
+		CreditUSD:               nanousdToUSD(item.CreditNanousd),
 	}
 }
 

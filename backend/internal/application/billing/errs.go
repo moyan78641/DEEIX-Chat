@@ -15,6 +15,8 @@ var (
 	ErrPaymentRequired = errors.New("payment is required")
 	// ErrPaymentProviderUnavailable 支付渠道未配置。
 	ErrPaymentProviderUnavailable = errors.New("payment provider is unavailable")
+	// ErrPaymentCoveredByBalance 外部支付金额已被优惠或余额完全覆盖。
+	ErrPaymentCoveredByBalance = errors.New("payment is fully covered by balance")
 	// ErrUsageBalanceInsufficient 按量余额不足。
 	ErrUsageBalanceInsufficient = errors.New("usage balance is insufficient")
 	// ErrInvalidSubscriptionTier 非法订阅套餐。
